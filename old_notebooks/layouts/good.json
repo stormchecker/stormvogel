@@ -21,7 +21,8 @@
   "edit_groups": {
     "groups": [
       "states",
-      "actions"
+      "actions",
+      "carchosen"
     ]
   },
   "groups": {
@@ -50,6 +51,23 @@
       }
     },
     "states": {
+      "borderWidth": 1,
+      "color": {
+        "background": "white",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
+      }
+    },
+    "carchosen": {
       "borderWidth": 1,
       "color": {
         "background": "white",
@@ -94,7 +112,7 @@
     "max_result_color": "#ff0000"
   },
   "state_properties": {
-    "show_ids": true,
+    "show_ids": false,
     "show_rewards": true,
     "reward_symbol": "\u20ac",
     "show_zero_rewards": true,
@@ -186,8 +204,8 @@
       "y": -122
     },
     "17": {
-      "x": 474,
-      "y": -411
+      "x": -597,
+      "y": 53
     },
     "18": {
       "x": 547,

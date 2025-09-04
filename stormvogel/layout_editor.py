@@ -114,10 +114,6 @@ class LayoutEditor(stormvogel.displayable.Displayable):
         with self.debug_output:
             print("Received reload button request.")
             print(self.vis)
-        if self.vis is not None:
-            with self.debug_output:
-                print("Recreate called.")
-            self.vis.recreate()
 
     def try_update(self):
         """Process the updates from the layout editor where required."""
@@ -136,7 +132,8 @@ class LayoutEditor(stormvogel.displayable.Displayable):
         # The preceeding methods should never call self.show() or self.try_show_vis() since it's already called here.
         if load or reload:
             if self.vis is not None:
-                self.vis.show()  # This also updates the edit groups as a side effect, so it should be called first.
+                self.vis.recreate()  # This also updates the edit groups as a side effect, so it should be called first.
+                self.vis.show()
             self.show()
         elif self.vis is not None:
             self.vis.update()
