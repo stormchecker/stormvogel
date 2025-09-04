@@ -118,6 +118,10 @@ class VisualizationBase:
             self.layout.add_active_group("scheduled_actions")
         else:  # Otherwise, disable it
             self.layout.remove_active_group("scheduled_actions")
+        self.recreate()
+
+    def recreate(self):
+        """Recreate the ModelGraph and set the edit groups."""
         self.G = ModelGraph.from_model(
             self.model,
             state_properties=self._create_state_properties,
@@ -561,7 +565,7 @@ class JSVisualization(VisualizationBase):
 
     def get_positions(self) -> dict:
         """Get the current positions of the nodes on the canvas. Returns empty dict if unsucessful.
-        Example result: {"0": {"x": 5, "y": 10}}"""
+        Example result: {0: {"x": 5, "y": 10}}"""
         if self.server is None:
             with self.debug_output:
                 logging.warning(
@@ -574,7 +578,7 @@ class JSVisualization(VisualizationBase):
                     f"""RETURN({self.network_wrapper}.network.getPositions())"""
                 )
             )
-            return positions
+            return {int(k): v for k, v in positions.items()}
         except TimeoutError:
             with self.debug_output:
                 logging.warning("Timed out. Could not retrieve position data.")

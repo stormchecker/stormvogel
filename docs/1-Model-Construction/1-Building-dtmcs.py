@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.17.2
+#       jupytext_version: 1.17.3
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -161,3 +161,5 @@ for sid in range(0,4):
         [(p,die_model.get_state_by_id(sid_)) for p,sid_ in TRANSITIONS[sid]])
 
 vis4 = show(commu_model, layout=Layout("layouts/commu.json"))
+
+# %%

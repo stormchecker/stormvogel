@@ -134,12 +134,13 @@ class Layout:
         self.layout["physics"] = self.layout["misc"]["enable_physics"]
 
     def set_nx_pos(self, pos: dict[int, npt.NDArray], scale: float = 500) -> Self:
-        """Apply NetworkX layout positions to this layout.
+        """Apply NetworkX layout positions to this layout and set physics to false.
 
         Args:
             pos (dict[int, NDArray]): A dictionary of node positions from a NetworkX graph.
             scale (float): Scaling factor for the positions. Defaults to 500.
         """
+        self.set_value(["misc", "enable_physics"], False)
         self.set_value(["physics"], False)
         self.set_value(
             ["positions"],
