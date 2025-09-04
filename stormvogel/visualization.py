@@ -12,7 +12,6 @@ from matplotlib.collections import PathCollection
 import stormvogel.model
 import stormvogel.layout
 import stormvogel.result
-import stormvogel.displayable
 import stormvogel.html_generation
 from stormvogel.autoscale_svg import autoscale_svg
 from .graph import ModelGraph, NodeType
@@ -581,7 +580,7 @@ class JSVisualization(VisualizationBase):
                 logging.warning("Timed out. Could not retrieve position data.")
             raise TimeoutError("Timed out. Could not retrieve position data.")
 
-    def show(self) -> None:
+    def show(self, hidden: bool = False) -> None:
         with self.output:  ## If there was already a rendered network, clear it.
             ipd.clear_output()
         if len(self.model.get_states()) > self.max_states:
@@ -606,7 +605,8 @@ class JSVisualization(VisualizationBase):
         with self.output:  # Display the iframe within the Output.
             ipd.clear_output()
             ipd.display(ipd.HTML(iframe))
-        ipd.display(self.output)
+        if not hidden:
+            ipd.display(self.output)
         with self.debug_output:
             logging.info("Called show")
 
@@ -622,8 +622,7 @@ class JSVisualization(VisualizationBase):
             has already been shown, to apply those changes interactively.
         """
         js = f"""{self.network_wrapper}.network.setOptions({self._get_options()});"""
-        with self.spam:
-            ipd.display(ipd.Javascript(js))
+        ipd.display(ipd.Javascript(js))
 
     def set_node_color(self, node_id: int, color: str | None) -> None:
         """Sets the color of a specific node in the visualization.
@@ -1072,7 +1071,7 @@ class MplVisualization(VisualizationBase):
             pos=pos,
             ax=ax,
             node_color=[node_colors[n] for n in self.G.nodes],  # type: ignore
-            node_size=[node_size[n] for n in self.G.nodes],
+            node_size=[node_size[n] for n in self.G.nodes],  # type: ignore
             **node_kwargs,
         )
         return nodes, edges

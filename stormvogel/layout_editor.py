@@ -31,7 +31,8 @@ class LayoutEditor(stormvogel.displayable.Displayable):
         super().__init__(output, do_display, debug_output)
         self.vis: stormvogel.visualization.JSVisualization | None = visualization
         self.layout: stormvogel.layout.Layout = layout
-        self.try_show_vis()
+        if self.vis is not None:
+            self.vis.show(hidden=True)
         self.loaded: bool = False  # True iff the layout is done loading.
         self.editor = stormvogel.dict_editor.DictEditor(
             schema=self.layout.schema,
@@ -39,11 +40,6 @@ class LayoutEditor(stormvogel.displayable.Displayable):
             on_update=self.try_update,
             do_display=False,
         )
-
-    def try_show_vis(self):
-        """Show the visualization if it was set. Used to apply layout changes."""
-        if self.vis is not None:
-            self.vis.show()
 
     def save_node_positions(self):
         """Try to save the positions of the nodes in the graph to the layout.
@@ -135,7 +131,8 @@ class LayoutEditor(stormvogel.displayable.Displayable):
             self.process_reload_button()
         # The preceeding methods should never call self.show() or self.try_show_vis() since it's already called here.
         if load or reload:
-            self.try_show_vis()  # This also updates the edit groups as a side effect, so it should be called first.
+            if self.vis is not None:
+                self.vis.show()  # This also updates the edit groups as a side effect, so it should be called first.
             self.show()
         elif self.vis is not None:
             self.vis.update()

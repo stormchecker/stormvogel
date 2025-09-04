@@ -1,0 +1,175 @@
+{
+  "__fake_macros": {
+    "__group_macro": {
+      "borderWidth": 1,
+      "color": {
+        "background": "white",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
+      }
+    }
+  },
+  "edit_groups": {
+    "groups": [
+      "states",
+      "actions"
+    ]
+  },
+  "groups": {
+    "actions": {
+      "borderWidth": 1,
+      "color": {
+        "background": "lightblue",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "box",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
+      }
+    },
+    "scheduled_actions": {
+      "shape": "box",
+      "color": {
+        "background": "pink",
+        "border": "red"
+      }
+    },
+    "states": {
+      "borderWidth": 1,
+      "color": {
+        "background": "#e36d6d",
+        "border": "#3d91ff",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
+      }
+    }
+  },
+  "reload_button": false,
+  "edges": {
+    "arrows": "to",
+    "font": {
+      "color": "black",
+      "size": 14,
+      "strokeColor": "white",
+      "strokeWidth": 2
+    },
+    "color": {
+      "color": "black"
+    },
+    "width": 1
+  },
+  "numbers": {
+    "fractions": true,
+    "digits": 5,
+    "denominator_limit": 1000
+  },
+  "results": {
+    "show_results": true,
+    "result_symbol": "\u2606",
+    "result_colors": false,
+    "min_result_color": "#ffffff",
+    "max_result_color": "#ff0000"
+  },
+  "state_properties": {
+    "show_ids": false,
+    "show_rewards": true,
+    "reward_symbol": "\u20ac",
+    "show_zero_rewards": true,
+    "show_observations": true,
+    "observation_symbol": "\u0298"
+  },
+  "layout": {
+    "randomSeed": 5
+  },
+  "misc": {
+    "enable_physics": true,
+    "width": 800,
+    "height": 600,
+    "explore": false
+  },
+  "saving": {
+    "relative_path": true,
+    "filename": "layouts/NAME.json",
+    "save_button": false,
+    "load_button": false
+  },
+  "positions": {
+    "0": {
+      "x": 90,
+      "y": -46
+    },
+    "1": {
+      "x": 136,
+      "y": -103
+    },
+    "2": {
+      "x": -115,
+      "y": -26
+    },
+    "3": {
+      "x": -145,
+      "y": 162
+    },
+    "4": {
+      "x": 20,
+      "y": 264
+    },
+    "10000000000": {
+      "x": -9,
+      "y": -165
+    },
+    "10000000001": {
+      "x": 75,
+      "y": 69
+    },
+    "10000000002": {
+      "x": 253,
+      "y": -38
+    },
+    "10000000003": {
+      "x": 162,
+      "y": -222
+    },
+    "10000000004": {
+      "x": -63,
+      "y": -19
+    },
+    "10000000005": {
+      "x": -241,
+      "y": 40
+    },
+    "10000000006": {
+      "x": 8,
+      "y": 96
+    },
+    "10000000007": {
+      "x": -112,
+      "y": 292
+    }
+  },
+  "physics": true,
+  "autoResize": true
+}
