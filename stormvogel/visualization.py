@@ -118,6 +118,10 @@ class VisualizationBase:
             self.layout.add_active_group("scheduled_actions")
         else:  # Otherwise, disable it
             self.layout.remove_active_group("scheduled_actions")
+        self.recreate()
+
+    def recreate(self):
+        """Recreate the ModelGraph and set the edit groups."""
         self.G = ModelGraph.from_model(
             self.model,
             state_properties=self._create_state_properties,

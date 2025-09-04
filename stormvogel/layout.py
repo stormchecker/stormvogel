@@ -140,6 +140,7 @@ class Layout:
             pos (dict[int, NDArray]): A dictionary of node positions from a NetworkX graph.
             scale (float): Scaling factor for the positions. Defaults to 500.
         """
+        self.set_value(["misc", "enable_physics"], False)
         self.set_value(["physics"], False)
         self.set_value(
             ["positions"],

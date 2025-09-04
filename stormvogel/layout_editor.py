@@ -112,8 +112,12 @@ class LayoutEditor(stormvogel.displayable.Displayable):
         but only does something if the reload button was pressed."""
         self.layout.layout["reload_button"] = False
         with self.debug_output:
-            logging.info("Received reload button request.")
-        self.save_node_positions()
+            print("Received reload button request.")
+            print(self.vis)
+        if self.vis is not None:
+            with self.debug_output:
+                print("Recreate called.")
+            self.vis.recreate()
 
     def try_update(self):
         """Process the updates from the layout editor where required."""
