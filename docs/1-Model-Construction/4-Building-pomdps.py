@@ -14,13 +14,19 @@
 
 # %% [markdown]
 # # Building POMDPs
-# A Partially Observable Markov Decision Process (POMDP) is an MDP (see previous notebooks) where the agent cannot see in which state the model currently it is.<br>
-# That is, only knows about the actions that you can take in a state, and possibly an *observation* for the current state, and it has to take a decision based on these.
-#
-# Note that usually when we refer to MDPs we actually mean *Completely Observed* MDPs as opposed to POMDPs.
+# In Stormvogel, a **Partially Observable Markov Decision Process (POMDP)** consists of
+# * states $S$, actions $A$, an initial state $s_0$, a mapping of *enabled actions*, and a successor distribution $P(s,a)$, and a labelling function $L$ as for MDPs,
+# * a set of observations $Z$
+# * and a deterministic state-observation function $O\colon S \rightarrow Z$. 
+# 
+# The key idea is that the observations encode what information an agent sees. 
+# An agent will have to make its decisions not based on the current state, but based on the history of observations it has seen. 
+# Note that usually when we refer to MDPs we actually mean *fully observable* MDPs, which are POMDPs with $Z = S$ and $O(s) = s$.
 
 # %% [markdown]
-# We introduce a simple example to understand the difference between MDP and POMDP. The idea is that a coin is flipped while the agent is not looking, and then the agent has to guess if it's heads or tails. We first construct an MDP.
+# We introduce a simple example to illustrate the difference between MDPs and POMDPs. 
+# The idea is that a coin is flipped while the agent is not looking, and then the agent has to guess if it's heads or tails. 
+# We first construct an MDP.
 
 # %%
 from stormvogel import *
@@ -61,7 +67,7 @@ coin_mdp = bird.build_bird(
 vis = show(coin_mdp)
 
 # %% [markdown]
-# Since this MDP is fully observed, the agent can actually see what state the world is in. In other words, the agent *knows* whether the coin is head or tails. If we ask stormpy to calculate the policy that maximizes the reward, we see that the agent can always 'guess' correctly because of this information. The chosen actions are highlighted in red. (More on model checking later.)
+# Since this MDP is fully observable, the agent can actually see what state the world is in. In other words, the agent *knows* whether the coin is head or tails. If we ask stormpy to calculate the policy that maximizes the reward, we see that the agent can always 'guess' correctly because of this information. The chosen actions are highlighted in red. (More on model checking later.)
 
 # %%
 result = model_checking(coin_mdp, 'Rmax=? [S]')
