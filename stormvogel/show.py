@@ -15,6 +15,7 @@ def show(
     model: stormvogel.model.Model,
     engine: str = "js",
     nx_pos: bool = False,
+    nx_scale: int = 500,
     result: stormvogel.result.Result | None = None,
     scheduler: stormvogel.result.Scheduler | None = None,
     layout: stormvogel.layout.Layout | None = None,
@@ -37,6 +38,7 @@ def show(
             Can be either "js" for the interactive html/JavaScript visualization, or "mpl" for matplotlib.
         nx_pos (bool): Whether networkx should be used to determine the node positions in the graph.
             Highly recommended for bigger and acyclic models!
+        nx_scaling_factor (int): Scaling factor for the positions when using networkx positions. Defaults to 500.
         result (Result, optional): A result associatied with the model.
             The results are displayed as numbers on a state. Enable the layout editor for options.
             If this result has a scheduler, then the scheduled actions will have a different color etc. based on the layout
@@ -60,7 +62,7 @@ def show(
     if nx_pos:
         G = stormvogel.visualization.ModelGraph.from_model(model)
         pos = nx.bfs_layout(G, start=model.get_initial_state().id)
-        layout = layout.set_nx_pos(pos)
+        layout = layout.set_nx_pos(pos, scale=nx_scale)
 
     if engine == "js":
         vis = stormvogel.visualization.JSVisualization(
