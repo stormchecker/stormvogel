@@ -32,10 +32,10 @@ def naive_value_iteration(
         old_values = values_matrix[len(values_matrix) - 1]
         new_values = [None for state in model.get_states()]
         for sid, state in model:
-            transitions = model.get_transitions(state)
+            choices = model.get_choice(state)
             # Now we have to take a decision for an action.
             action_values = {}
-            for action, branch in transitions:
+            for action, branch in choices:
                 branch_value = sum(
                     [prob * old_values[state.id] for (prob, state) in branch]  # type: ignore
                 )
@@ -165,7 +165,7 @@ def policy_iteration(
                     lambda a: sum(
                         [
                             (p * dtmc_result.get_result_of_state(s2.id))  # type: ignore
-                            for p, s2 in s1.get_outgoing_transitions(a)  # type: ignore
+                            for p, s2 in s1.get_outgoing_choice(a)  # type: ignore
                         ]
                     )
                     for _ in s1.available_actions()

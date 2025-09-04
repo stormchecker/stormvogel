@@ -15,15 +15,15 @@ def create_study_mdp():
     fail_test = mdp.new_state("fail test")
     end = mdp.new_state("end")
 
-    init.set_transitions([(study, studied), (not_study, not_studied)])
+    init.set_choice([(study, studied), (not_study, not_studied)])
 
-    studied.set_transitions([(9 / 10, pass_test), (1 / 10, fail_test)])
+    studied.set_choice([(9 / 10, pass_test), (1 / 10, fail_test)])
 
-    not_studied.set_transitions([(4 / 10, pass_test), (6 / 10, fail_test)])
+    not_studied.set_choice([(4 / 10, pass_test), (6 / 10, fail_test)])
     mdp.add_self_loops()
 
-    pass_test.set_transitions([(1, end)])
-    fail_test.set_transitions([(1, end)])
+    pass_test.set_choice([(1, end)])
+    fail_test.set_choice([(1, end)])
 
     reward_model = mdp.new_reward_model("R")
     reward_model.set_state_action_reward(pass_test, EmptyAction, 100)

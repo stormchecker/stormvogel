@@ -45,13 +45,13 @@ class Scheduler:
             for reward_model in self.model.rewards:
                 induced_dtmc.new_reward_model(reward_model.name)
 
-            # we add all the states and transitions according to the choices
+            # we add all the states and choices according to the choices
             for _, state in self.model:
                 induced_dtmc.new_state(labels=state.labels, valuations=state.valuations)
                 action = self.get_choice_of_state(state)
-                transitions = state.get_outgoing_transitions(action)
-                assert transitions is not None
-                induced_dtmc.add_transitions(s=state, transitions=transitions)
+                choices = state.get_outgoing_choice(action)
+                assert choices is not None
+                induced_dtmc.add_choice(s=state, choices=choices)
 
                 # we also add the rewards
                 for reward_model in self.model.rewards:

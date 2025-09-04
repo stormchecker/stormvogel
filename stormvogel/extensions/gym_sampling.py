@@ -3,7 +3,7 @@ import gymnasium as gym
 from collections import defaultdict
 
 from typing import Tuple
-from stormvogel import pgc
+from stormvogel import bird
 import stormvogel.model
 
 
@@ -133,9 +133,9 @@ def sample_to_stormvogel(
         done = ["done"] if s[1] else []
         return [str(s[0])] + done
 
-    return pgc.build_pgc(
+    return bird.build_bird(
         delta=delta,
-        initial_state_pgc=init,
+        init=init,
         available_actions=available_actions,
         labels=labels,
         rewards=rewards,  # type: ignore

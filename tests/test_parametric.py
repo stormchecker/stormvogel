@@ -11,7 +11,7 @@ def test_pmc_conversion():
 
     init = pmc.get_initial_state()
 
-    # From the initial state, we have two transitions that either bring us to state A or state B
+    # From the initial state, we have two choices that either bring us to state A or state B
     p1 = stormvogel.parametric.Polynomial(["x", "y", "z"])
     p1.add_term((1, 1, 1), 4)
 
@@ -29,14 +29,14 @@ def test_pmc_conversion():
     pmc.new_state(labels=["A"])
     pmc.new_state(labels=["B"])
 
-    init.set_transitions(
+    init.set_choice(
         [
             (p1, pmc.get_states_with_label("A")[0]),
             (p2, pmc.get_states_with_label("B")[0]),
         ]
     )
 
-    # we add self loops to all states with no outgoing transitions
+    # we add self loops to all states with no outgoing choices
     pmc.add_self_loops()
 
     # we test the mapping
@@ -53,7 +53,7 @@ def test_pmdp_conversion():
 
     init = pmdp.get_initial_state()
 
-    # From the initial state, we have two actions with transitions that either bring us to a goal state or sink state
+    # From the initial state, we have two actions with choices that either bring us to a goal state or sink state
 
     p1 = stormvogel.parametric.Polynomial(["x"])
     p2 = stormvogel.parametric.Polynomial(["x"])
@@ -79,11 +79,11 @@ def test_pmdp_conversion():
         ]
     )
 
-    pmdp.add_transitions(
-        init, stormvogel.model.Transition({action_a: branch0, action_b: branch1})
+    pmdp.add_choice(
+        init, stormvogel.model.Choice({action_a: branch0, action_b: branch1})
     )
 
-    # we add self loops to all states with no outgoing transitions
+    # we add self loops to all states with no outgoing choices
     pmdp.add_self_loops()
 
     # we test the mapping
@@ -100,7 +100,7 @@ def test_pmc_valuations():
 
     init = pmc.get_initial_state()
 
-    # From the initial state, we have two transitions that either bring us to state A or state B
+    # From the initial state, we have two choices that either bring us to state A or state B
     p1 = stormvogel.parametric.Polynomial(["x", "z", "w"])
     p1.add_term((1, 1, 2), 4)
 
@@ -115,14 +115,14 @@ def test_pmc_valuations():
     pmc.new_state(labels=["A"])
     pmc.new_state(labels=["B"])
 
-    init.set_transitions(
+    init.set_choice(
         [
             (p1, pmc.get_states_with_label("A")[0]),
             (r1, pmc.get_states_with_label("B")[0]),
         ]
     )
 
-    # we add self loops to all states with no outgoing transitions
+    # we add self loops to all states with no outgoing choices
     pmc.add_self_loops()
 
     induced_pmc = pmc.parameter_valuation({"x": 1, "y": 2, "w": 1, "z": 5})
@@ -135,14 +135,14 @@ def test_pmc_valuations():
     new_induced_pmc.new_state(labels=["A"])
     new_induced_pmc.new_state(labels=["B"])
 
-    init.set_transitions(
+    init.set_choice(
         [
             (20, new_induced_pmc.get_states_with_label("A")[0]),
             (-0.06, new_induced_pmc.get_states_with_label("B")[0]),
         ]
     )
 
-    # we add self loops to all states with no outgoing transitions
+    # we add self loops to all states with no outgoing choices
     new_induced_pmc.add_self_loops()
 
     assert induced_pmc == new_induced_pmc

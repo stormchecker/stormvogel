@@ -55,14 +55,25 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
+      - name: Glob python files in docs folder
+        uses: tj-actions/glob@v22
+        id: globpy
+        with:
+          files: |
+            docs/**/*.py
+          excluded-files: |
+            docs/conf.py
+
+      - name: Generate documentation notebooks from jupytext
+        run: |
+          poetry run jupytext --to notebook ${{ steps.globpy.outputs.paths }}
+
       - name: Glob notebooks in docs folder
         uses: tj-actions/glob@v22
         id: glob
         with:
           files: |
             docs/**/*.ipynb
-          exclude: |
-            docs/landing.ipynb
 
       - name: Run documentation notebooks
         run: |

@@ -21,7 +21,7 @@ class ModelGraph(DiGraph):
 
     States and actions (except EmptyActions) are represented as nodes in the graph.
     All outgoing edges of a state node describe the available actions for that state.
-    The outgoing edges from an action describe the possible next states (possible transitions)
+    The outgoing edges from an action describe the possible next states (possible choices)
     and hold the probability of each transition as a node attribute.
     """
 
@@ -134,11 +134,11 @@ class ModelGraph(DiGraph):
         """
         Constructs a directed graph representation of a Markov Decision Process (MDP) from a model instance.
 
-        This method initializes the graph from the provided `model` by adding all states, actions, and transitions.
-        Optional callbacks allow customization of properties for states, actions, and transitions.
+        This method initializes the graph from the provided `model` by adding all states, actions, and choices.
+        Optional callbacks allow customization of properties for states, actions, and choices.
 
         Args:
-            model (Model): The MDP model containing states and transitions.
+            model (Model): The MDP model containing states and choices.
             state_properties (Callable[[State], dict[str, Any]], optional): A callable that returns a dictionary
                 of properties for a given state. Defaults to None.
             action_properties (Callable[[State, Action], dict[str, Any]], optional): A callable that returns a
@@ -148,7 +148,7 @@ class ModelGraph(DiGraph):
                 state. Defaults to None.
 
         Returns:
-            Self: An instance of the graph populated with the states, actions, and transitions from the model.
+            Self: An instance of the graph populated with the states, actions, and choices from the model.
 
         Examples:
             >>> import stormvogel.examples as examples
@@ -164,7 +164,7 @@ class ModelGraph(DiGraph):
                 props = state_properties(state)
             G.add_state(state, **props)
 
-        for state_id, transition in model.transitions.items():
+        for state_id, transition in model.choices.items():
             state = model.get_state_by_id(state_id)
             for action, branch in transition.transition.items():
                 action_props = dict()

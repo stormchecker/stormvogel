@@ -21,14 +21,12 @@ def test_available_actions():
     assert mdp.get_initial_state().available_actions()
 
 
-def test_get_outgoing_transitions():
+def test_get_outgoing_choice():
     mdp = stormvogel.examples.monty_hall.create_monty_hall_mdp()
 
-    transitions = mdp.get_initial_state().get_outgoing_transitions(
-        stormvogel.model.EmptyAction
-    )
+    choices = mdp.get_initial_state().get_outgoing_choice(stormvogel.model.EmptyAction)
 
-    probabilities, states = zip(*transitions)  # type: ignore
+    probabilities, states = zip(*choices)  # type: ignore
 
     assert pytest.approx(list(probabilities)) == [1 / 3, 1 / 3, 1 / 3]
     assert list(states) == [
@@ -54,7 +52,7 @@ def test_is_absorbing():
     assert not state0.is_absorbing()
 
 
-def test_transition_from_shorthand():
+def test_choice_from_shorthand():
     # First we test it for a model without actions
     dtmc = stormvogel.model.new_dtmc()
     state = dtmc.new_state()
@@ -66,10 +64,10 @@ def test_transition_from_shorthand():
         )
     )
     action = stormvogel.model.EmptyAction
-    transition = stormvogel.model.Transition({action: branch})
+    transition = stormvogel.model.Choice({action: branch})
 
     assert (
-        stormvogel.model.transition_from_shorthand(
+        stormvogel.model.choice_from_shorthand(
             cast(
                 list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                 transition_shorthand,
@@ -86,10 +84,10 @@ def test_transition_from_shorthand():
     branch = stormvogel.model.Branch(
         cast(list[tuple[stormvogel.model.Value, stormvogel.model.State]], [(1, state)])
     )
-    transition = stormvogel.model.Transition({action: branch})
+    transition = stormvogel.model.Choice({action: branch})
 
     assert (
-        stormvogel.model.transition_from_shorthand(
+        stormvogel.model.choice_from_shorthand(
             cast(
                 list[tuple[stormvogel.model.Action, stormvogel.model.State]],
                 transition_shorthand,
@@ -103,7 +101,7 @@ def test_is_stochastic():
     # we check for an instance where it is not stochastic
     dtmc = stormvogel.model.new_dtmc()
     state = dtmc.new_state()
-    dtmc.set_transitions(
+    dtmc.set_choice(
         dtmc.get_initial_state(),
         [(1 / 2, state)],
     )
@@ -111,7 +109,7 @@ def test_is_stochastic():
     assert not dtmc.is_stochastic()
 
     # we check for an instance where it is stochastic
-    dtmc.set_transitions(
+    dtmc.set_choice(
         dtmc.get_initial_state(),
         [(1 / 2, state), (1 / 2, state)],
     )
@@ -122,7 +120,7 @@ def test_is_stochastic():
 
     # we check it for a continuous time model
     ctmc = stormvogel.model.new_ctmc()
-    ctmc.set_transitions(ctmc.get_initial_state(), [(1, ctmc.new_state())])
+    ctmc.set_choice(ctmc.get_initial_state(), [(1, ctmc.new_state())])
 
     ctmc.add_self_loops()
 
@@ -130,10 +128,10 @@ def test_is_stochastic():
 
 
 def test_normalize():
-    # we make a dtmc that has outgoing transitions with sum of probabilities != 0 and we normalize it
+    # we make a dtmc that has outgoing choices with sum of probabilities != 0 and we normalize it
     dtmc0 = stormvogel.model.new_dtmc()
     state = dtmc0.new_state()
-    dtmc0.set_transitions(
+    dtmc0.set_choice(
         dtmc0.get_initial_state(),
         [(1 / 4, state), (1 / 2, state)],
     )
@@ -143,7 +141,7 @@ def test_normalize():
     # we make the same dtmc but with the already normalized probabilities
     dtmc1 = stormvogel.model.new_dtmc()
     state = dtmc1.new_state()
-    dtmc1.set_transitions(
+    dtmc1.set_choice(
         dtmc1.get_initial_state(),
         [(1 / 3, state), (2 / 3, state)],
     )
@@ -161,8 +159,8 @@ def test_remove_state():
 
     # we make a ctmc with the state already missing
     new_ctmc = stormvogel.model.new_ctmc()
-    new_ctmc.get_state_by_id(0).set_transitions([(3, new_ctmc.new_state("helium"))])
-    new_ctmc.get_state_by_id(1).set_transitions([(2, new_ctmc.new_state("carbon"))])
+    new_ctmc.get_state_by_id(0).set_choice([(3, new_ctmc.new_state("helium"))])
+    new_ctmc.get_state_by_id(1).set_choice([(2, new_ctmc.new_state("carbon"))])
 
     new_ctmc.new_state("Supernova")
 
@@ -191,8 +189,8 @@ def test_remove_state():
             [(1 / 4, state1), (3 / 4, state2)],
         )
     )
-    transition = stormvogel.model.Transition({action0: branch0, action1: branch1})
-    mdp.set_transitions(mdp.get_initial_state(), transition)
+    transition = stormvogel.model.Choice({action0: branch0, action1: branch1})
+    mdp.set_choice(mdp.get_initial_state(), transition)
 
     # we remove a state
     mdp.remove_state(mdp.get_state_by_id(0), reassign_ids=True)
@@ -205,7 +203,7 @@ def test_remove_state():
     new_mdp.new_action("0")
     new_mdp.new_action(
         "1"
-    )  # TODO are the models the same? the transitions don't look the same
+    )  # TODO are the models the same? the choices don't look the same
 
     assert mdp == new_mdp
 
@@ -248,21 +246,21 @@ def test_reassign_ids_removed_states():
     assert dtmc == other_dtmc
 
 
-def test_remove_transitions_between_states():
-    # we make a model and remove transitions between two states
+def test_remove_choices_between_states():
+    # we make a model and remove choices between two states
     dtmc = stormvogel.model.new_dtmc()
     state = dtmc.new_state()
-    dtmc.set_transitions(
+    dtmc.set_choice(
         dtmc.get_initial_state(),
         [(1, state)],
     )
-    dtmc.set_transitions(state, [(1, dtmc.get_initial_state())])
-    dtmc.remove_transitions_between_states(state, dtmc.get_initial_state())
+    dtmc.set_choice(state, [(1, dtmc.get_initial_state())])
+    dtmc.remove_choices_between_states(state, dtmc.get_initial_state())
 
-    # we create a model with the transitions between the two states already missing
+    # we create a model with the choices between the two states already missing
     new_dtmc = stormvogel.model.new_dtmc()
     state = new_dtmc.new_state()
-    new_dtmc.set_transitions(
+    new_dtmc.set_choice(
         dtmc.get_initial_state(),
         [(1, state)],
     )
@@ -271,30 +269,30 @@ def test_remove_transitions_between_states():
     assert dtmc == new_dtmc
 
 
-def test_add_transitions():
+def test_add_choice():
     dtmc = stormvogel.model.new_dtmc()
     state = dtmc.new_state()
     # A non-action model should throw an exception.
     # with pytest.raises(RuntimeError) as excinfo:
-    #    dtmc.add_transitions(
+    #    dtmc.add_choice(
     #        dtmc.get_initial_state(),
     #        [(0.5, state)],
     #    )
     # assert (
     #    str(excinfo.value)
-    #    == "Models without actions do not support add_transitions. Use set_transitions instead."
+    #    == "Models without actions do not support add_choice. Use set_choice instead."
     # )
 
-    # Empty transition case, act exactly like set_transitions.
+    # Empty transition case, act exactly like set_choice.
     mdp = stormvogel.model.new_mdp()
     state = mdp.new_state()
-    mdp.add_transitions(
+    mdp.add_choice(
         mdp.get_initial_state(),
         [(0.5, state)],
     )
     mdp2 = stormvogel.model.new_mdp()
     state2 = mdp2.new_state()
-    mdp2.set_transitions(
+    mdp2.set_choice(
         mdp2.get_initial_state(),
         [(0.5, state2)],
     )
@@ -303,38 +301,38 @@ def test_add_transitions():
     # Fail to add a real action to an empty action.
     mdp3 = stormvogel.model.new_mdp()
     state3 = mdp2.new_state()
-    mdp3.set_transitions(
+    mdp3.set_choice(
         mdp3.get_initial_state(),
         [(0.5, state3)],
     )
     action3 = mdp3.new_action("action")
     with pytest.raises(RuntimeError) as excinfo:
-        mdp3.add_transitions(mdp3.get_initial_state(), [(action3, state3)])
+        mdp3.add_choice(mdp3.get_initial_state(), [(action3, state3)])
     assert (
         str(excinfo.value)
-        == "You cannot add a transition with an non-empty action to a transition which has an empty action. Use set_transition instead."
+        == "You cannot add a transition with an non-empty action to a transition which has an empty action. Use set_choice instead."
     )
     # And the other way round.
     mdp3 = stormvogel.model.new_mdp()
     state3 = mdp2.new_state()
     action3 = mdp3.new_action("action")
-    mdp3.set_transitions(
+    mdp3.set_choice(
         mdp3.get_initial_state(),
         [(action3, state3)],
     )
 
     with pytest.raises(RuntimeError) as excinfo:
-        mdp3.add_transitions(mdp3.get_initial_state(), [(0.5, state3)])
+        mdp3.add_choice(mdp3.get_initial_state(), [(0.5, state3)])
     assert (
         str(excinfo.value)
-        == "You cannot add a transition with an empty action to a transition which has no empty action. Use set_transition instead."
+        == "You cannot add a transition with an empty action to a transition which has no empty action. Use set_choice instead."
     )
 
     # Empty action case, add the branches together.
     mdp5 = stormvogel.model.new_mdp()
     state5 = mdp5.new_state()
-    mdp5.set_transitions(mdp5.get_initial_state(), [((0.4), state5)])
-    mdp5.add_transitions(mdp5.get_initial_state(), [(0.6, state5)])
+    mdp5.set_choice(mdp5.get_initial_state(), [((0.4), state5)])
+    mdp5.add_choice(mdp5.get_initial_state(), [(0.6, state5)])
     assert mdp5.get_branch(mdp5.get_initial_state()).branch == [
         ((0.4), state5),
         (0.6, state5),
@@ -345,11 +343,11 @@ def test_add_transitions():
     state6 = mdp6.new_state()
     action6a = mdp6.new_action("a")
     action6b = mdp6.new_action("b")
-    mdp6.set_transitions(mdp6.get_initial_state(), [(action6a, state6)])
-    mdp6.add_transitions(mdp6.get_initial_state(), [(action6b, state6)])
-    # print(mdp6.get_transitions(mdp6.get_initial_state()).transition)
+    mdp6.set_choice(mdp6.get_initial_state(), [(action6a, state6)])
+    mdp6.add_choice(mdp6.get_initial_state(), [(action6b, state6)])
+    # print(mdp6.get_choice(mdp6.get_initial_state()).transition)
     # print([(action6a, state6), (action6b, state6)])
-    assert len(mdp6.get_transitions(mdp6.get_initial_state()).transition) == 2
+    assert len(mdp6.get_choice(mdp6.get_initial_state()).transition) == 2
 
 
 def test_get_sub_model():
@@ -362,7 +360,7 @@ def test_get_sub_model():
     new_dtmc = stormvogel.model.new_dtmc()
     init = new_dtmc.get_initial_state()
     init.valuations = {"rolled": 0}
-    init.set_transitions(
+    init.set_choice(
         [
             (1 / 6, new_dtmc.new_state(f"rolled{i+1}", {"rolled": i + 1}))
             for i in range(2)
@@ -400,7 +398,7 @@ def test_get_state_action_reward():
 #     # we create an mdp:
 #     mdp = stormvogel.model.new_mdp()
 #     action = stormvogel.model.Action(frozenset({"0"}))
-#     mdp.add_transitions(mdp.get_initial_state(), [(action, mdp.get_initial_state())])
+#     mdp.add_choice(mdp.get_initial_state(), [(action, mdp.get_initial_state())])
 
 #     # we make a reward model using the set_state_action_reward method:
 #     rewardmodel = mdp.new_reward_model("rewardmodel")
@@ -439,7 +437,7 @@ def test_valuation_methods():
     # we test the unassigned_variables function + the set_valuation_at_remaining_states function on the die model
     dtmc = stormvogel.model.new_dtmc()
     init = dtmc.get_initial_state()
-    init.set_transitions(
+    init.set_choice(
         [
             (1 / 6, dtmc.new_state(labels=f"rolled{i+1}", valuations={"rolled": i + 1}))
             for i in range(6)

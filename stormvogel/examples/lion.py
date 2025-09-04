@@ -1,4 +1,4 @@
-from stormvogel.model import Model, ModelType, Branch, Transition
+from stormvogel.model import Model, ModelType, Branch, Choice
 
 
 def create_lion_mdp():
@@ -13,10 +13,10 @@ def create_lion_mdp():
     hunt = lion.new_action("hunt >:D")
     rawr = lion.new_action("rawr")
 
-    init.set_transitions([(1, satisfied)])
+    init.set_choice([(1, satisfied)])
 
-    full.set_transitions(
-        Transition(
+    full.set_choice(
+        Choice(
             {
                 hunt: Branch(
                     [
@@ -29,8 +29,8 @@ def create_lion_mdp():
         )
     )
 
-    satisfied.set_transitions(
-        Transition(
+    satisfied.set_choice(
+        Choice(
             {
                 hunt: Branch([(0.5, satisfied), (0.3, full), (0.2, hungry)]),
                 rawr: Branch([(0.9, satisfied), (0.1, hungry)]),
@@ -38,8 +38,8 @@ def create_lion_mdp():
         )
     )
 
-    hungry.set_transitions(
-        Transition(
+    hungry.set_choice(
+        Choice(
             {
                 hunt: Branch(
                     [(0.2, full), (0.5, satisfied), (0.1, hungry), (0.2, starving)]
@@ -49,8 +49,8 @@ def create_lion_mdp():
         )
     )
 
-    starving.set_transitions(
-        Transition(
+    starving.set_choice(
+        Choice(
             {
                 hunt: Branch(
                     [(0.1, full), (0.5, satisfied), (0.2, hungry), (0.2, dead)]

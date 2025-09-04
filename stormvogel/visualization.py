@@ -314,10 +314,10 @@ class VisualizationBase:
                   Otherwise, the dictionary will be empty.
         """
         properties = dict()
-        transitions = state.get_outgoing_transitions(action)
-        if transitions is None:
+        choices = state.get_outgoing_choice(action)
+        if choices is None:
             return properties
-        for prob, target in transitions:
+        for prob, target in choices:
             if next_state.id == target.id:
                 properties["label"] = self._format_number(prob)
                 return properties

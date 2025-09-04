@@ -1,5 +1,5 @@
 from stormvogel import parametric
-from stormvogel import model, pgc
+from stormvogel import model, bird
 
 
 def create_knuth_yao_pmc():
@@ -11,43 +11,43 @@ def create_knuth_yao_pmc():
     invx.add_term((1,), -1)
     invx.add_term((0,), 1)
 
-    # we build the knuth yao dice using the pgc model builder
-    initial_state = pgc.State(s=0)
+    # we build the knuth yao dice using the bird model builder
+    initial_state = bird.State(s=0)
 
-    def delta(s: pgc.State):
+    def delta(s: bird.State):
         match s.s:
             case 0:
-                return [(x, pgc.State(s=1)), (invx, pgc.State(s=2))]
+                return [(x, bird.State(s=1)), (invx, bird.State(s=2))]
             case 1:
-                return [(x, pgc.State(s=3)), (invx, pgc.State(s=4))]
+                return [(x, bird.State(s=3)), (invx, bird.State(s=4))]
             case 2:
-                return [(x, pgc.State(s=5)), (invx, pgc.State(s=6))]
+                return [(x, bird.State(s=5)), (invx, bird.State(s=6))]
             case 3:
-                return [(x, pgc.State(s=1)), (invx, pgc.State(s=7, d=1))]
+                return [(x, bird.State(s=1)), (invx, bird.State(s=7, d=1))]
             case 4:
                 return [
-                    (x, pgc.State(s=7, d=2)),
-                    (invx, pgc.State(s=7, d=3)),
+                    (x, bird.State(s=7, d=2)),
+                    (invx, bird.State(s=7, d=3)),
                 ]
             case 5:
                 return [
-                    (x, pgc.State(s=7, d=4)),
-                    (invx, pgc.State(s=7, d=5)),
+                    (x, bird.State(s=7, d=4)),
+                    (invx, bird.State(s=7, d=5)),
                 ]
             case 6:
-                return [(x, pgc.State(s=2)), (invx, pgc.State(s=7, d=6))]
+                return [(x, bird.State(s=2)), (invx, bird.State(s=7, d=6))]
             case 7:
                 return [(1, s)]
 
     # we add labels to the final states
-    def labels(s: pgc.State) -> str | None:
+    def labels(s: bird.State) -> str | None:
         if s.s == 7:
             return f"rolled{str(s.d)}"
 
-    return pgc.build_pgc(
+    return bird.build_bird(
         delta=delta,
         labels=labels,
-        initial_state_pgc=initial_state,
+        init=initial_state,
         modeltype=model.ModelType.DTMC,
     )
 

@@ -15,9 +15,9 @@ def create_car_mdp():
     brake = car.new_action("brake")
     wait = car.new_action("wait")
 
-    gs.set_transitions([(drive, gm), (wait, rs)])
-    rs.set_transitions([(drive, rm), (wait, gs)])
-    gm.set_transitions([(brake, gs), (wait, rm)])
-    rm.set_transitions([(brake, rs), (wait, accident)])
+    gs.set_choice([(drive, gm), (wait, rs)])
+    rs.set_choice([(drive, rm), (wait, gs)])
+    gm.set_choice([(brake, gs), (wait, rm)])
+    rm.set_choice([(brake, rs), (wait, accident)])
     car.add_self_loops()
     return car

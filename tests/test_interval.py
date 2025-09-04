@@ -16,7 +16,7 @@ def test_convert_imc():
     imc.new_state(labels="A")
     imc.new_state(labels="B")
 
-    init.set_transitions(
+    init.set_choice(
         [
             (
                 stormvogel.model.Interval(1 / 3, 2 / 3),
@@ -29,7 +29,7 @@ def test_convert_imc():
         ]
     )
 
-    # we add self loops to all states with no outgoing transitions
+    # we add self loops to all states with no outgoing choices
     imc.add_self_loops()
 
     # we test the mapping

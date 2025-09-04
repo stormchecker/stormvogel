@@ -18,8 +18,8 @@ Stormvogel provides easy and user-friendly APIs for creating, visualizing, and d
 .. raw:: html
 
    <div style="margin-bottom: 1em;">
-      <a href="https://github.com/moves-rwth/stormvogel" target="_blank">
-         <img src="https://img.shields.io/github/stars/moves-rwth/stormvogel?style=social" alt="GitHub">
+      <a href="https://github.com/stormchecker/stormvogel" target="_blank">
+         <img src="https://img.shields.io/github/stars/stormchecker/stormvogel?style=social" alt="GitHub">
          GitHub Repository
       </a>
    </div>
@@ -72,6 +72,14 @@ Stormvogel provides easy and user-friendly APIs for creating, visualizing, and d
    :glob:
 
    5-Tools-and-Utilities/*
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Tips and Tricks
+   :glob:
+
+   6-Tips-and-Tricks/*
+
 
 Version info:
 ===========================

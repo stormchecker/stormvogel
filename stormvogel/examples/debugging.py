@@ -1,4 +1,4 @@
-from stormvogel import pgc
+from stormvogel import bird
 from stormvogel.model import ModelType
 
 
@@ -8,7 +8,7 @@ def create_debugging_mdp():
             return [["mec"], ["probs"]]
         return [[]]
 
-    def delta(s: str, a: pgc.Action):
+    def delta(s: str, a: bird.Action):
         if "mec" in a:
             return [(1, ("X", "mec"))]
         elif s == ("X", "mec"):
@@ -26,9 +26,9 @@ def create_debugging_mdp():
             return list(s)
         return [s]
 
-    return pgc.build_pgc(
+    return bird.build_bird(
         delta=delta,
-        initial_state_pgc=("init", "A"),
+        init=("init", "A"),
         available_actions=available_actions,
         labels=labels,
         modeltype=ModelType.MDP,

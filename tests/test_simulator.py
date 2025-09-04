@@ -26,7 +26,7 @@ def test_simulate():
     other_dtmc = stormvogel.model.new_dtmc()
     init = other_dtmc.get_initial_state()
     init.valuations = {"rolled": 0}
-    init.set_transitions(
+    init.set_choice(
         [
             (1 / 6, other_dtmc.new_state("rolled2", valuations={"rolled": 2})),
             (1 / 6, other_dtmc.new_state("rolled4", valuations={"rolled": 4})),
@@ -66,7 +66,7 @@ def test_simulate():
     other_mdp = stormvogel.model.new_mdp()
     init = other_mdp.get_initial_state()
     init.valuations = {"reveal_pos": -1, "car_pos": -1, "chosen_pos": -1}
-    init.set_transitions(
+    init.set_choice(
         [
             (
                 1 / 3,
@@ -88,9 +88,9 @@ def test_simulate():
         ]
     )
     action1 = other_mdp.new_action("open0")
-    transition = stormvogel.model.Transition({action1: branch})
-    other_mdp.get_state_by_id(1).set_transitions(transition)
-    other_mdp.get_state_by_id(2).add_transitions(
+    transition = stormvogel.model.Choice({action1: branch})
+    other_mdp.get_state_by_id(1).set_choice(transition)
+    other_mdp.get_state_by_id(2).add_choice(
         [
             (
                 0.5,
@@ -134,7 +134,7 @@ def test_simulate():
     other_mdp = stormvogel.model.new_mdp()
     init = other_mdp.get_initial_state()
     init.valuations = {"reveal_pos": -1, "chosen_pos": -1, "car_pos": -1}
-    other_mdp.get_initial_state().set_transitions(
+    other_mdp.get_initial_state().set_choice(
         [
             (
                 1 / 3,
@@ -156,9 +156,9 @@ def test_simulate():
         ]
     )
     action1 = other_mdp.new_action("open0")
-    transition = stormvogel.model.Transition({action1: branch})
-    other_mdp.get_state_by_id(1).set_transitions(transition)
-    other_mdp.get_state_by_id(2).set_transitions(
+    transition = stormvogel.model.Choice({action1: branch})
+    other_mdp.get_state_by_id(1).set_choice(transition)
+    other_mdp.get_state_by_id(2).set_choice(
         [
             (
                 0.5,
@@ -172,7 +172,7 @@ def test_simulate():
 
     assert partial_model == other_mdp
 
-    # we do a more complicated mdp test to check if partial model transitions are properly added:
+    # we do a more complicated mdp test to check if partial model choices are properly added:
     lion = create_lion_mdp()
     partial_model = simulator.simulate(lion, steps=100, seed=1, scheduler=scheduler)
 
@@ -184,8 +184,8 @@ def test_simulate():
     starving = lion.new_state("starving :((")
     hunt = lion.new_action("hunt >:D")
 
-    satisfied.set_transitions(
-        stormvogel.model.Transition(
+    satisfied.set_choice(
+        stormvogel.model.Choice(
             {
                 hunt: stormvogel.model.Branch(
                     [(0.5, satisfied), (0.3, full), (0.2, hungry)]
@@ -194,8 +194,8 @@ def test_simulate():
         )
     )
 
-    hungry.set_transitions(
-        stormvogel.model.Transition(
+    hungry.set_choice(
+        stormvogel.model.Choice(
             {
                 hunt: stormvogel.model.Branch(
                     [(0.2, full), (0.5, satisfied), (0.2, starving)]
@@ -204,8 +204,8 @@ def test_simulate():
         )
     )
 
-    full.set_transitions(
-        stormvogel.model.Transition(
+    full.set_choice(
+        stormvogel.model.Choice(
             {
                 hunt: stormvogel.model.Branch(
                     [
@@ -217,8 +217,8 @@ def test_simulate():
         )
     )
 
-    starving.set_transitions(
-        stormvogel.model.Transition(
+    starving.set_choice(
+        stormvogel.model.Choice(
             {
                 hunt: stormvogel.model.Branch(0.2, hungry),
             }

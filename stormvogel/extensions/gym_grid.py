@@ -1,4 +1,4 @@
-from stormvogel import pgc
+from stormvogel import bird
 from typing import Callable
 import stormvogel.result
 import stormvogel.model
@@ -18,39 +18,39 @@ def gymnasium_grid_to_stormvogel(
     INV_MAP = {v: k for k, v in action_label_map.items()}
     ALL_ACTIONS = [[x] for x in action_label_map.values()]
 
-    def action_numer_map(a: pgc.Action):
+    def action_numer_map(a: bird.Action):
         return INV_MAP[a[0]]
 
     if "taxi" in env.spec.id.lower():
         # For Taxi, we need a special initial state that goes to every state. This is to account for the randomized starting position.
-        init = pgc.State(n=-1, done=False)
+        init = bird.State(n=-1, done=False)
     else:
-        init = pgc.State(
+        init = bird.State(
             n=0, done=False
         )  # Otherwise, it's just 0 (Cliffwalking and FrozenLake).
 
-    def available_actions(s: pgc.State):
+    def available_actions(s: bird.State):
         if s.n == -1:
             return [[]]
         return ALL_ACTIONS[:NO_ACTIONS]
 
-    def delta(s: pgc.State, a: pgc.Action):
+    def delta(s: bird.State, a: bird.Action):
         if (
             s.n == -1
         ):  # Special taxi init state. It goes to every location that a passenger could spawn in. This should explore all states.
             # state = ((taxi_row * 5 + taxi_col) * 5 + passenger_location) * 4 + destination
             PLS = 4  # Number of passenger locations.
-            return [(1 / PLS, pgc.State(n=x, done=False)) for x in range(PLS)]
+            return [(1 / PLS, bird.State(n=x, done=False)) for x in range(PLS)]
         trans = TRANSITIONS[s.n][action_numer_map(a)]
-        return list(map(lambda x: (x[0], pgc.State(n=int(x[1]), done=x[3])), trans))
+        return list(map(lambda x: (x[0], bird.State(n=int(x[1]), done=x[3])), trans))
 
-    def rewards(s: pgc.State, a: pgc.Action) -> dict[str, stormvogel.model.Value]:
+    def rewards(s: bird.State, a: bird.Action) -> dict[str, stormvogel.model.Value]:
         if s.n == -1:
             return {"R": 0}
         reward = list(map(lambda x: x[2], TRANSITIONS[s.n][action_numer_map(a)]))[0]
         return {"R": reward}
 
-    def labels(s: pgc.State):
+    def labels(s: bird.State):
         labels = [str(s.n), str(to_coordinate(s.n, env))]
         if s.n == get_target_state(env):
             labels.append("target")
@@ -59,9 +59,9 @@ def gymnasium_grid_to_stormvogel(
         # labels.append("always")
         return labels
 
-    return pgc.build_pgc(
+    return bird.build_bird(
         delta=delta,
-        initial_state_pgc=init,
+        init=init,
         available_actions=available_actions,
         labels=labels,
         rewards=rewards,
@@ -105,7 +105,7 @@ def to_gymnasium_scheduler(
     inv_map = {v: k for k, v in action_label_map.items()}
 
     def gymnasium_scheduler(env_sid: int):
-        # TODO change this once pgc API features are a thing.
+        # TODO change this once bird API features are a thing.
         model_state = model.get_states_with_label(str(int(env_sid)))[0]
         if isinstance(scheduler, stormvogel.result.Scheduler):
             choice = scheduler.get_choice_of_state(model_state)

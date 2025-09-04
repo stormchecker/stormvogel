@@ -259,7 +259,7 @@ def test_stormpy_to_stormvogel_and_back_pomdp():
 #     init = stormvogel_ma.get_initial_state()
 #
 #     # We have 5 actions
-#     init.set_transitions(
+#     init.set_choice(
 #         [
 #             (
 #                 stormvogel_ma.action(f"{i}"),
@@ -277,7 +277,7 @@ def test_stormpy_to_stormvogel_and_back_pomdp():
 #     ]
 #     stormvogel_ma.exit_rates = {i: 0 for i in range(6)}
 #
-#     # we add self loops to all states with no outgoing transitions
+#     # we add self loops to all states with no outgoing choices
 #     stormvogel_ma.add_self_loops()
 #
 #     # print(stormvogel_ma)

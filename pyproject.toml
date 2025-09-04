@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "stormvogel"
-version = "0.9.3"
+version = "0.9.5"
 description = "Probabilistic Model Checking for almost everyone"
 authors = ["The stormvogel team"]
 license = "GPLv3"
@@ -48,7 +48,7 @@ jupyterlab = "^4.2.2"
 sphinx = "^7.3.7"
 furo = "^2024.5.6"
 nbsphinx = "^0.9.4"
-
+jupytext = "^1.17.2"
 
 [tool.poetry.group.optional.dependencies]
 cairosvg = "^2.8.2"

@@ -3,7 +3,9 @@ repos:
     rev: v0.4.6
     hooks:
       - id: ruff
+        args: [--exclude=docs/]
       - id: ruff-format
+        args: [--exclude=docs/]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
@@ -16,4 +18,5 @@ repos:
   - repo: https://github.com/RobertCraigie/pyright-python
     rev: v1.1.368
     hooks:
-    - id: pyright
+      - id: pyright
+        exclude: docs/

@@ -7,13 +7,13 @@ def create_monty_hall_mdp2():
     init = mdp.get_initial_state()
 
     # first choose car position
-    init.set_transitions(
+    init.set_choice(
         [(1 / 3, mdp.new_state("carchosen", {"car_pos": i})) for i in range(3)]
     )
 
     # we choose a door in each case
     for s in mdp.get_states_with_label("carchosen"):
-        s.set_transitions(
+        s.set_choice(
             [
                 (
                     mdp.action(f"open{i}"),
@@ -29,7 +29,7 @@ def create_monty_hall_mdp2():
         chosen_pos = s.valuations["chosen_pos"]
         assert isinstance(car_pos, int) and isinstance(chosen_pos, int)
         other_pos = {0, 1, 2} - {car_pos, chosen_pos}
-        s.set_transitions(
+        s.set_choice(
             [
                 (
                     1 / len(other_pos),
@@ -54,7 +54,7 @@ def create_monty_hall_mdp2():
         reveal_pos = s.valuations["reveal_pos"]
         assert isinstance(reveal_pos, int) and isinstance(chosen_pos, int)
         other_pos = list({0, 1, 2} - {reveal_pos, chosen_pos})[0]
-        s.set_transitions(
+        s.set_choice(
             [
                 (
                     mdp.action("stay"),
@@ -73,7 +73,7 @@ def create_monty_hall_mdp2():
             ]
         )
 
-    # we add self loops to all states with no outgoing transitions
+    # we add self loops to all states with no outgoing choices
     mdp.add_self_loops()
 
     # we set the value -1 to all unassigned variables in the states
