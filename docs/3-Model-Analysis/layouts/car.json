@@ -1,0 +1,230 @@
+{
+  "__fake_macros": {
+    "__group_macro": {
+      "borderWidth": 1,
+      "color": {
+        "background": "white",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
+      }
+    }
+  },
+  "edit_groups": {
+    "groups": [
+      "green_light",
+      "red_light",
+      "states",
+      "actions"
+    ]
+  },
+  "groups": {
+    "states": {
+      "borderWidth": 1,
+      "color": {
+        "background": "#000000",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "#ffffff",
+        "size": 20
+      }
+    },
+    "actions": {
+      "borderWidth": 1,
+      "color": {
+        "background": "lightblue",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "box",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 20
+      }
+    },
+    "scheduled_actions": {
+      "borderWidth": 1,
+      "color": {
+        "background": "pink",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "box",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
+      },
+      "schedColor": false
+    },
+    "red_light": {
+      "borderWidth": 1,
+      "color": {
+        "background": "#ec9393",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 20
+      }
+    },
+    "green_light": {
+      "borderWidth": 1,
+      "color": {
+        "background": "#bcfe58",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 20
+      }
+    },
+    "init": {
+      "borderWidth": 1,
+      "color": {
+        "background": "#bcfe58",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 20
+      }
+    }
+  },
+  "reload_button": false,
+  "edges": {
+    "arrows": "to",
+    "font": {
+      "color": "black",
+      "size": 14
+    },
+    "color": {
+      "color": "black"
+    }
+  },
+  "numbers": {
+    "fractions": true,
+    "digits": 5
+  },
+  "state_properties": {
+    "show_results": true,
+    "result_symbol": "\u2606",
+    "show_rewards": true,
+    "reward_symbol": "\u20ac",
+    "show_zero_rewards": true,
+    "show_observations": true,
+    "observation_symbol": "\u0298"
+  },
+  "layout": {
+    "randomSeed": 5
+  },
+  "misc": {
+    "enable_physics": true,
+    "width": 655,
+    "height": 375,
+    "explore": false
+  },
+  "saving": {
+    "relative_path": true,
+    "filename": "layouts/car.json",
+    "save_button": false,
+    "load_button": false
+  },
+  "positions": {
+    "0": {
+      "x": 194,
+      "y": -96
+    },
+    "1": {
+      "x": -51,
+      "y": -142
+    },
+    "2": {
+      "x": 186,
+      "y": 153
+    },
+    "3": {
+      "x": -108,
+      "y": 98
+    },
+    "4": {
+      "x": -367,
+      "y": 177
+    },
+    "10000000000": {
+      "x": 144,
+      "y": 35
+    },
+    "10000000001": {
+      "x": 68,
+      "y": -99
+    },
+    "10000000002": {
+      "x": -158,
+      "y": -50
+    },
+    "10000000003": {
+      "x": 87,
+      "y": -212
+    },
+    "10000000004": {
+      "x": 275,
+      "y": 33
+    },
+    "10000000005": {
+      "x": 33,
+      "y": 176
+    },
+    "10000000006": {
+      "x": -25,
+      "y": -3
+    },
+    "10000000007": {
+      "x": -238,
+      "y": 163
+    }
+  },
+  "width": 655,
+  "height": 375,
+  "physics": true
+}
