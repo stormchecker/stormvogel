@@ -11,6 +11,8 @@ import math
 
 Number = int | float | Fraction
 
+# & General remark: Do we have tests for all the little functions? If not, then idk if we still have time to create them, just putting it out there.
+
 
 @dataclass
 class Interval:
@@ -489,7 +491,7 @@ class RewardModel:
         """Set the rewards of this model according to a (stormpy) rewards vector."""
         combined_id = 0
         self.rewards = dict()
-        for id, s in self.model:
+        for _, s in self.model:
             for a in s.available_actions():
                 self.rewards[s.id, a] = vector[combined_id]
                 combined_id += 1
@@ -532,7 +534,7 @@ class RewardModel:
         state: State,
         action: Action,
         value: Value,
-        auto_update_rewards: bool = True,
+        auto_update_rewards: bool = True,  # & Unused parameter, what is it supposed to do?
     ):
         """sets the reward at said state action pair (in case of models with actions).
         If you disable auto_update_rewards, you will need to call update_intermediate_to"""
@@ -562,12 +564,14 @@ class RewardModel:
     def set_unset_rewards(self, value: Value):
         """Fills up rewards that were not set yet with the specified value.
         Use this if converting (to stormpy) doesn't work because the reward vector does not have the expected length."""
-        for id, s in self.model:
+        for _, s in self.model:
             for a in s.available_actions():
                 if (s.id, a) not in self.rewards:
                     self.rewards[s.id, a] = value
 
-    def __lt__(self, other) -> bool:
+    def __lt__(
+        self, other
+    ) -> bool:  # & Onece again, you have the problem with the orderings here, but idk if it's that important.
         if not isinstance(other, RewardModel):
             return NotImplemented
         return self.name < other.name
@@ -598,6 +602,7 @@ class Model:
 
     type: ModelType
     # Both of these are hashed by the id of the state (=number in the matrix)
+    # & Regarding the previous comment: In stormpy the state ids do not correspond to the row in the matrix but the row group, right?
     states: dict[int, State]
     choices: dict[int, Choice]
     actions: set[Action] | None
@@ -644,7 +649,7 @@ class Model:
         if create_initial_state:
             self.new_state(["init"])
 
-    def summary(self):
+    def summary(self) -> str:
         """Give a short summary of the model."""
         actions_bit = (
             f"{len(self.actions)} actions, " if self.actions is not None else ""
@@ -655,41 +660,42 @@ class Model:
             + f"and {len(self.get_labels())} distinct labels."
         )
 
-    def get_actions(self):
+    def get_actions(self) -> set[Action] | None:
         """Return the actions of the model. Returns None if actions are not supported."""
         return self.actions
 
-    def supports_actions(self):
+    def supports_actions(self) -> bool:
         """Returns whether this model supports actions."""
         return self.get_type() in (ModelType.MDP, ModelType.POMDP, ModelType.MA)
 
-    def supports_rates(self):
+    def supports_rates(self) -> bool:
         """Returns whether this model supports rates."""
         return self.get_type() in (ModelType.CTMC, ModelType.MA)
 
-    def supports_observations(self):
+    def supports_observations(self) -> bool:
         """Returns whether this model supports observations."""
         return self.get_type() == ModelType.POMDP
 
-    def is_interval_model(self):
+    def is_interval_model(self) -> bool:
         """Returns whether this model is an interval model, i.e., containts interval values)"""
         for transition in self.choices.values():
-            for action, branch in transition:
+            for _, branch in transition:
                 for tup in branch:
                     if isinstance(tup[0], Interval):
                         return True
         return False
 
-    def is_parametric(self):
+    def is_parametric(self) -> bool:
         """Returns whether this model contains parametric transition values"""
         for transition in self.choices.values():
-            for action, branch in transition:
+            for _, branch in transition:
                 for tup in branch:
                     if isinstance(tup[0], parametric.Parametric):
                         return True
         return False
 
     def is_stochastic(self, epsilon: Value = 0.000001) -> bool:
+        # & This function does not support all types of Value, I guess it should throw a runtime error if it is undefined what stochastic would mean.
         """For discrete models: Checks if all sums of outgoing transition probabilities for all states equal 1, with at most epsilon rounding error.
         For continuous models: Checks if all sums of outgoing rates sum to 0
         """
@@ -721,7 +727,9 @@ class Model:
 
         return True
 
-    def normalize(self):
+    def normalize(
+        self,
+    ):  # & Once again, what should happen here in case of Parametric etc.?
         """Normalizes a model (for states where outgoing transition probabilities don't sum to 1, we divide each probability by the sum)"""
         if not self.supports_rates():
             self.add_self_loops()
@@ -773,6 +781,7 @@ class Model:
         return sub_model
 
     def parameter_valuation(self, values: dict[str, float]) -> "Model":
+        # & Is it correct that only float values are supported? I would think all Numbers should be, but idk.
         """evaluates all parametric choices with the given values and returns the induced model"""
         evaluated_model = copy.deepcopy(self)
         for state, transition in evaluated_model.choices.items():
@@ -788,6 +797,7 @@ class Model:
 
     def get_state_action_id(self, state: State, action: Action) -> int | None:
         """we calculate the appropriate state action id for a given state and action"""
+        # & Could you explain what a state action id is and why it is important in the docstring?
         id = 0
         for _, s in self:
             for a in s.available_actions():
@@ -797,6 +807,7 @@ class Model:
 
     def get_state_action_pair(self, id: int) -> tuple[State, Action] | None:
         """Given an id, we return the corresponding state action pair"""
+        # & Could you explain what a state action id is and why it is important in the docstring?
         i = 0
         for _, s in self:
             for a in s.available_actions():
@@ -807,12 +818,15 @@ class Model:
     def __free_state_id(self) -> int:
         """Gets a free id in the states dict."""
         # TODO: slow, not sure if that will become a problem though
+        # & It's probably time to improve this. I suspect this causes major lag for bigger models.
         i = 0
         while i in self.states:
             i += 1
         return i
 
-    def add_self_loops(self):
+    def add_self_loops(
+        self,
+    ):  # & We should probably make naming consistent between add_self_loops and set_valuation_at_remaining_states, since they do something very similar.
         """adds self loops to all states that do not have an outgoing transition"""
         for id, state in self:
             if self.choices.get(id) is None:
@@ -840,6 +854,7 @@ class Model:
     def has_unassigned_variables(self) -> bool:
         """we return whether this model has variables without a value"""
         # TODO return list of pairs of variables and states where it is undefined
+        # & Does this still need to be changed? Otherwise you may delete the TODO.
         variables = self.get_variables()
 
         # if there are no variables at all, it is trivially true
@@ -935,7 +950,9 @@ class Model:
             if action.labels == labels:
                 return action
 
-    def new_action(self, labels: frozenset[str] | str | None = None) -> Action:
+    def new_action(
+        self, labels: frozenset[str] | str | None = None
+    ) -> Action:  # & Should we change "new" to "add"? Also for other methods.
         """Creates a new action and returns it."""
         if not self.supports_actions():
             raise RuntimeError(
@@ -952,25 +969,23 @@ class Model:
 
         print(
             "Warning: Using this can cause problems in your code if there are existing references to states by id."
-        )
+        )  # & Consider using warnings.warn
 
         # we change the ids in the dictionaries of the model object
         self.states = {
             new_id: value
-            for new_id, (old_id, value) in enumerate(sorted(self.states.items()))
+            for new_id, (_, value) in enumerate(sorted(self.states.items()))
         }
 
         self.choices = {
             new_id: value
-            for new_id, (old_id, value) in enumerate(sorted(self.choices.items()))
+            for new_id, (_, value) in enumerate(sorted(self.choices.items()))
         }
 
         if self.supports_rates and self.exit_rates is not None:
             self.exit_rates = {
                 new_id: value
-                for new_id, (old_id, value) in enumerate(
-                    sorted(self.exit_rates.items())
-                )
+                for new_id, (_, value) in enumerate(sorted(self.exit_rates.items()))
             }
 
         # we change the ids in the states themselves
@@ -1108,7 +1123,7 @@ class Model:
         """Get all states with a given label."""
         # TODO: slow, not sure if that will become a problem though
         collected_states = []
-        for _id, state in self:
+        for _, state in self:
             if label in state.labels:
                 collected_states.append(state)
         return collected_states
@@ -1129,12 +1144,12 @@ class Model:
 
     def get_initial_state(self) -> State:
         """Gets the initial state (contains label "init")."""
-        # TODO support for multiple initial states
-        for state in self.get_states():
+        for state in self.get_states():  # & Refactor to use get_states_with_label?
             if "init" in state.labels:
                 return state
 
         # if no label "init" is set, we take the state with id=0
+        # & Do you think we should throw an error instead?
         return self.states[0]
 
     def get_ordered_labels(self) -> list[list[str]]:
@@ -1145,14 +1160,14 @@ class Model:
     def get_labels(self) -> set[str]:
         """Get all labels in states of this Model."""
         collected_labels: set[str] = set()
-        for _id, state in self:
+        for _, state in self:
             collected_labels = collected_labels | set(state.labels)
         return collected_labels
 
-    def get_variables(self) -> set[str]:
+    def get_variables(self) -> set[str]:  # & Isn't this called valuations now?
         """gets the set of all variables present in this model (features)"""
         variables: set[str] = set()
-        for _id, state in self.states.items():
+        for _, state in self.states.items():
             variables = variables | set(state.valuations.keys())
         return variables
 
@@ -1170,10 +1185,10 @@ class Model:
         raise RuntimeError(f"Reward model {name} not present in model.")
 
     def get_parameters(self) -> set[str]:
-        """Returns the set of parameters of this model"""
+        """Returns the set of parameters of this model."""
         parameters = set()
         for transition in self.choices.values():
-            for action, branch in transition:
+            for _, branch in transition:
                 for tup in branch:
                     if isinstance(tup[0], parametric.Parametric):
                         parameters = parameters.union(tup[0].get_variables())
@@ -1238,7 +1253,9 @@ class Model:
         dot += "}"
         return dot
 
-    def __str__(self) -> str:
+    def __str__(
+        self,
+    ) -> str:  # & I still think a more consise representation would be nicer.
         res = [f"{self.type} with name {self.name}"]
         res += ["", "States:"] + [f"{state}" for (_id, state) in self]
         res += ["", "Choices:"] + [
