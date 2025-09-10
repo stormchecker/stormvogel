@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "stormvogel"
-version = "0.9.5"
+version = "0.9.6"
 description = "Probabilistic Model Checking for almost everyone"
 authors = ["The stormvogel team"]
 license = "GPLv3"
