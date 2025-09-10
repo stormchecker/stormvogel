@@ -31,7 +31,7 @@ class Interval:
                 "Intervals only have two elements (the bottom and top element)"
             )
 
-    def __lt__(self, other):
+    def __lt__(self, other):  # & Are you sure? Then I could have both a < b and b < a.
         if self.bottom < other.bottom or self.top < other.top:
             return True
         return False
@@ -113,7 +113,7 @@ class State:
         id: The id of this state.
         model: The model this state belongs to.
         observation: the observation of this state in case the model is a pomdp.
-        name: the name of this state.
+        name: the name of this state. & Could you explain what exactly name does here?
     """
 
     labels: list[str]
@@ -142,6 +142,8 @@ class State:
         self.valuations = valuations
         self.id = id
         self.observation = None
+
+        # & Have you considered just generating a random string for a name if the user doesn't provide one? That should circumvent name conflicts.
 
         # names must be unique
         if name is None:
@@ -206,7 +208,7 @@ class State:
         """returns the list of all available actions in this state"""
         if self.model.supports_actions() and self.id in self.model.choices.keys():
             action_list = []
-            for action, branch in self.model.choices[self.id]:
+            for action, _ in self.model.choices[self.id]:
                 action_list.append(action)
             return action_list
         else:
@@ -230,7 +232,7 @@ class State:
                 return branch.branch
 
     def is_absorbing(self) -> bool:
-        """returns if the state has a nonzero transition going to another state or not"""
+        """returns true iff the state has no outgoing transition to another state."""
 
         # for all actions we check if the state has outgoing choices to a different state with value != 0
         for action in self.available_actions():
@@ -246,7 +248,9 @@ class State:
         """Returns whether this state is initial."""
         return self == self.model.get_initial_state()
 
-    def __str__(self):
+    def __str__(
+        self,
+    ):  # & I think it would be better if it were more consise. Then it's easier to debug IMO. Maybe something like "s_id l:{LABELS} v:{VALUATIONS} o:{OBSERVATIONS}"
         res = f"State {self.id} with labels {self.labels} and valuations {self.valuations}"
         if self.model.supports_observations() and self.observation is not None:
             res += f" and observation {self.observation.get_observation()}"
@@ -269,7 +273,10 @@ class State:
                 )
         return False
 
-    def __lt__(self, other):
+    def __lt__(
+        self, other
+    ):  # & The = and < don't give rise to a total ordering <= which I think would be desirable.
+        # If I have two different states with the same labels, then neither s_0 < s_1 nor s_1 < s_0 nor s_0 = s_1.
         if not isinstance(other, State):
             return NotImplemented
         return str(self.labels) < str(other.labels)
@@ -288,6 +295,7 @@ class Action:
 
     @staticmethod
     def create(labels: frozenset[str] | str | None = None) -> "Action":
+        """Shorthand method for creating an action properly from different types of arguments."""
         if isinstance(labels, str):
             return Action(frozenset({labels}))
         elif isinstance(labels, frozenset):
@@ -306,8 +314,8 @@ class Action:
         return f"Action with labels {self.labels}"
 
 
-# The empty action. Used for DTMCs and empty action choices in mdps.
 EmptyAction = Action(frozenset())
+"""The empty action. Used for DTMCs and empty action choices in mdps."""
 
 
 @dataclass(order=True)
@@ -321,6 +329,8 @@ class Branch:
 
     branch: list[tuple[Value, State]]
 
+    # & Maybe we should standardize the way to initialize Actions and Branches?
+    # I think this one is better since it uses the init method wheras with actions you have to use create().
     def __init__(self, *args):
         if len(args) == 1 and isinstance(args[0], list):
             self.branch = args[0]
@@ -349,7 +359,10 @@ class Branch:
     def __add__(self, other):
         return Branch(self.branch + other.branch)
 
-    def sum_probabilities(self) -> Value:
+    def sum_probabilities(
+        self,
+    ) -> Value:  # & This will not work with intervals or parametric stuff.
+        # We should probably define our own sum() for Value somewhere, I have commited the type: ignore sin many times.
         return sum([prob for (prob, _) in self.branch])  # type: ignore
 
     def __iter__(self):
@@ -365,7 +378,9 @@ class Choice:
         transition: The transition dictionary. For each available action, we have a branch.
     """
 
-    transition: dict[Action, Branch]
+    transition: dict[
+        Action, Branch
+    ]  # & Should you maybe also rename this to choice? Or maybe it's nice this way, less confusion.
 
     def __init__(self, transition: dict[Action, Branch]):
         # Input validation, see RuntimeError.
@@ -409,7 +424,7 @@ class Choice:
     def is_stochastic(self, epsilon: Value) -> bool:
         """returns whether the probabilities in the branches sum to 1"""
         return all(
-            [abs(self.sum_probabilities(a) - 1) <= epsilon for a in self.transition]  # type: ignore
+            [abs(self.sum_probabilities(a) - 1) <= epsilon for a in self.transition]  # type: ignore & Yeah sorry for this once again, this needs to be changed somehow to allow parametric etc.
         )
 
     def __getitem__(self, item):
@@ -420,13 +435,14 @@ class Choice:
 
 
 ChoiceShorthand = list[tuple[Value, State]] | list[tuple[Action, State]]
+"""Shorthand notation for a choice. Consists of a list of tuples (Values, State) for deterministic models, and (Action, State) for nondeterministic models."""
 
 
 def choice_from_shorthand(shorthand: ChoiceShorthand) -> Choice:
     """Get a Choice object from a ChoiceShorthand. Use for all choices in DTMCs and for empty actions in MDPs.
 
     There are two possible ways to define a ChoiceShorthand.
-    - using only the probability and the target state (implies default action when in an MDP).
+    - using only the probability and the target state (implies default action EmptyAction when in an MDP).
     - using only the action and the target state (implies probability=1)."""
     if len(shorthand) == 0:
         raise RuntimeError("Choice cannot be empty")
@@ -452,7 +468,7 @@ class RewardModel:
     Args:
         name: Name of the reward model.
         model: The model this rewardmodel belongs to.
-        rewards: The rewards, the keys state action pairs.
+        rewards: The rewards, the keys are (state_id, Action) and the rewards are values.
     """
 
     name: str
@@ -573,7 +589,7 @@ class Model:
         name: An optional name for this model.
         type: The model type.
         states: The states of the model. The keys are the state's ids.
-        choices: The choices of this model.
+        choices: The choices of this model. & Could you explain what the keys are?
         actions: The actions of the model, if this is a model that supports actions.
         rewards: The rewardsmodels of this model.
         exit_rates: The exit rates of the model, optional if this model supports rates.
