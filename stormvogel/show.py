@@ -1,12 +1,11 @@
 """Shorter api for showing a model."""
 
-from typing import Callable
+from typing import Callable, Any
 import stormvogel.model
 import stormvogel.layout
 import stormvogel.visualization
 import stormvogel.layout_editor
 import stormvogel.result
-import networkx as nx
 
 import ipywidgets as widgets
 import IPython.display as ipd
@@ -16,9 +15,9 @@ def show(
     model: stormvogel.model.Model,
     result: stormvogel.result.Result | None = None,
     engine: str = "js",
-    nx_pos: bool = False,
-    nx_scale: int = 500,
-    nx_layout: Callable = nx.bfs_layout,
+    pos_function: Callable[[stormvogel.visualization.ModelGraph], dict[int, Any]]
+    | None = None,
+    pos_function_scaling: int = 500,
     scheduler: stormvogel.result.Scheduler | None = None,
     layout: stormvogel.layout.Layout | None = None,
     show_editor: bool = False,
@@ -38,9 +37,9 @@ def show(
         model (Model): The stormvogel model to be displayed.
         engine (str): The engine that should be used for the visualization.
             Can be either "js" for the interactive html/JavaScript visualization, or "mpl" for matplotlib.
-        nx_pos (bool): Whether networkx should be used to determine the node positions in the graph.
-            Highly recommended for bigger and acyclic models!
-        nx_scaling_factor (int): Scaling factor for the positions when using networkx positions. Defaults to 500.
+        pos_function (Callable | None): Function that takes a graph and maps it to a dictionary of node positions.
+            It is often useful to import these from networkx, see https://networkx.org/documentation/stable/_modules/networkx/drawing/layout.html for some examples.
+        pos_function_scaling (int): Scaling factor for the positions when using networkx positions. Defaults to 500.
         result (Result, optional): A result associatied with the model.
             The results are displayed as numbers on a state. Enable the layout editor for options.
             If this result has a scheduler, then the scheduled actions will have a different color etc. based on the layout
@@ -61,11 +60,10 @@ def show(
         layout = stormvogel.layout.DEFAULT()
 
     # Use networkx positions if the user wants it.
-    if nx_pos:
+    if pos_function:
         G = stormvogel.visualization.ModelGraph.from_model(model)
-        start = model.get_initial_state().id
-        pos = nx_layout(G.subgraph(nx.node_connected_component(G, start)), start=start)
-        layout = layout.set_nx_pos(pos, scale=nx_scale)
+        pos = pos_function(G)
+        layout = layout.set_nx_pos(pos, scale=pos_function_scaling)
 
     if engine == "js":
         vis = stormvogel.visualization.JSVisualization(
