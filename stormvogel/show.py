@@ -84,7 +84,6 @@ def show(
             e.show()
             box = widgets.HBox(children=[vis.output, e.output])
             ipd.display(box)
-            vis.update()
         else:  # Unfortunately, the sphinx docs only work if we save the html as a file and embed.
             if use_iframe:
                 iframe = vis.generate_iframe()

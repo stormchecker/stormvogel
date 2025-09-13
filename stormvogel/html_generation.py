@@ -69,6 +69,7 @@ class NetworkWrapper {
     };
     this.network = new vis.Network(container, this.data, options);
     var this_ = this; // Events will not work if you use 'this' directly :))))) No idea why.
+    this_.network.setData(this_.data);
 
     // Set user-triggered events.
     this.network.on( 'click', function(properties) {
