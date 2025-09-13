@@ -1,5 +1,6 @@
 """Shorter api for showing a model."""
 
+from typing import Callable
 import stormvogel.model
 import stormvogel.layout
 import stormvogel.visualization
@@ -17,6 +18,7 @@ def show(
     engine: str = "js",
     nx_pos: bool = False,
     nx_scale: int = 500,
+    nx_layout: Callable = nx.bfs_layout,
     scheduler: stormvogel.result.Scheduler | None = None,
     layout: stormvogel.layout.Layout | None = None,
     show_editor: bool = False,
@@ -61,7 +63,8 @@ def show(
     # Use networkx positions if the user wants it.
     if nx_pos:
         G = stormvogel.visualization.ModelGraph.from_model(model)
-        pos = nx.bfs_layout(G, start=model.get_initial_state().id)
+        start = model.get_initial_state().id
+        pos = nx_layout(G.subgraph(nx.node_connected_component(G, start)), start=start)
         layout = layout.set_nx_pos(pos, scale=nx_scale)
 
     if engine == "js":
