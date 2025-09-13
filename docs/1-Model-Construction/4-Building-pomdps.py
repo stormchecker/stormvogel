@@ -16,16 +16,16 @@
 # # Building POMDPs
 # In Stormvogel, a **Partially Observable Markov Decision Process (POMDP)** consists of
 # * states $S$, actions $A$, an initial state $s_0$, a mapping of *enabled actions*, and a successor distribution $P(s,a)$, and a labelling function $L$ as for MDPs,
-# * a set of observations $Z$
-# * and a deterministic state-observation function $O\colon S \rightarrow Z$. 
+# * a set of observations $Z$,
+# * and a deterministic state-observation function $O\colon S \rightarrow Z$.
 # 
-# The key idea is that the observations encode what information an agent sees. 
-# An agent will have to make its decisions not based on the current state, but based on the history of observations it has seen. 
+# The key idea is that the observations encode what information an agent sees.
+# An agent will have to make its decisions not based on the current state, but based on the history of observations it has seen.
 # Note that usually when we refer to MDPs we actually mean *fully observable* MDPs, which are POMDPs with $Z = S$ and $O(s) = s$.
 
 # %% [markdown]
-# We introduce a simple example to illustrate the difference between MDPs and POMDPs. 
-# The idea is that a coin is flipped while the agent is not looking, and then the agent has to guess if it's heads or tails. 
+# We introduce a simple example to illustrate the difference between MDPs and POMDPs.
+# The idea is that a coin is flipped while the agent is not looking, and then the agent has to guess if it's heads or tails.
 # We first construct an MDP.
 
 # %%
