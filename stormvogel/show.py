@@ -13,10 +13,10 @@ import IPython.display as ipd
 
 def show(
     model: stormvogel.model.Model,
+    result: stormvogel.result.Result | None = None,
     engine: str = "js",
     nx_pos: bool = False,
     nx_scale: int = 500,
-    result: stormvogel.result.Result | None = None,
     scheduler: stormvogel.result.Scheduler | None = None,
     layout: stormvogel.layout.Layout | None = None,
     show_editor: bool = False,
