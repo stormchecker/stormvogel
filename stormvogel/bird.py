@@ -195,8 +195,12 @@ def build_bird(
 
     # we continue calling delta and adding new states until no states are
     # left to be visited
-    states_to_be_visited = [init]
-    state_lookup = {init: init_state}
+    states_to_be_visited = [
+        init
+    ]  # & Have you considered using a dedicated queue structure instead of a list? I think that will be much more efficient. (Remember the O(log n) heap queue?)
+    state_lookup = {
+        init: init_state
+    }  # & A problem here might be unhashable types, we should probably add that to the doumentation of build_bird.
     while len(states_to_be_visited) > 0:
         state = states_to_be_visited.pop(0)
         transition = {}
@@ -211,13 +215,15 @@ def build_bird(
                     f"On input {state}, the available actions function does not have a return value"
                 )
 
-            if not isinstance(actionslist, list):
+            if not isinstance(
+                actionslist, list
+            ):  # & Why does it have to be a list, shouldn't any Collection be fine?
                 raise ValueError(
                     f"On input {state}, the available actions function does not return a list. Make sure to change it to [{actionslist}]"
                 )
 
             for action in actionslist:
-                try:
+                try:  # & Why not use model.action() here instead of a case distinction with a runtimerror?
                     if action != []:
                         stormvogel_action = model.new_action(
                             frozenset(
@@ -379,6 +385,7 @@ def build_bird(
             model.set_rate(s, r)
 
     # we add the valuations
+    # & I think the valuations are not supposed to be parametric right (in Storm)? Otherwise, we should consider adding that.
     if valuations is not None:
         initial_state_valuations = valuations(init)
         for state, s in state_lookup.items():
