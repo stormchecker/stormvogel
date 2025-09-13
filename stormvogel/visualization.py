@@ -403,15 +403,15 @@ class JSVisualization(VisualizationBase):
         for node in self.G.nodes():
             node_attr = self.G.nodes[node]
             label = node_attr.get("label", None)
-            color = "black"
+            color = node_attr.get("color", None)
             group = None
-            layout_group_color = None
+            # layout_group_color = None
             match self.G.nodes[node]["type"]:
                 case NodeType.STATE:
                     group = self._group_state(
                         self.model.get_state_by_id(node), "states"
                     )
-                    layout_group_color = self.layout.layout["groups"].get(group)
+                    # layout_group_color = self.layout.layout["groups"].get(group)
                 case NodeType.ACTION:
                     in_edges = list(self.G.in_edges(node))
                     assert (
@@ -421,14 +421,15 @@ class JSVisualization(VisualizationBase):
                     group = self._group_action(
                         state, self.G.nodes[node]["model_action"], "actions"
                     )
-                    layout_group_color = self.layout.layout["groups"].get(group)
-            if layout_group_color is not None:
-                color = layout_group_color.get("color", {"background": color}).get(
-                    "background"
-                )
-                # HACK: This is necessary for the selection highlighting to work
-                # and should not be here
-                color = None
+                    # layout_group_color = self.layout.layout["groups"].get(group)
+            # if layout_group_color is not None:
+            #     color = layout_group_color.get("color", {"background": color}).get(
+            #         "background"
+            #     )
+            #     # HACK: This is necessary for the selection highlighting to work
+            #     # and should not be here
+            #     color = None
+            # TODO ask Ossmoss what this code was supposed to do exactly. It only seems to waste time?
             current = "{ id: " + str(node)
             if label is not None:
                 current += f", label: `{label}`"
