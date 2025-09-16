@@ -985,9 +985,6 @@ class Model:
             # here we remove those empty actions (this needs to happen after the other for loops)
             for action, index in remove_actions_index:
                 self.choices[index].transition.pop(action)
-                # if we have no actions at all anymore, delete the transition
-                if self.choices[index].transition == {} and not index == state.id:
-                    self.choices.pop(index)
 
             # we remove choices that come out of the state
             self.choices.pop(state.id)
