@@ -25,11 +25,20 @@ def is_in_notebook():
         shell = globals().get("__IPYTHON__", None)
         if shell is not None:
             return True
-        if "ipykernel" in sys.modules:
-            return True
-    except Exception:
+        if "ipykernel" not in sys.modules:
+            return False
+
+        from IPython.core.getipython import get_ipython
+
+        ipython = get_ipython()
+
+        if ipython is None or "IPKernelApp" not in ipython.config:
+            return False
+    except ImportError:
         return False
-    return False
+    except AttributeError:
+        return False
+    return True
 
 
 if is_in_notebook():
