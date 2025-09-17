@@ -4,7 +4,6 @@ from typing import Callable
 import imageio
 from PIL.Image import Image
 import os
-import IPython.display as ipd
 
 
 def render_model_gif(
@@ -57,6 +56,8 @@ def render_model_gif(
 
 def embed_gif(filename: str):
     """Hacky way to embed a gif in a jupyter notebook so that it also works with sphinx docs."""
+    import IPython.display as ipd
+
     with open("GIF" + ".html", "w") as f:
         f.write(f'<img src="{filename}">')
     ipd.display(ipd.HTML(filename="GIF" + ".html"))

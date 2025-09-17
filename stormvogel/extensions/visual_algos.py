@@ -3,7 +3,6 @@ along with a function to display the workings of the algorithms."""
 
 from typing import Any
 import stormvogel.model
-import matplotlib.pyplot as plt
 from time import sleep
 
 
@@ -104,6 +103,8 @@ def display_value_iteration_result(
         hor_size (int): the horizontal size of the plot, in inches.
         labels (list[str]): the names of all the states.
     """
+    import matplotlib.pyplot as plt
+
     fig, ax = plt.subplots(1, 1)
     ax.set_xticks(range(len(res)))
     ax.set_yticks(range(len(res[0]) + 1))

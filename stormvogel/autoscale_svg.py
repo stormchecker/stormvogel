@@ -1,5 +1,3 @@
-from lxml import etree
-from svgpathtools import svg2paths2
 import io
 import re
 
@@ -12,6 +10,9 @@ def remove_invalid_paths(svg_string):
 
 
 def autoscale_svg(raw_svg: str, target_width: float) -> str:
+    from lxml import etree
+    from svgpathtools import svg2paths2
+
     # Parse the SVG from the raw string
     # Using lxml to parse the raw SVG string
     clean_svg = remove_invalid_paths(raw_svg)

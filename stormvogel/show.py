@@ -1,36 +1,31 @@
 """Shorter api for showing a model."""
 
-from typing import Callable, Any
+from typing import Callable, Any, TYPE_CHECKING
 import stormvogel.model
-import stormvogel.layout
-import stormvogel.visualization
-import stormvogel.layout_editor
+from stormvogel.layout import Layout, DEFAULT, SV
 import stormvogel.result
+from stormvogel.visualization import JSVisualization, MplVisualization
 
-import ipywidgets as widgets
-import IPython.display as ipd
+if TYPE_CHECKING:
+    import ipywidgets as widgets
+    from stormvogel.graph import ModelGraph
 
 
 def show(
     model: stormvogel.model.Model,
     result: stormvogel.result.Result | None = None,
     engine: str = "js",
-    pos_function: Callable[[stormvogel.visualization.ModelGraph], dict[int, Any]]
-    | None = None,
+    pos_function: Callable[["ModelGraph"], dict[int, Any]] | None = None,
     pos_function_scaling: int = 500,
     scheduler: stormvogel.result.Scheduler | None = None,
-    layout: stormvogel.layout.Layout | None = None,
+    layout: Layout | None = None,
     show_editor: bool = False,
-    debug_output: widgets.Output = widgets.Output(),
+    debug_output: "widgets.Output | None" = None,
     use_iframe: bool = False,
     do_init_server: bool = True,
     max_states: int = 1000,
     max_physics_states: int = 500,
-) -> (
-    stormvogel.visualization.JSVisualization
-    | stormvogel.visualization.MplVisualization
-    | None
-):
+) -> JSVisualization | MplVisualization | None:
     """Create and show a visualization of a Model using a visjs Network
 
     Args:
@@ -56,30 +51,40 @@ def show(
         max_physics_states (int): If the model has more states, then physics are disabled.
     Returns: Visualization object.
     """
+    import ipywidgets as widgets
+    import IPython.display as ipd
+
     if layout is None:
-        layout = stormvogel.layout.DEFAULT()
+        layout = DEFAULT()
 
     # Use networkx positions if the user wants it.
     if pos_function:
-        G = stormvogel.visualization.ModelGraph.from_model(model)
+        from stormvogel.graph import ModelGraph
+
+        G = ModelGraph.from_model(model)
         pos = pos_function(G)
         layout = layout.set_nx_pos(pos, scale=pos_function_scaling)
 
     if engine == "js":
-        vis = stormvogel.visualization.JSVisualization(
+        vis = JSVisualization(
             model=model,
             result=result,
             scheduler=scheduler,
             layout=layout,
-            debug_output=debug_output,
+            debug_output=debug_output or widgets.Output(),
             do_init_server=do_init_server,
             use_iframe=use_iframe,
             max_states=max_states,
             max_physics_states=max_physics_states,
         )
         if show_editor:
+            import stormvogel.layout_editor
+
             e = stormvogel.layout_editor.LayoutEditor(
-                layout, vis, do_display=False, debug_output=debug_output
+                layout,
+                vis,
+                do_display=False,
+                debug_output=debug_output or widgets.Output(),
             )
             e.show()
             box = widgets.HBox(children=[vis.output, e.output])
@@ -94,7 +99,7 @@ def show(
             ipd.display(ipd.HTML(filename="model.html"))
         return vis
     elif engine == "mpl":
-        vis = stormvogel.visualization.MplVisualization(
+        vis = MplVisualization(
             model=model, result=result, scheduler=scheduler, layout=layout
         )
         vis.show()
@@ -107,6 +112,4 @@ def show_bird():
     m = stormvogel.model.new_dtmc(create_initial_state=False)
     m.new_state("🐦")
     m.add_self_loops()
-    return show(
-        m, show_editor=False, do_init_server=False, layout=stormvogel.layout.SV()
-    )
+    return show(m, show_editor=False, do_init_server=False, layout=SV())

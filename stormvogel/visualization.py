@@ -1,35 +1,22 @@
 """Contains the code responsible for model visualization."""
 
-from collections.abc import Callable
-from typing import Any
-import cairosvg
-import pathlib
-import warnings
-from time import sleep
+from __future__ import annotations
 
-from matplotlib.backend_bases import MouseEvent
-from matplotlib.collections import PathCollection
+from collections.abc import Callable
+from typing import Any, TYPE_CHECKING
+
 import stormvogel.model
 import stormvogel.layout
 import stormvogel.result
 import stormvogel.html_generation
-from stormvogel.autoscale_svg import autoscale_svg
-from .graph import ModelGraph, NodeType
-from . import simulator
 
-import networkx as nx
-import matplotlib.pyplot as plt
-from matplotlib.axes import Axes
-import numpy as np
-
-import logging
-import json
-import html
-import ipywidgets as widgets
-import IPython.display as ipd
-import random
-import string
-from fractions import Fraction
+if TYPE_CHECKING:
+    # Type-only imports
+    from matplotlib.backend_bases import MouseEvent
+    from matplotlib.collections import PathCollection
+    from matplotlib.axes import Axes
+    import ipywidgets as widgets
+    from . import simulator
 
 
 def und(x: str) -> str:
@@ -38,13 +25,18 @@ def und(x: str) -> str:
 
 
 def random_word(k: int) -> str:
-    """Random word of lenght k"""
+    """Random word of length k"""
+    import random
+    import string
+
     return "".join(random.choices(string.ascii_letters, k=k))
 
 
 def random_color() -> str:
     """Return a random HEX color."""
-    return "#" + "".join([random.choice("0123456789ABCDEF") for j in range(6)])
+    import random
+
+    return "#" + "".join([random.choice("0123456789ABCDEF") for _ in range(6)])
 
 
 def blend_colors(c1: str, c2: str, factor: float) -> str:
@@ -108,7 +100,7 @@ class VisualizationBase:
         self.layout = layout
         self.result = result
         self.scheduler = scheduler
-        # If a scheduler was not set explictly, but a result was set, then take the scheduler from the results.
+        # If a scheduler was not set explicitly, but a result was set, then take the scheduler from the results.
         if self.scheduler is None:
             if self.result is not None:
                 self.scheduler = self.result.scheduler
@@ -122,6 +114,8 @@ class VisualizationBase:
 
     def recreate(self):
         """Recreate the ModelGraph and set the edit groups."""
+        from .graph import ModelGraph
+
         self.G = ModelGraph.from_model(
             self.model,
             state_properties=self._create_state_properties,
@@ -243,6 +237,8 @@ class VisualizationBase:
                 - `"group"`: A string identifying the layout group this state belongs to.
                 - `"color"`: A blended RGB color string or None, based on result values.
         """
+        from fractions import Fraction
+
         res = self._format_result(state)
         observations = self._format_observations(state)
         rewards = self._format_rewards(state, stormvogel.model.EmptyAction)
@@ -340,13 +336,13 @@ class JSVisualization(VisualizationBase):
         result: stormvogel.result.Result | None = None,
         scheduler: stormvogel.result.Scheduler | None = None,
         layout: stormvogel.layout.Layout = stormvogel.layout.DEFAULT(),
-        output: widgets.Output | None = None,
-        debug_output: widgets.Output = widgets.Output(),
+        output: widgets.Output | None = None,  # type: ignore[name-defined]
+        debug_output: widgets.Output | None = None,  # type: ignore[name-defined]
         use_iframe: bool = False,
         do_init_server: bool = True,
         max_states: int = 1000,
         max_physics_states: int = 500,
-        spam: widgets.Output = widgets.Output(),
+        spam: widgets.Output | None = None,  # type: ignore[name-defined]
     ) -> None:
         """Create and show a visualization of a Model using a visjs Network
         Args:
@@ -366,14 +362,23 @@ class JSVisualization(VisualizationBase):
             max_states (int): If the model has more states, then the network is not displayed.
             max_physics_states (int): If the model has more states, then physics are disabled.
         """
+        import ipywidgets as widgets  # local, heavy
+        import IPython.display as ipd  # local, heavy
+
         super().__init__(model, layout, result, scheduler)
         self.initial_state_id = model.get_initial_state().id
         if output is None:
             self.output = widgets.Output()
         else:
             self.output = output
-        self.debug_output: widgets.Output = debug_output
-        self.spam = spam
+        if debug_output is None:
+            self.debug_output: widgets.Output = widgets.Output()
+        else:
+            self.debug_output = debug_output
+        if spam is None:
+            self.spam = widgets.Output()
+        else:
+            self.spam = spam
         with self.output:
             ipd.display(self.spam)
 
@@ -386,32 +391,36 @@ class JSVisualization(VisualizationBase):
         self.do_init_server: bool = do_init_server
         self.network_wrapper: str = ""  # Use this for javascript injection.
         if self.use_iframe:
-            self.network_wrapper: str = (
+            self.network_wrapper = (
                 f"document.getElementById('{self.name}').contentWindow.nw_{self.name}"
             )
         else:
-            self.network_wrapper: str = f"nw_{self.name}"
+            self.network_wrapper = f"nw_{self.name}"
         self.new_nodes_hidden: bool = False
         if do_init_server:
+            import stormvogel.communication_server  # ensure submodule is loaded
+
             self.server: stormvogel.communication_server.CommunicationServer = (
                 stormvogel.communication_server.initialize_server()
             )
+        else:
+            self.server = None  # type: ignore[assignment]
 
     def _generate_node_js(self) -> str:
         """Generate the required js script for node definition"""
+        from .graph import NodeType
+
         node_js = ""
         for node in self.G.nodes():
             node_attr = self.G.nodes[node]
             label = node_attr.get("label", None)
             color = node_attr.get("color", None)
             group = None
-            # layout_group_color = None
             match self.G.nodes[node]["type"]:
                 case NodeType.STATE:
                     group = self._group_state(
                         self.model.get_state_by_id(node), "states"
                     )
-                    # layout_group_color = self.layout.layout["groups"].get(group)
                 case NodeType.ACTION:
                     in_edges = list(self.G.in_edges(node))
                     assert (
@@ -451,6 +460,8 @@ class JSVisualization(VisualizationBase):
 
     def _generate_edge_js(self) -> str:
         """Generate the required js script for edge definition"""
+        from .graph import NodeType
+
         edge_js = ""
         # preprocess scheduled actions
         scheduled_action_nodes = []
@@ -503,6 +514,8 @@ class JSVisualization(VisualizationBase):
         Returns:
             str: A pretty-printed JSON string representing the current layout configuration.
         """
+        import json
+
         return json.dumps(self.layout.layout, indent=2)
 
     def set_options(self, options: str) -> None:
@@ -515,6 +528,8 @@ class JSVisualization(VisualizationBase):
         Args:
             options (str): A JSON-formatted string representing the layout configuration.
         """
+        import json
+
         options_dict = json.loads(options)
         self.layout = stormvogel.layout.Layout(layout_dict=options_dict)
 
@@ -531,6 +546,8 @@ class JSVisualization(VisualizationBase):
 
     def generate_iframe(self) -> str:
         """Generate an iframe for the network, using the html."""
+        import html as _html
+
         return f"""
           <iframe
                 id="{self.name}"
@@ -538,13 +555,15 @@ class JSVisualization(VisualizationBase):
                 height="{self.layout.layout["misc"].get("height", 600) + self.EXTRA_PIXELS}"
                 sandbox="allow-scripts allow-same-origin"
                 frameborder="0"
-                srcdoc="{html.escape(self.generate_html())}"
+                srcdoc="{_html.escape(self.generate_html())}"
                 border:none !important;
                 allowfullscreen webkitallowfullscreen mozallowfullscreen
           ></iframe>"""
 
     def generate_svg(self, width: int = 800) -> str:
         """Generate an svg rendering for the network."""
+        from stormvogel.autoscale_svg import autoscale_svg
+
         js = f"RETURN({self.network_wrapper}.getSvg());"
         res = self.server.result(js)[1:-1]
         unescaped = res.encode("utf-8").decode("unicode_escape")
@@ -565,8 +584,11 @@ class JSVisualization(VisualizationBase):
         self.layout.set_value(["misc", "explore"], True)
 
     def get_positions(self) -> dict:
-        """Get the current positions of the nodes on the canvas. Returns empty dict if unsucessful.
+        """Get the current positions of the nodes on the canvas. Returns empty dict if unsuccessful.
         Example result: {0: {"x": 5, "y": 10}}"""
+        import json
+        import logging
+
         if self.server is None:
             with self.debug_output:
                 logging.warning(
@@ -586,7 +608,10 @@ class JSVisualization(VisualizationBase):
             raise TimeoutError("Timed out. Could not retrieve position data.")
 
     def show(self, hidden: bool = False) -> None:
-        with self.output:  ## If there was already a rendered network, clear it.
+        import logging
+        import IPython.display as ipd
+
+        with self.output:  # If there was already a rendered network, clear it.
             ipd.clear_output()
         if len(self.model.get_states()) > self.max_states:
             with self.output:
@@ -626,6 +651,8 @@ class JSVisualization(VisualizationBase):
             This should be called after modifying layout properties if the visualization
             has already been shown, to apply those changes interactively.
         """
+        import IPython.display as ipd
+
         js = f"""{self.network_wrapper}.network.setOptions({self._get_options()});"""
         ipd.display(ipd.Javascript(js))
 
@@ -645,6 +672,8 @@ class JSVisualization(VisualizationBase):
             This function requires that the visualization is already rendered
             (i.e., `show()` has been called and completed asynchronously).
         """
+        import IPython.display as ipd
+
         if color is None:
             color = "null"
         else:
@@ -687,6 +716,8 @@ class JSVisualization(VisualizationBase):
         Warns:
             UserWarning: If the specified (state, action) pair is not found in the model graph.
         """
+        import warnings
+
         try:
             nt_id = self.G.state_action_id_map[(state_id, action)]
             self.set_node_color(nt_id, color)
@@ -734,7 +765,7 @@ class JSVisualization(VisualizationBase):
         """Highlight a set of tuples of (states and actions) in the model by changing their color.
         Args:
             decomp: A list of tuples (states, actions)
-            colors (optional): A list of colors for the decompossitions. Random colors are picked by default."""
+            colors (optional): A list of colors for the decompositions. Random colors are picked by default."""
         for n, v in enumerate(decomp):
             if colors is None:
                 color = random_color()
@@ -744,7 +775,7 @@ class JSVisualization(VisualizationBase):
             self.highlight_action_set(v[1], color)
 
     def clear_highlighting(self):
-        """Clear all highlighting that is currently active, returing all states to their original colors."""
+        """Clear all highlighting that is currently active, returning all states to their original colors."""
         for s_id, _ in self.model:
             self.set_node_color(s_id, None)
         for a_id in self.G.state_action_id_map.values():
@@ -752,7 +783,7 @@ class JSVisualization(VisualizationBase):
 
     def highlight_path(
         self,
-        path: simulator.Path,
+        path: simulator.Path,  # type: ignore[name-defined]
         color: str,
         delay: float = 1,
         clear: bool = True,
@@ -765,6 +796,8 @@ class JSVisualization(VisualizationBase):
             delay (float): If not None, there will be a pause of a specified time before highlighting the next state in the path.
             clear (bool): Clear the highlighting of a state after it was highlighted. Only works if delay is not None.
                 This is particularly useful for highlighting paths with loops."""
+        from time import sleep
+
         seq = path.to_state_action_sequence()
         for i, v in enumerate(seq):
             if isinstance(v, stormvogel.model.State):
@@ -798,14 +831,16 @@ class JSVisualization(VisualizationBase):
             "PDF"     → Exports to .pdf (via conversion from SVG)
             "SVG"     → Exports to .svg vector image
         """
+        import pathlib
+
         output_format = output_format.lower()
         filename_base = pathlib.Path(filename).with_suffix(
             ""
         )  # remove extension if present
 
         if output_format == "html":
-            html = self.generate_html()
-            (filename_base.with_suffix(".html")).write_text(html, encoding="utf-8")
+            html_txt = self.generate_html()
+            (filename_base.with_suffix(".html")).write_text(html_txt, encoding="utf-8")
 
         elif output_format == "iframe":
             iframe = self.generate_iframe()
@@ -817,6 +852,8 @@ class JSVisualization(VisualizationBase):
 
         elif output_format == "pdf":
             svg = self.generate_svg()
+            import cairosvg  # local, heavy
+
             cairosvg.svg2pdf(
                 bytestring=svg.encode("utf-8"), write_to=filename_base.name + ".pdf"
             )
@@ -828,6 +865,8 @@ class JSVisualization(VisualizationBase):
             export_folder.mkdir(parents=True, exist_ok=True)
             pdf_filename = filename_base.with_suffix(".pdf")
             # Convert SVG to PDF
+            import cairosvg  # local, heavy
+
             cairosvg.svg2pdf(
                 bytestring=svg.encode("utf-8"),
                 write_to=str(export_folder / pdf_filename),
@@ -1009,6 +1048,10 @@ class MplVisualization(VisualizationBase):
                 `matplotlib.collections.PathCollection` of drawn nodes and `edges`
                 is the `matplotlib.collections.LineCollection` of drawn edges.
         """
+        import numpy as np
+        import networkx as nx
+        from .graph import NodeType
+
         if node_kwargs is None:
             node_kwargs = dict()
         if edge_kwargs is None:
@@ -1105,6 +1148,8 @@ class MplVisualization(VisualizationBase):
         Returns:
             matplotlib.figure.Figure: The Matplotlib figure object containing the visualization.
         """
+        import matplotlib.pyplot as plt
+
         px = 1 / plt.rcParams["figure.dpi"]
         figsize = (
             self.layout.layout["misc"].get("width", 800) * px,
@@ -1152,5 +1197,7 @@ class MplVisualization(VisualizationBase):
     def show(
         self,
     ):
+        import matplotlib.pyplot as plt
+
         self.update()
         plt.show()

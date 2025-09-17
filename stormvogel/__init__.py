@@ -17,22 +17,20 @@ from stormvogel import stormpy_utils  # NOQA
 from stormvogel.visualization import JSVisualization  # NOQA
 from stormvogel.stormpy_utils.model_checking import *  # NOQA
 
+import sys
+
 
 def is_in_notebook():
-    try:
-        from IPython.core.getipython import get_ipython
-
-        ipython = get_ipython()
-
-        if ipython is None or "IPKernelApp" not in ipython.config:
-            return False
-    except ImportError:
-        return False
-    except AttributeError:
-        return False
-    return True
+    return (
+        "ipykernel" in sys.modules
+        or "IPython" in sys.modules
+        and hasattr(sys.modules["IPython"], "get_ipython")
+        and getattr(sys.modules["IPython"].get_ipython(), "config", {}).get(
+            "IPKernelApp", False
+        )
+    )
 
 
 if is_in_notebook():
-    # Import and init magic
+    # Import and init magic only if in notebook
     from stormvogel.stormpy_utils import magic as magic
