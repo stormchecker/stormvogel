@@ -16,10 +16,19 @@ from stormvogel import extensions  # NOQA
 from stormvogel import stormpy_utils  # NOQA
 from stormvogel.visualization import JSVisualization  # NOQA
 from stormvogel.stormpy_utils.model_checking import *  # NOQA
+import stormvogel.communication_server  # NOQA
 
 
 def is_in_notebook():
     try:
+        import sys
+
+        shell = globals().get("__IPYTHON__", None)
+        if shell is not None:
+            return True
+        if "ipykernel" not in sys.modules:
+            return False
+
         from IPython.core.getipython import get_ipython
 
         ipython = get_ipython()

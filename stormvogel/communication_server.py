@@ -9,10 +9,8 @@ import random
 import string
 import threading
 from typing import Callable
-import IPython.display as ipd
 import logging
 from time import sleep
-import ipywidgets as widgets
 import socket
 import json
 
@@ -55,6 +53,8 @@ class CommunicationServer:
         Args:
             server_port (int, optional): Defaults to 8080.
         """
+        import IPython.display as ipd
+
         self.server_port: int = server_port
         # Define a function within javascript that posts.
         js = """
@@ -122,6 +122,8 @@ function return_id_result(url, id, data) {
 
         Returns event id which can be used to remove it later.
         """
+        import IPython.display as ipd
+
         global server_running, server
         if server is None:
             raise TimeoutError("There is no server running.")
@@ -214,6 +216,9 @@ def initialize_server() -> CommunicationServer | None:
     Returns:
         CommunicationServer | None: The server if successful.
     """
+    import ipywidgets as widgets
+    import IPython.display as ipd
+
     global server, server_port, enable_server
     if not enable_server:
         return None
