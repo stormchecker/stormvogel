@@ -1,4 +1,7 @@
 from dataclasses import dataclass
+from fractions import Fraction
+
+Number = int | float | Fraction
 
 
 @dataclass
@@ -57,7 +60,7 @@ class Polynomial:
             return largest
         raise RuntimeError("A polynomial without terms does not have a degree.")
 
-    def evaluate(self, values: dict[str, float]) -> float:
+    def evaluate(self, values: dict[str, Number]) -> float:
         """evaluates the polynomial with the given values for the variables"""
         result = 0
         for exponents, coefficient in self.terms.items():
@@ -137,7 +140,7 @@ class RationalFunction:
         "returns the total set of variables of this rational function"
         return set(self.numerator.variables).union(set(self.denominator.variables))
 
-    def evaluate(self, values: dict[str, float]) -> float:
+    def evaluate(self, values: dict[str, Number]) -> float:
         """evaluates the rational function with the given values"""
         return self.numerator.evaluate(values) / self.denominator.evaluate(values)
 
