@@ -215,6 +215,7 @@ def test_remove_state():
 
     assert state0 != state1
 
+
 def test_reassign_ids_removed_states():
     # we test if reassigning ids works after states are removed
 

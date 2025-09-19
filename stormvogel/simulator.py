@@ -270,10 +270,12 @@ def simulate(
 
     # we keep track of all discovered states over all runs and add them to the partial model
     # we also add the discovered rewards and actions to the partial model if present
-    partial_model = stormvogel.model.new_model(model.get_type(),create_initial_state=False)
-    
-    #we create the initial state ourselves because we want to force the name to be 0
-    init = partial_model.new_state(name="0",labels="init")
+    partial_model = stormvogel.model.new_model(
+        model.get_type(), create_initial_state=False
+    )
+
+    # we create the initial state ourselves because we want to force the name to be 0
+    init = partial_model.new_state(name="0", labels="init")
     init.valuations = model.get_initial_state().valuations
 
     # we add each (empty) rewardmodel to the partial model

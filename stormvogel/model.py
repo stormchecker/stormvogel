@@ -678,7 +678,9 @@ class Model:
         For continuous models: Checks if all sums of outgoing rates sum to 0
         """
         if self.is_parametric() or self.is_interval_model():
-            raise RuntimeError("is_stochastic method undefined for parametric or interval models")
+            raise RuntimeError(
+                "is_stochastic method undefined for parametric or interval models"
+            )
 
         if not self.supports_rates():
             return all(
@@ -773,7 +775,7 @@ class Model:
 
     def get_state_action_id(self, state: State, action: Action) -> int | None:
         """We calculate the appropriate state action id for a given state and action.
-           Each state action pair corresponds to an id (which also corresponds to the row of the matrix).
+        Each state action pair corresponds to an id (which also corresponds to the row of the matrix).
         """
         id = 0
         for _, s in self:
@@ -804,7 +806,9 @@ class Model:
     def add_self_loops(self):
         """adds self loops to all states that do not have an outgoing transition"""
         for id, state in self:
-            if self.choices.get(id) is None: #TODO what if the state has a choice but it is empty?
+            if (
+                self.choices.get(id) is None
+            ):  # TODO what if the state has a choice but it is empty?
                 self.set_choice(
                     state, [(float(0) if self.supports_rates() else float(1), state)]
                 )
@@ -1121,7 +1125,7 @@ class Model:
         init = self.get_states_with_label("init")
         if len(init) == 0:
             raise RuntimeError("There is no state with label init.")
-        
+
         # TODO support for multiple initial states
         return init[0]
 
