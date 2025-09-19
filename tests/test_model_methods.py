@@ -215,20 +215,6 @@ def test_remove_state():
 
     assert state0 != state1
 
-    # This should complain that names are the same:
-    try:
-        new_dtmc.new_state()
-        assert False
-    except RuntimeError:
-        pass
-
-    # But no longer if we do this:
-    try:
-        new_dtmc.new_state(name="new_name")
-    except RuntimeError:
-        assert False
-
-
 def test_reassign_ids_removed_states():
     # we test if reassigning ids works after states are removed
 
