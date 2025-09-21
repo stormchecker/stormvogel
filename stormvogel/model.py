@@ -1120,13 +1120,16 @@ class Model:
         return names[state_name]
 
     def get_initial_state(self) -> State:
-        """Gets the initial state (contains label "init")."""
-
-        init = self.get_states_with_label("init")
-        if len(init) == 0:
-            raise RuntimeError("There is no state with label init.")
+        """Gets the initial state (contains label "init", or has id 0)."""
 
         # TODO support for multiple initial states
+        init = self.get_states_with_label("init")
+        if len(init) == 0:
+            if len(list(self.states)) == 0:
+                raise RuntimeError(
+                    "This model does not have an initial state because it does not have any states."
+                )
+            return self.get_state_by_id(0)
         return init[0]
 
     def get_ordered_labels(self) -> list[list[str]]:
