@@ -8,6 +8,8 @@ from typing import Tuple, cast
 from stormvogel import parametric
 import copy
 import math
+import uuid
+import warnings
 
 Number = int | float | Fraction
 
@@ -32,7 +34,7 @@ class Interval:
             )
 
     def __lt__(self, other):
-        if self.bottom < other.bottom or self.top < other.top:
+        if (self.bottom, self.top) < (other.bottom, other.top):
             return True
         return False
 
@@ -143,14 +145,13 @@ class State:
         self.id = id
         self.observation = None
 
-        # names must be unique
+        # names must be unique, because they are the identifier of a state in case ids are changed
         if name is None:
-            # if the user does not provide a name, we try to choose the id as a string
-            name = str(id)
-            if name in self.model.used_names:
-                raise RuntimeError(
-                    "You need to choose a state name because of a conflict (possibly because of state removal)."
-                )
+            # if the user does not provide a name, we try to pick a random string
+            while True:
+                name = uuid.uuid4().hex[:8]
+                if name not in self.model.used_names:
+                    break
             self.model.used_names.add(name)
             self.name = name
         else:
@@ -247,9 +248,9 @@ class State:
         return self == self.model.get_initial_state()
 
     def __str__(self):
-        res = f"State {self.id} with labels {self.labels} and valuations {self.valuations}"
+        res = f"id: {self.id}, labels: {self.labels}, valuations: {self.valuations}"
         if self.model.supports_observations() and self.observation is not None:
-            res += f" and observation {self.observation.get_observation()}"
+            res += f", observation: {self.observation.get_observation()}"
         return res
 
     def __eq__(self, other):
@@ -272,7 +273,7 @@ class State:
     def __lt__(self, other):
         if not isinstance(other, State):
             return NotImplemented
-        return str(self.labels) < str(other.labels)
+        return self.id < other.id
 
 
 @dataclass(frozen=True)
@@ -286,6 +287,8 @@ class Action:
         labels: The labels of this action. Corresponds to Storm labels.
     """
 
+    labels: frozenset[str]
+
     @staticmethod
     def create(labels: frozenset[str] | str | None = None) -> "Action":
         if isinstance(labels, str):
@@ -294,8 +297,6 @@ class Action:
             return Action(labels)
         else:
             return Action(frozenset())
-
-    labels: frozenset[str]
 
     def __lt__(self, other):
         if not isinstance(other, Action):
@@ -516,7 +517,6 @@ class RewardModel:
         state: State,
         action: Action,
         value: Value,
-        auto_update_rewards: bool = True,
     ):
         """sets the reward at said state action pair (in case of models with actions).
         If you disable auto_update_rewards, you will need to call update_intermediate_to"""
@@ -581,7 +581,7 @@ class Model:
     """
 
     type: ModelType
-    # Both of these are hashed by the id of the state (=number in the matrix)
+    # Both of these are hashed by the id of the state (=rowgroup number in the matrix)
     states: dict[int, State]
     choices: dict[int, Choice]
     actions: set[Action] | None
@@ -673,10 +673,14 @@ class Model:
                         return True
         return False
 
-    def is_stochastic(self, epsilon: Value = 0.000001) -> bool:
+    def is_stochastic(self, epsilon: Value = 0.000001) -> bool | None:
         """For discrete models: Checks if all sums of outgoing transition probabilities for all states equal 1, with at most epsilon rounding error.
         For continuous models: Checks if all sums of outgoing rates sum to 0
         """
+        if self.is_parametric() or self.is_interval_model():
+            raise RuntimeError(
+                "is_stochastic method undefined for parametric or interval models"
+            )
 
         if not self.supports_rates():
             return all(
@@ -686,7 +690,6 @@ class Model:
                     if id in self.choices
                 ]
             )
-
         else:
             for _, state in self:
                 for action in state.available_actions():
@@ -756,7 +759,7 @@ class Model:
             sub_model.normalize()
         return sub_model
 
-    def parameter_valuation(self, values: dict[str, float]) -> "Model":
+    def parameter_valuation(self, values: dict[str, Number]) -> "Model":
         """evaluates all parametric choices with the given values and returns the induced model"""
         evaluated_model = copy.deepcopy(self)
         for state, transition in evaluated_model.choices.items():
@@ -771,7 +774,9 @@ class Model:
         return evaluated_model
 
     def get_state_action_id(self, state: State, action: Action) -> int | None:
-        """we calculate the appropriate state action id for a given state and action"""
+        """We calculate the appropriate state action id for a given state and action.
+        Each state action pair corresponds to an id (which also corresponds to the row of the matrix).
+        """
         id = 0
         for _, s in self:
             for a in s.available_actions():
@@ -780,7 +785,9 @@ class Model:
                 id += 1
 
     def get_state_action_pair(self, id: int) -> tuple[State, Action] | None:
-        """Given an id, we return the corresponding state action pair"""
+        """Given an state action id, we return the corresponding state action pair
+        Each state action pair corresponds to an id (which also corresponds to the row of the matrix).
+        """
         i = 0
         for _, s in self:
             for a in s.available_actions():
@@ -799,7 +806,9 @@ class Model:
     def add_self_loops(self):
         """adds self loops to all states that do not have an outgoing transition"""
         for id, state in self:
-            if self.choices.get(id) is None:
+            if (
+                self.choices.get(id) is None
+            ):  # TODO what if the state has a choice but it is empty?
                 self.set_choice(
                     state, [(float(0) if self.supports_rates() else float(1), state)]
                 )
@@ -823,7 +832,6 @@ class Model:
 
     def has_unassigned_variables(self) -> bool:
         """we return whether this model has variables without a value"""
-        # TODO return list of pairs of variables and states where it is undefined
         variables = self.get_variables()
 
         # if there are no variables at all, it is trivially true
@@ -934,7 +942,7 @@ class Model:
         """Reassigns the ids of states, choices and rates to be in order again.
         Mainly useful to keep consistent with storm."""
 
-        print(
+        warnings.warn(
             "Warning: Using this can cause problems in your code if there are existing references to states by id."
         )
 
@@ -1112,14 +1120,17 @@ class Model:
         return names[state_name]
 
     def get_initial_state(self) -> State:
-        """Gets the initial state (contains label "init")."""
-        # TODO support for multiple initial states
-        for state in self.get_states():
-            if "init" in state.labels:
-                return state
+        """Gets the initial state (contains label "init", or has id 0)."""
 
-        # if no label "init" is set, we take the state with id=0
-        return self.states[0]
+        # TODO support for multiple initial states
+        init = self.get_states_with_label("init")
+        if len(init) == 0:
+            if len(list(self.states)) == 0:
+                raise RuntimeError(
+                    "This model does not have an initial state because it does not have any states."
+                )
+            return self.get_state_by_id(0)
+        return init[0]
 
     def get_ordered_labels(self) -> list[list[str]]:
         """Get all the labels of this model, ordered by id.
@@ -1134,7 +1145,7 @@ class Model:
         return collected_labels
 
     def get_variables(self) -> set[str]:
-        """gets the set of all variables present in this model (features)"""
+        """gets the set of all variables present in this model (corresponding to valuations"""
         variables: set[str] = set()
         for _id, state in self.states.items():
             variables = variables | set(state.valuations.keys())
