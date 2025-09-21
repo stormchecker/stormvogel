@@ -2,6 +2,7 @@ import stormvogel.model
 from dataclasses import dataclass
 from typing import cast, Any, Callable
 import inspect
+from collections import deque
 
 
 @dataclass
@@ -195,10 +196,11 @@ def build_bird(
 
     # we continue calling delta and adding new states until no states are
     # left to be visited
-    states_to_be_visited = [init]
+    states_to_be_visited = deque([init])
+    # the state type needs to be hashable
     state_lookup = {init: init_state}
     while len(states_to_be_visited) > 0:
-        state = states_to_be_visited.pop(0)
+        state = states_to_be_visited.popleft()
         transition = {}
 
         if model.supports_actions():
@@ -217,22 +219,7 @@ def build_bird(
                 )
 
             for action in actionslist:
-                try:
-                    if action != []:
-                        stormvogel_action = model.new_action(
-                            frozenset(
-                                action  # type: ignore
-                            ),  # right now we only look at one label
-                        )
-                    else:
-                        stormvogel_action = stormvogel.model.EmptyAction
-                except RuntimeError:
-                    if action != []:
-                        stormvogel_action = model.get_action_with_labels(
-                            frozenset(action)
-                        )
-                    else:
-                        stormvogel_action = stormvogel.model.EmptyAction
+                stormvogel_action = model.action(frozenset(action))
 
                 delta = cast(Callable[[Any, action], Any], delta)
                 tuples = delta(state, action)
