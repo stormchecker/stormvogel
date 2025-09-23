@@ -43499,7 +43499,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
 // exports.Element = SVGCanvasElement;
 </script>
     <style type="text/css">
-      #vTPkQKDiLc {
+      #NNjhsQnHRA {
         width: 800px;
         height: 600px;
         border: 1px solid lightgray;
@@ -43507,7 +43507,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
     </style>
   </head>
   <body>
-    <div id="vTPkQKDiLc"></div>
+    <div id="NNjhsQnHRA"></div>
     <script type="text/javascript">
         //js
 class NetworkWrapper {
@@ -43522,6 +43522,7 @@ class NetworkWrapper {
     };
     this.network = new vis.Network(container, this.data, options);
     var this_ = this; // Events will not work if you use 'this' directly :))))) No idea why.
+    this_.network.setData(this_.data);
 
     // Set user-triggered events.
     this.network.on( 'click', function(properties) {
@@ -43616,21 +43617,20 @@ class NetworkWrapper {
     </script>
     <script type="text/javascript">
         //js
-    var nodes_local = new vis.DataSet([{ id: 0, label: ``, group: "states" },
-{ id: 1, label: `a`, group: "states" },
-{ id: 2, label: ``, group: "states" },
-{ id: 3, label: ``, group: "states" },
-{ id: 4, label: `a`, group: "states" },
-{ id: 5, label: `a`, group: "states" },
-{ id: 6, label: ``, group: "states" },
-{ id: 7, label: `a`, group: "states" },
-{ id: 8, label: ``, group: "states" },
-{ id: 9, label: ``, group: "states" },
-{ id: 10, label: ``, group: "states" },
-{ id: 11, label: `a`, group: "states" },
-{ id: 12, label: ``, group: "states" },
-{ id: 13, label: `a`, group: "states" },
-{ id: 14, label: `a`, group: "states" },
+    var nodes_local = new vis.DataSet([{ id: 0, label: `0
+`, group: "states" },
+{ id: 1, label: `1
+`, group: "states" },
+{ id: 2, label: `2
+`, group: "states" },
+{ id: 3, label: `3
+`, group: "states" },
+{ id: 4, label: `4
+`, group: "states" },
+{ id: 5, label: `5
+`, group: "states" },
+{ id: 6, label: `6
+`, group: "states" },
 { id: 10000000000, label: `0`, group: "actions" },
 { id: 10000000001, label: `1`, group: "actions" },
 { id: 10000000002, label: `2`, group: "actions" },
@@ -43645,65 +43645,35 @@ class NetworkWrapper {
 { id: 10000000011, label: `11`, group: "actions" },
 { id: 10000000012, label: `12`, group: "actions" },
 { id: 10000000013, label: `13`, group: "actions" },
-{ id: 10000000014, label: `14`, group: "actions" },
-{ id: 10000000015, label: `15`, group: "actions" },
-{ id: 10000000016, label: `16`, group: "actions" },
-{ id: 10000000017, label: `17`, group: "actions" },
-{ id: 10000000018, label: `18`, group: "actions" },
-{ id: 10000000019, label: `19`, group: "actions" },
-{ id: 10000000020, label: `20`, group: "actions" },
-{ id: 10000000021, label: `21`, group: "actions" },
 ]);
     var edges_local = new vis.DataSet([{ from: 0, to: 10000000000 },
-{ from: 1, to: 10000000001 },
+{ from: 0, to: 10000000001 },
 { from: 1, to: 10000000002 },
-{ from: 1, to: 10000000003 },
-{ from: 2, to: 10000000004 },
+{ from: 2, to: 10000000003 },
+{ from: 3, to: 10000000004 },
 { from: 3, to: 10000000005 },
 { from: 3, to: 10000000006 },
 { from: 4, to: 10000000007 },
 { from: 4, to: 10000000008 },
-{ from: 5, to: 10000000009 },
-{ from: 6, to: 10000000010 },
-{ from: 7, to: 10000000011 },
-{ from: 7, to: 10000000012 },
-{ from: 8, to: 10000000013 },
-{ from: 9, to: 10000000014 },
-{ from: 10, to: 10000000015 },
-{ from: 10, to: 10000000016 },
-{ from: 11, to: 10000000017 },
-{ from: 12, to: 10000000018 },
-{ from: 13, to: 10000000019 },
-{ from: 14, to: 10000000020 },
-{ from: 14, to: 10000000021 },
+{ from: 4, to: 10000000009 },
+{ from: 5, to: 10000000010 },
+{ from: 5, to: 10000000011 },
+{ from: 6, to: 10000000012 },
+{ from: 6, to: 10000000013 },
 { from: 10000000000, to: 1, label: "1" },
-{ from: 10000000001, to: 0, label: "1" },
-{ from: 10000000002, to: 2, label: "1" },
-{ from: 10000000003, to: 4, label: "7/10" },
-{ from: 10000000003, to: 6, label: "3/10" },
-{ from: 10000000004, to: 0, label: "1" },
-{ from: 10000000005, to: 4, label: "1" },
-{ from: 10000000006, to: 5, label: "4/5" },
-{ from: 10000000006, to: 9, label: "1/5" },
-{ from: 10000000007, to: 3, label: "1" },
-{ from: 10000000008, to: 5, label: "1" },
-{ from: 10000000009, to: 3, label: "1" },
-{ from: 10000000010, to: 7, label: "1" },
-{ from: 10000000011, to: 6, label: "1" },
-{ from: 10000000012, to: 8, label: "1" },
-{ from: 10000000013, to: 6, label: "1" },
-{ from: 10000000014, to: 10, label: "1" },
-{ from: 10000000015, to: 9, label: "1" },
-{ from: 10000000016, to: 11, label: "1" },
-{ from: 10000000017, to: 9, label: "1" },
-{ from: 10000000018, to: 5, label: "2/5" },
-{ from: 10000000018, to: 8, label: "3/10" },
-{ from: 10000000018, to: 11, label: "3/10" },
-{ from: 10000000019, to: 7, label: "7/10" },
-{ from: 10000000019, to: 12, label: "3/10" },
-{ from: 10000000020, to: 12, label: "1/10" },
-{ from: 10000000020, to: 13, label: "9/10" },
-{ from: 10000000021, to: 12, label: "1" },
+{ from: 10000000001, to: 2, label: "1" },
+{ from: 10000000002, to: 3, label: "1" },
+{ from: 10000000003, to: 4, label: "1" },
+{ from: 10000000004, to: 3, label: "1" },
+{ from: 10000000005, to: 0, label: "1" },
+{ from: 10000000006, to: 5, label: "1" },
+{ from: 10000000007, to: 4, label: "1" },
+{ from: 10000000008, to: 0, label: "1" },
+{ from: 10000000009, to: 6, label: "1" },
+{ from: 10000000010, to: 5, label: "1" },
+{ from: 10000000011, to: 3, label: "1" },
+{ from: 10000000012, to: 6, label: "1" },
+{ from: 10000000013, to: 4, label: "1" },
 ]);
     var options_local = {
   "__fake_macros": {
@@ -43728,7 +43698,8 @@ class NetworkWrapper {
   "edit_groups": {
     "groups": [
       "states",
-      "actions"
+      "actions",
+      "a"
     ]
   },
   "groups": {
@@ -43772,6 +43743,23 @@ class NetworkWrapper {
         "color": "black",
         "size": 14
       }
+    },
+    "a": {
+      "borderWidth": 1,
+      "color": {
+        "background": "#ffa3a3",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
+      }
     }
   },
   "reload_button": false,
@@ -43801,7 +43789,7 @@ class NetworkWrapper {
     "max_result_color": "#ff0000"
   },
   "state_properties": {
-    "show_ids": false,
+    "show_ids": true,
     "show_rewards": true,
     "reward_symbol": "\u20ac",
     "show_zero_rewards": true,
@@ -43819,16 +43807,77 @@ class NetworkWrapper {
   },
   "saving": {
     "relative_path": true,
-    "filename": "layouts/NAME.json",
+    "filename": "layouts/lra.json",
     "save_button": false,
     "load_button": false
   },
-  "positions": {},
+  "positions": {
+    "0": {
+      "x": 291,
+      "y": -214
+    },
+    "1": {
+      "x": 175,
+      "y": -138
+    },
+    "2": {
+      "x": 415,
+      "y": -249
+    },
+    "3": {
+      "x": -85,
+      "y": -131
+    },
+    "4": {
+      "x": 41,
+      "y": -200
+    },
+    "5": {
+      "x": -42,
+      "y": -16
+    },
+    "6": {
+      "x": 190,
+      "y": 14
+    },
+    "7": {
+      "x": 175,
+      "y": 159
+    },
+    "8": {
+      "x": 72,
+      "y": 77
+    },
+    "9": {
+      "x": -240,
+      "y": -90
+    },
+    "10": {
+      "x": -346,
+      "y": -136
+    },
+    "11": {
+      "x": -199,
+      "y": 56
+    },
+    "12": {
+      "x": -65,
+      "y": 136
+    },
+    "13": {
+      "x": 57,
+      "y": 233
+    },
+    "14": {
+      "x": -149,
+      "y": 256
+    }
+  },
   "physics": true,
   "autoResize": true
 };
-    var container_local = document.getElementById("vTPkQKDiLc");
-    var nw_vTPkQKDiLc = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
+    var container_local = document.getElementById("NNjhsQnHRA");
+    var nw_NNjhsQnHRA = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
 
     </script>
   </body>
