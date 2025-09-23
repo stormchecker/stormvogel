@@ -17,7 +17,9 @@ class Path:
 
     path: (
         dict[int, tuple[stormvogel.model.Action, stormvogel.model.State]]
-        | dict[int, stormvogel.model.State]
+        | dict[
+            int, stormvogel.model.State
+        ]  # & Is there a reason here to use a dict and not a list?
     )
     model: stormvogel.model.Model
 
@@ -31,20 +33,24 @@ class Path:
             self.path = path
             self.model = model
         else:
-            # TODO make the simulators work for markov automata
+            # TODO make the simulators work for markov automata & Does this still need to be adressed?
             raise NotImplementedError
 
     def get_state_in_step(self, step: int) -> stormvogel.model.State | None:
         """returns the state discovered in the given step in the path"""
         if not self.model.supports_actions():
             state = self.path[step]
-            assert isinstance(state, stormvogel.model.State)
+            assert isinstance(
+                state, stormvogel.model.State
+            )  # & Are these asserts really necessary?
             return state
         if self.model.supports_actions():
             t = self.path[step]
             assert (
                 isinstance(t, tuple)
-                and isinstance(t[0], stormvogel.model.Action)
+                and isinstance(
+                    t[0], stormvogel.model.Action
+                )  # & Consider structural bindings, state, action = self.path[step]
                 and isinstance(t[1], stormvogel.model.State)
             )
             state = t[1]
@@ -78,7 +84,12 @@ class Path:
         res: list[stormvogel.model.Action | stormvogel.model.State] = [
             self.model.get_initial_state()
         ]
-        for _, v in self.path.items():
+        for (
+            _,
+            v,
+        ) in (
+            self.path.items()
+        ):  # & .values() should be used here, but that is my fault haha...
             if isinstance(v, tuple):
                 res += list(v)
             else:
@@ -100,7 +111,9 @@ class Path:
                 path += f" --> state: {state.id}"
         return path
 
-    def __eq__(self, other):
+    def __eq__(
+        self, other
+    ):  # & This is okay, but you could consider using brancheless programming, i.e. just have a list of if statements that return false if they fail their condition, that might make the structure nicer.
         if isinstance(other, Path):
             if not self.model.supports_actions():
                 return self.path == other.path and self.model == other.model
@@ -124,7 +137,7 @@ class Path:
         return len(self.path)
 
 
-def get_action(
+def get_action(  # & Maybe rename this to get_choice_of_state or something?
     state: stormvogel.model.State,
     scheduler: stormvogel.result.Scheduler
     | Callable[[stormvogel.model.State], stormvogel.model.Action],
@@ -145,17 +158,21 @@ def step(
     state: stormvogel.model.State,
     action: stormvogel.model.Action | None = None,
     seed: int | None = None,
-):
+):  # & Need to add the return type hint.
     """given a state, action and seed we simulate a step and return information on the state we discover"""
 
     # we go to the next state according to the probability distribution of the transition
-    choices = state.get_outgoing_choice(action)
+    choices = state.get_outgoing_choice(
+        action
+    )  # & I didn't notice this before apparently, but I think this method should not be named get_outgoing_choice since you are already providing the choice (the action)
     assert choices is not None  # what if there are no choices?
 
     # we build the probability distribution
     probability_distribution = []
     for t in choices:
-        assert isinstance(t[0], float) or isinstance(t[0], int)
+        assert isinstance(t[0], float) or isinstance(
+            t[0], int
+        )  # & Shouldn't this also support parametric stuff and rational numbers?
         probability_distribution.append(float(t[0]))
 
     # we select the next state (according to the seed)
@@ -166,7 +183,7 @@ def step(
     else:
         next_state = random.choices(states, k=1, weights=probability_distribution)[0]
 
-    next_state_id = next_state.id
+    next_state_id = next_state.id  # & Unnecessary
 
     # we also add the rewards
     rewards = []
@@ -211,9 +228,11 @@ def simulate_path(
         for i in range(steps):
             # for each step we add a state to the path
             if not model.states[state_id].is_absorbing():
-                state_id, reward, labels = step(
-                    model.get_state_by_id(state_id),
-                    seed=seed + i if seed is not None else None,
+                state_id, reward, labels = (
+                    step(  # & Unused variables should be renamed to _
+                        model.get_state_by_id(state_id),
+                        seed=seed + i if seed is not None else None,
+                    )
                 )
                 path[i + 1] = model.states[state_id]
             else:
@@ -238,7 +257,7 @@ def simulate_path(
             else:
                 break
 
-    path_object = Path(path, model)
+    path_object = Path(path, model)  # & Why not just return?
 
     return path_object
 
