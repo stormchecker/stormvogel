@@ -63,11 +63,7 @@ class Scheduler:
             return induced_dtmc
 
     def __str__(self) -> str:
-        if self.model.name is not None:
-            add = "Scheduler for model: " + self.model.name + "\n"
-        else:
-            add = ""
-        return add + "taken actions: " + str(self.taken_actions)
+        return "taken actions: " + str(self.taken_actions)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, Scheduler):
