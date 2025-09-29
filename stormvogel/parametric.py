@@ -20,7 +20,8 @@ class Polynomial:
         self.variables = variables
 
     def add_term(self, exponents: tuple[int, ...], coefficient: float):
-        # TODO exponents may also be a single integer
+        # & It is not exactly clear to me what this does. does add_term((1,2,3,4), 5) mean something like 5*(x1^1*x2^2*x3^3*x4^4) ?
+        # TODO exponents may also be a single integer & Is this still relevant?
         assert isinstance(exponents, tuple)
 
         if exponents in self.terms.keys():
@@ -92,7 +93,9 @@ class Polynomial:
 
         return s[:-3]
 
-    def __lt__(self, other) -> bool:
+    def __lt__(
+        self, other
+    ) -> bool:  # & Are you sure that this is a proper way to compare polynomials?
         return str(self.terms) < str(other.terms)
 
     def __eq__(self, other) -> bool:
@@ -145,7 +148,9 @@ class RationalFunction:
         s = "(" + str(self.numerator) + ")/(" + str(self.denominator) + ")"
         return s
 
-    def __lt__(self, other) -> bool:
+    def __lt__(
+        self, other
+    ) -> bool:  # & What kind of ordering is this, and do we need it?
         if isinstance(other, Polynomial):
             return self.numerator < other or self.denominator < other
         else:
