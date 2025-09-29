@@ -122,11 +122,3 @@ def build_property_string(model: stormvogel.model.Model):
     de.show()
 
     ipd.display(v.out)
-
-
-if __name__ == "__main__":
-    import examples.monty_hall
-
-    mdp = examples.monty_hall.create_monty_hall_mdp()
-
-    build_property_string(mdp)
