@@ -272,7 +272,7 @@ def simulate(
     seed: int | None = None,
 ) -> stormvogel.model.Model | None:
     """
-    Simulates the model.
+    Simulates the model. & Some more explanation of what the result looks like could be helful here.
     Args:
         model: The stormvogel model that the simulator should run on
         steps: The number of steps the simulator walks through the model
