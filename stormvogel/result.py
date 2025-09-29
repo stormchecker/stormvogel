@@ -4,10 +4,10 @@ import random
 
 class Scheduler:
     """
-    Scheduler object specifies what action to take in each state
+    Scheduler object specifies what action to take in each state & Maybe add that all schedulers are deterministic and memoryless?
 
     Args:
-        model: mdp model associated with the scheduler
+        model: mdp model associated with the scheduler & Also works for MAs right?
         taken_actions: for each state the action we choose in that state
     """
 
@@ -16,6 +16,7 @@ class Scheduler:
     taken_actions: dict[int, stormvogel.model.Action]
 
     # TODO functionality to convert a lambda scheduler to this object
+    # & Is this still relevant?
 
     def __init__(
         self,

@@ -3,6 +3,13 @@ import ipywidgets as widgets
 from stormvogel.dict_editor import DictEditor
 import IPython.display as ipd
 
+# & I think the property builder could use some love.
+# * A lot of features are missing.
+# * There is a bug if you choose compare, it will remove max and min
+# * "Beta version. More complicated paths in the future." - maybe remove this line or implement more complicated paths.
+# * Maybe we could add some colored text to highlight the different parts of the property.
+# It might be easier to implement this for me since I was forced to understand the wierd quirks of ipywidgets.
+
 
 def build_property_string(model: stormvogel.model.Model):
     """Lets the user build a property string using a widget"""
@@ -124,7 +131,9 @@ def build_property_string(model: stormvogel.model.Model):
     ipd.display(v.out)
 
 
-if __name__ == "__main__":
+if (
+    __name__ == "__main__"
+):  # & I assume this was for testing, should probably be removed.
     import examples.monty_hall
 
     mdp = examples.monty_hall.create_monty_hall_mdp()
