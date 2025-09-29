@@ -10,10 +10,14 @@ try:
 except ImportError:
     stormpy = None
 
+# & Good job on code re-use in the different cases of models in the mappings, it could have been a lot worse!
+# & I think the main problem is reliability and error handling. I think we should add more tests.
+
 
 def value_to_stormpy(
     value, variables: list["stormpy.pycarl.Variable"], model: stormvogel.model.Model
 ) -> "stormpy.pycarl.cln.FactorizedRationalFunction":
+    # & It might also return an interval or a float, so the return type is not always a FactorizedRationalFunction
     """converts a stormvogel transition value to a stormpy (pycarl) value"""
 
     assert stormpy is not None
@@ -57,7 +61,7 @@ def value_to_stormpy(
             factorized_numerator = convert_polynomial(value.numerator)
             factorized_denominator = convert_polynomial(value.denominator)
 
-            # TODO gives segmentation fault
+            # TODO gives segmentation fault & Is this still an issue?
             factorized_rational_function = (
                 stormpy.pycarl.cln.FactorizedRationalFunction(
                     factorized_numerator, factorized_denominator
@@ -99,7 +103,7 @@ def stormvogel_to_stormpy(
         choice_labeling: stormpy.storage.ChoiceLabeling | None,
     ) -> stormpy.storage.SparseMatrix:
         """
-        Takes a model and creates a stormpy sparsematrix that represents the same choices
+        Takes a model and creates a stormpy sparsematrix that represents the same choices & And set up the choice labeling by reference?
         """
 
         assert stormpy is not None
@@ -149,7 +153,9 @@ def stormvogel_to_stormpy(
                     val = value_to_stormpy(tuple[0], variables, model)
                     builder.add_next_value(
                         row=row_index,
-                        column=model.stormpy_id[tuple[1].id],
+                        column=model.stormpy_id[
+                            tuple[1].id
+                        ],  # & What is model.stormpy_id? I think it doesn't exist anymore?
                         value=val,
                     )
 
@@ -162,7 +168,7 @@ def stormvogel_to_stormpy(
                         choice_labeling.add_label_to_choice(str(label), row_index)
                 row_index += 1
 
-        matrix = builder.build()
+        matrix = builder.build()  # & Why not return builder.build() directly?
         return matrix
 
     def add_labels(model: stormvogel.model.Model) -> stormpy.storage.StateLabeling:
@@ -172,7 +178,9 @@ def stormvogel_to_stormpy(
         assert stormpy is not None
 
         # we first add all the different labels
-        state_labeling = stormpy.storage.StateLabeling(len(list(model.states.keys())))
+        state_labeling = stormpy.storage.StateLabeling(
+            len(list(model.states.keys()))
+        )  # & list is unnecessary.
         for label in model.get_labels():
             state_labeling.add_label(label)
 
@@ -194,7 +202,7 @@ def stormvogel_to_stormpy(
         reward_models = {}
         for rewardmodel in model.rewards:
             reward_models[rewardmodel.name] = stormpy.SparseRewardModel(
-                optional_state_action_reward_vector=list(
+                optional_state_action_reward_vector=list(  # & Why list()?
                     rewardmodel.get_reward_vector()
                 )
             )
@@ -205,6 +213,8 @@ def stormvogel_to_stormpy(
         """
         Helps to add the valuations to the sparsemodel using a statevaluation object
         """
+        # & I think that at some point we had a disucssion about the fact that stormpy only supported integer valuations
+        # Is this still a problem? If so, I think an error should be raised if a non-integer valuation is found.
         assert stormpy is not None
 
         manager = stormpy.ExpressionManager()
@@ -615,6 +625,7 @@ def stormvogel_to_stormpy(
         return map_ma(model)
     else:
         raise RuntimeError("This type of model is not yet supported for this action")
+        # & Maybe a more appropriate error message would be "Converting this type of model to stormpy is not yet supported"
 
 
 def value_to_stormvogel(value, sparsemodel) -> stormvogel.model.Value:
@@ -722,7 +733,8 @@ def stormpy_to_stormvogel(
 
     def add_states(
         model: stormvogel.model.Model,
-        sparsemodel: stormpy.storage.SparseDtmc | stormpy.storage.SparseMdp,
+        sparsemodel: stormpy.storage.SparseDtmc
+        | stormpy.storage.SparseMdp,  # & Should extend type hint to include SparseCtmc, SparsePomdp and SparseMA
     ):
         """
         helper function to add the states from the sparsemodel to the model
@@ -737,7 +749,8 @@ def stormpy_to_stormvogel(
 
     def new_reward_model(
         model: stormvogel.model.Model,
-        sparsemodel: stormpy.storage.SparseDtmc | stormpy.storage.SparseMdp,
+        sparsemodel: stormpy.storage.SparseDtmc
+        | stormpy.storage.SparseMdp,  # & Should extend type hint to include SparseCtmc, SparsePomdp and SparseMA
     ):
         """
         adds the rewards from the sparsemodel to either the states or the state action pairs of the model
@@ -806,7 +819,9 @@ def stormpy_to_stormvogel(
 
         return model
 
-    def map_mdp(sparsemdp: stormpy.storage.SparseDtmc) -> stormvogel.model.Model:
+    def map_mdp(
+        sparsemdp: stormpy.storage.SparseDtmc,
+    ) -> stormvogel.model.Model:  # & Shouldn't the type of the parameter be SparseMdp?
         """
         Takes a mdp stormpy representation as input and outputs a simple stormvogel representation
         """
@@ -835,7 +850,9 @@ def stormpy_to_stormvogel(
                 else:
                     actionlabels = frozenset({str(i)})
 
-                action = model.new_action(actionlabels)
+                action = model.new_action(
+                    actionlabels
+                )  # & But what if the action already exists?
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsemdp),
@@ -937,7 +954,9 @@ def stormpy_to_stormvogel(
                 else:
                     actionlabels = frozenset({str(i)})
 
-                action = model.new_action(actionlabels)
+                action = model.new_action(
+                    actionlabels
+                )  # & But what if the action already exists?
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsepomdp),
@@ -998,7 +1017,9 @@ def stormpy_to_stormvogel(
                 else:
                     actionlabels = frozenset({str(i)})
 
-                action = model.new_action(actionlabels)
+                action = model.new_action(
+                    actionlabels
+                )  # & But what if the action already exists?
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsema),
@@ -1049,14 +1070,16 @@ def stormpy_to_stormvogel(
         raise RuntimeError("This type of model is not yet supported for this action")
 
 
-def from_prism(prism_code="stormpy.storage.storage.PrismProgram"):
+def from_prism(
+    prism_code="stormpy.storage.storage.PrismProgram",
+):  # & Maybe it would be nice if we added the option to just pass a string too?
     """Create a model from prism."""
 
     assert stormpy is not None
     return stormpy_to_stormvogel(stormpy.build_model(prism_code))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # & This should be removed.
     dtmc = stormvogel.model.new_dtmc()
     init = dtmc.get_initial_state()
     init.set_choice(

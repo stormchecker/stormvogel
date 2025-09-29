@@ -8,11 +8,13 @@ try:
 except ImportError:
     stormpy = None
 
+# & I think we should also add more test cases for this function.
+
 
 def model_checking(
     model: stormvogel.model.Model, prop: str | None = None, scheduler: bool = True
 ) -> stormvogel.result.Result | None:
-    """
+    """& Please rephrase this docstring to be more clear and concise.
     Instead of calling this function, the stormpy model checker can be used by first mapping a model to a stormpy model,
     then calling the stormpy model checker with it followed by converting the model checker result to a stormvogel result.
     This function just performs this procedure automatically.
@@ -20,7 +22,7 @@ def model_checking(
 
     assert stormpy is not None
 
-    if not model.is_stochastic():
+    if not model.is_stochastic():  # & What about parametric models?
         raise RuntimeError(
             "We can only do model checking on stochastic models. Make sure that all outgoing transition probabilities sum to one in each state."
         )
