@@ -216,7 +216,7 @@ class State:
     def get_outgoing_transitions(
         self, action: "Action | None" = None
     ) -> list[tuple[Value, "State"]] | None:
-        """gets the outgoing choices of this state"""
+        """gets the outgoing transitions of this state"""
 
         # if the model supports actions we need to provide one
         if action and self.model.supports_actions():
@@ -233,7 +233,7 @@ class State:
     def is_absorbing(self) -> bool:
         """returns if the state has a nonzero transition going to another state or not"""
 
-        # for all actions we check if the state has outgoing choices to a different state with value != 0
+        # for all actions we check if the state has outgoing transitions to a different state with value != 0
         for action in self.available_actions():
             transitions = self.get_outgoing_transitions(action)
             if transitions is not None:
@@ -586,7 +586,7 @@ class Model:
     choices: dict[int, Choice]
     actions: set[Action] | None
     rewards: list[RewardModel]
-    # In ctmcs we work with rate choices but additionally we can optionally store exit rates (hashed by id of the state)
+    # In ctmcs we work with rate transitions but additionally we can optionally store exit rates (hashed by id of the state)
     exit_rates: dict[int, Value] | None
     # In ma's we keep track of markovian states
     markovian_states: list[State] | None

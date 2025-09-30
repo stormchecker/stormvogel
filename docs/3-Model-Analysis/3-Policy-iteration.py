@@ -62,7 +62,7 @@ def policy_iteration(
 
         choices = {i:
             arg_max(
-                [lambda a: sum([(p * dtmc_result.get_result_of_state(s2.id)) for p, s2 in s1.get_outgoing_choice(a)])
+                [lambda a: sum([(p * dtmc_result.get_result_of_state(s2.id)) for p, s2 in s1.get_outgoing_transitions(a)])
                     for _ in s1.available_actions()],
                 s1.available_actions())
         for i,s1 in model.states.items()}
