@@ -12,8 +12,10 @@ except ImportError:
 
 
 def value_to_stormpy(
-    value, variables: list["stormpy.pycarl.Variable"], model: stormvogel.model.Model
-) -> "stormpy.pycarl.cln.FactorizedRationalFunction":
+    value: stormvogel.model.Value,
+    variables: list["stormpy.pycarl.Variable"],
+    model: "stormvogel.model.Model",
+) -> "stormpy.pycarl.cln.FactorizedRationalFunction | stormpy.pycarl.Interval | stormvogel.model.Value":
     """converts a stormvogel transition value to a stormpy (pycarl) value"""
 
     assert stormpy is not None
@@ -162,8 +164,7 @@ def stormvogel_to_stormpy(
                         choice_labeling.add_label_to_choice(str(label), row_index)
                 row_index += 1
 
-        matrix = builder.build()
-        return matrix
+        return builder.build()
 
     def add_labels(model: stormvogel.model.Model) -> stormpy.storage.StateLabeling:
         """
@@ -172,7 +173,7 @@ def stormvogel_to_stormpy(
         assert stormpy is not None
 
         # we first add all the different labels
-        state_labeling = stormpy.storage.StateLabeling(len(list(model.states.keys())))
+        state_labeling = stormpy.storage.StateLabeling(len(model.states.keys()))
         for label in model.get_labels():
             state_labeling.add_label(label)
 
@@ -614,7 +615,9 @@ def stormvogel_to_stormpy(
     elif model.get_type() == stormvogel.model.ModelType.MA:
         return map_ma(model)
     else:
-        raise RuntimeError("This type of model is not yet supported for this action")
+        raise NotImplementedError(
+            "Converting this type of model to stormpy is not yet supported"
+        )
 
 
 def value_to_stormvogel(value, sparsemodel) -> stormvogel.model.Value:
@@ -722,7 +725,11 @@ def stormpy_to_stormvogel(
 
     def add_states(
         model: stormvogel.model.Model,
-        sparsemodel: stormpy.storage.SparseDtmc | stormpy.storage.SparseMdp,
+        sparsemodel: stormpy.storage.SparseDtmc
+        | stormpy.storage.SparseMdp
+        | stormpy.storage.SparseCtmc
+        | stormpy.storage.SparsePomdp
+        | stormpy.storage.SparseMA,
     ):
         """
         helper function to add the states from the sparsemodel to the model
@@ -737,7 +744,11 @@ def stormpy_to_stormvogel(
 
     def new_reward_model(
         model: stormvogel.model.Model,
-        sparsemodel: stormpy.storage.SparseDtmc | stormpy.storage.SparseMdp,
+        sparsemodel: stormpy.storage.SparseDtmc
+        | stormpy.storage.SparseMdp
+        | stormpy.storage.SparseCtmc
+        | stormpy.storage.SparsePomdp
+        | stormpy.storage.SparseMA,
     ):
         """
         adds the rewards from the sparsemodel to either the states or the state action pairs of the model
@@ -753,7 +764,14 @@ def stormpy_to_stormvogel(
 
             rewardmodel.set_from_rewards_vector(get_reward_vector)
 
-    def add_valuations(model: stormvogel.model.Model, sparsemodel):
+    def add_valuations(
+        model: stormvogel.model.Model,
+        sparsemodel: stormpy.storage.SparseDtmc
+        | stormpy.storage.SparseMdp
+        | stormpy.storage.SparseCtmc
+        | stormpy.storage.SparsePomdp
+        | stormpy.storage.SparseMA,
+    ):
         """
         adds the valuations from the sparsemodel to the states of the model
         """
@@ -806,7 +824,7 @@ def stormpy_to_stormvogel(
 
         return model
 
-    def map_mdp(sparsemdp: stormpy.storage.SparseDtmc) -> stormvogel.model.Model:
+    def map_mdp(sparsemdp: stormpy.storage.SparseMdp) -> stormvogel.model.Model:
         """
         Takes a mdp stormpy representation as input and outputs a simple stormvogel representation
         """
@@ -835,7 +853,7 @@ def stormpy_to_stormvogel(
                 else:
                     actionlabels = frozenset({str(i)})
 
-                action = model.new_action(actionlabels)
+                action = model.action(actionlabels)
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsemdp),
@@ -937,7 +955,7 @@ def stormpy_to_stormvogel(
                 else:
                     actionlabels = frozenset({str(i)})
 
-                action = model.new_action(actionlabels)
+                action = model.action(actionlabels)
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsepomdp),
@@ -998,7 +1016,7 @@ def stormpy_to_stormvogel(
                 else:
                     actionlabels = frozenset({str(i)})
 
-                action = model.new_action(actionlabels)
+                action = model.action(actionlabels)
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsema),
@@ -1046,7 +1064,9 @@ def stormpy_to_stormvogel(
     elif sparsemodel.model_type.name == "MA":
         return map_ma(sparsemodel)
     else:
-        raise RuntimeError("This type of model is not yet supported for this action")
+        raise NotImplementedError(
+            "Converting this type of model to stormvogel is not yet supported"
+        )
 
 
 def from_prism(prism_code="stormpy.storage.storage.PrismProgram"):
@@ -1054,18 +1074,3 @@ def from_prism(prism_code="stormpy.storage.storage.PrismProgram"):
 
     assert stormpy is not None
     return stormpy_to_stormvogel(stormpy.build_model(prism_code))
-
-
-if __name__ == "__main__":
-    dtmc = stormvogel.model.new_dtmc()
-    init = dtmc.get_initial_state()
-    init.set_choice(
-        [(1 / 6, dtmc.new_state(f"rolled{i}", {"rolled": i})) for i in range(6)]
-    )
-
-    print(dtmc)
-    sparsedtmc = stormvogel_to_stormpy(dtmc)
-    print(sparsedtmc)
-
-    new_dtmc = stormpy_to_stormvogel(sparsedtmc)
-    print(new_dtmc)
