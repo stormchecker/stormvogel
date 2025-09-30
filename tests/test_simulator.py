@@ -240,12 +240,12 @@ def test_simulate_path():
 
     # we make the path that the simulate path function should create
     other_path = simulator.Path(
-        {
-            1: ctmc.get_state_by_id(1),
-            2: ctmc.get_state_by_id(2),
-            3: ctmc.get_state_by_id(3),
-            4: ctmc.get_state_by_id(4),
-        },
+        [
+            ctmc.get_state_by_id(1),
+            ctmc.get_state_by_id(2),
+            ctmc.get_state_by_id(3),
+            ctmc.get_state_by_id(4),
+        ],
         ctmc,
     )
 
@@ -269,18 +269,18 @@ def test_simulate_path():
     assert action1 is not None
 
     other_path = simulator.Path(
-        {
-            1: (stormvogel.model.EmptyAction, pomdp.get_state_by_id(1)),
-            2: (
+        [
+            (stormvogel.model.EmptyAction, pomdp.get_state_by_id(1)),
+            (
                 action0,
                 pomdp.get_state_by_id(6),
             ),
-            3: (stormvogel.model.EmptyAction, pomdp.get_state_by_id(16)),
-            4: (
+            (stormvogel.model.EmptyAction, pomdp.get_state_by_id(16)),
+            (
                 action1,
                 pomdp.get_state_by_id(32),
             ),
-        },
+        ],
         pomdp,
     )
 
@@ -302,18 +302,18 @@ def test_simulate_path():
 
     # we make the path that the simulate path function should create
     other_path = simulator.Path(
-        {
-            1: (stormvogel.model.EmptyAction, pomdp.get_state_by_id(1)),
-            2: (
+        [
+            (stormvogel.model.EmptyAction, pomdp.get_state_by_id(1)),
+            (
                 action0,
                 pomdp.get_state_by_id(4),
             ),
-            3: (stormvogel.model.EmptyAction, pomdp.get_state_by_id(13)),
-            4: (
+            (stormvogel.model.EmptyAction, pomdp.get_state_by_id(13)),
+            (
                 action1,
                 pomdp.get_state_by_id(25),
             ),
-        },
+        ],
         pomdp,
     )
 

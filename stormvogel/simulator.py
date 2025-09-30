@@ -16,15 +16,15 @@ class Path:
     """
 
     path: (
-        dict[int, tuple[stormvogel.model.Action, stormvogel.model.State]]
-        | dict[int, stormvogel.model.State]
+        list[tuple[stormvogel.model.Action, stormvogel.model.State]]
+        | list[stormvogel.model.State]
     )
     model: stormvogel.model.Model
 
     def __init__(
         self,
-        path: dict[int, tuple[stormvogel.model.Action, stormvogel.model.State]]
-        | dict[int, stormvogel.model.State],
+        path: list[tuple[stormvogel.model.Action, stormvogel.model.State]]
+        | list[stormvogel.model.State],
         model: stormvogel.model.Model,
     ):
         if model.get_type() != stormvogel.model.ModelType.MA:
@@ -42,13 +42,11 @@ class Path:
             return state
         if self.model.supports_actions():
             t = self.path[step]
-            assert (
-                isinstance(t, tuple)
-                and isinstance(t[0], stormvogel.model.Action)
-                and isinstance(t[1], stormvogel.model.State)
+            assert isinstance(t, tuple)
+            action, state = t
+            assert isinstance(action, stormvogel.model.Action) and isinstance(
+                state, stormvogel.model.State
             )
-            state = t[1]
-            assert isinstance(state, stormvogel.model.State)
             return state
 
     def get_action_in_step(self, step: int) -> stormvogel.model.Action | None:
@@ -78,7 +76,7 @@ class Path:
         res: list[stormvogel.model.Action | stormvogel.model.State] = [
             self.model.get_initial_state()
         ]
-        for _, v in self.path.items():
+        for v in self.path:
             if isinstance(v, tuple):
                 res += list(v)
             else:
@@ -88,7 +86,7 @@ class Path:
     def __str__(self) -> str:
         path = "initial state"
         if self.model.supports_actions():
-            for t in self.path.values():
+            for t in self.path:
                 assert (
                     isinstance(t, tuple)
                     and isinstance(t[0], stormvogel.model.Action)
@@ -96,25 +94,23 @@ class Path:
                 )
                 path += f" --(action: {t[0].labels})--> state: {t[1].id}"
         else:
-            for state in self.path.values():
+            for state in self.path:
                 path += f" --> state: {state.id}"
         return path
 
     def __eq__(self, other):
         if isinstance(other, Path):
-            if not self.model.supports_actions():
+            if len(self.path) != len(other.path):
+                return False
+            elif not self.model.supports_actions():
                 return self.path == other.path and self.model == other.model
             else:
-                if len(self.path) != len(other.path):
-                    return False
-                for tuple, other_tuple in zip(
-                    sorted(self.path.values()), sorted(other.path.values())
-                ):
+                for tuple, other_tuple in zip(sorted(self.path), sorted(other.path)):
                     assert not (
                         isinstance(tuple, stormvogel.model.State)
                         or isinstance(other_tuple, stormvogel.model.State)
                     )
-                    if not (tuple[0] == other_tuple[0] and tuple[1] == other_tuple[1]):
+                    if not (tuple[0] == other_tuple[0] or tuple[1] == other_tuple[1]):
                         return False
                 return self.model == other.model
         else:
@@ -124,7 +120,7 @@ class Path:
         return len(self.path)
 
 
-def get_action(
+def get_choice_at_state(
     state: stormvogel.model.State,
     scheduler: stormvogel.result.Scheduler
     | Callable[[stormvogel.model.State], stormvogel.model.Action],
@@ -145,21 +141,21 @@ def step(
     state: stormvogel.model.State,
     action: stormvogel.model.Action | None = None,
     seed: int | None = None,
-):
+) -> tuple[int, list[stormvogel.model.Number], list[str]]:
     """given a state, action and seed we simulate a step and return information on the state we discover"""
 
     # we go to the next state according to the probability distribution of the transition
-    choices = state.get_outgoing_choice(action)
-    assert choices is not None  # what if there are no choices?
+    transitions = state.get_outgoing_transitions(action)
+    assert transitions is not None  # what if there are no choices?
 
     # we build the probability distribution
     probability_distribution = []
-    for t in choices:
-        assert isinstance(t[0], float) or isinstance(t[0], int)
+    for t in transitions:
+        assert isinstance(t[0], stormvogel.model.Number)
         probability_distribution.append(float(t[0]))
 
     # we select the next state (according to the seed)
-    states = [t[1] for t in choices]
+    states = [t[1] for t in transitions]
     if seed is not None:
         rng = random.Random(seed)
         next_state = rng.choices(states, k=1, weights=probability_distribution)[0]
@@ -206,41 +202,39 @@ def simulate_path(
 
     # we start adding states or state action pairs to the path
     state_id = 0
-    path = {}
+    path = []
     if not model.supports_actions():
         for i in range(steps):
             # for each step we add a state to the path
             if not model.states[state_id].is_absorbing():
-                state_id, reward, labels = step(
+                state_id, _, _ = step(
                     model.get_state_by_id(state_id),
                     seed=seed + i if seed is not None else None,
                 )
-                path[i + 1] = model.states[state_id]
+                path.append(model.states[state_id])
             else:
                 break
     else:
         for i in range(steps):
             # we first choose an action (randomly or according to scheduler)
             action = (
-                get_action(model.get_state_by_id(state_id), scheduler)
+                get_choice_at_state(model.get_state_by_id(state_id), scheduler)
                 if scheduler
                 else random.choice(model.get_state_by_id(state_id).available_actions())
             )
 
             # we append the next state action pair
             if not model.states[state_id].is_absorbing():
-                state_id, reward, labels = step(
+                state_id, _, _ = step(
                     model.get_state_by_id(state_id),
                     action,
                     seed=seed + i if seed is not None else None,
                 )
-                path[i + 1] = (action, model.states[state_id])
+                path.append((action, model.states[state_id]))
             else:
                 break
 
-    path_object = Path(path, model)
-
-    return path_object
+    return Path(path, model)
 
 
 def simulate(
@@ -384,7 +378,7 @@ def simulate(
             for j in range(steps):
                 # we first choose an action
                 action = (
-                    get_action(model.get_state_by_id(last_state_id), scheduler)
+                    get_choice_at_state(model.get_state_by_id(last_state_id), scheduler)
                     if scheduler
                     else random.choice(
                         model.get_state_by_id(last_state_id).available_actions()
@@ -422,9 +416,9 @@ def simulate(
                 # we also add the choices that we travelled through, so we need to keep track of the last state
                 # and of the discovered choices so that we don't add duplicates
                 if (last_state_id, state_id, action) not in discovered_choices:
-                    choices = model.get_state_by_id(last_state_id).get_outgoing_choice(
-                        action
-                    )
+                    choices = model.get_state_by_id(
+                        last_state_id
+                    ).get_outgoing_transitions(action)
                     discovered_choices.add((last_state_id, state_id, action))
 
                     # we calculate the transition probability

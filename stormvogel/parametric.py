@@ -22,8 +22,13 @@ class Polynomial:
         self.terms = dict()
         self.variables = variables
 
+    # TODO exponents may also be a single integer
     def add_term(self, exponents: tuple[int, ...], coefficient: float):
-        # TODO exponents may also be a single integer
+        """
+        adds a term to the polynomial
+        example: add_term((1,2,3,4), 5) means we add 5*(x1^1*x2^2*x3^3*x4^4)
+        """
+
         assert isinstance(exponents, tuple)
 
         if exponents in self.terms.keys():
@@ -96,7 +101,14 @@ class Polynomial:
         return s[:-3]
 
     def __lt__(self, other) -> bool:
-        return str(self.terms) < str(other.terms)
+        # we first compare by degree
+        self_deg = self.get_degree()
+        other_deg = other.get_degree()
+        if self_deg != other_deg:
+            return self_deg < other_deg
+
+        # if the degrees are equal we compare the terms lexicografically
+        return sorted(self.terms.items()) < sorted(other.terms.items())
 
     def __eq__(self, other) -> bool:
         if isinstance(other, Polynomial):
@@ -149,12 +161,12 @@ class RationalFunction:
         return s
 
     def __lt__(self, other) -> bool:
-        if isinstance(other, Polynomial):
-            return self.numerator < other or self.denominator < other
-        else:
-            return (
-                self.numerator < other.numerator or self.denominator < other.denominator
-            )
+        if not isinstance(other, RationalFunction):
+            return NotImplemented
+
+        if self.numerator != other.numerator:
+            return self.numerator < other.numerator
+        return self.denominator < other.denominator
 
 
 Parametric = Polynomial | RationalFunction

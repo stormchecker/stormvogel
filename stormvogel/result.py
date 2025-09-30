@@ -15,8 +15,6 @@ class Scheduler:
     # taken actions are hashed by the state id
     taken_actions: dict[int, stormvogel.model.Action]
 
-    # TODO functionality to convert a lambda scheduler to this object
-
     def __init__(
         self,
         model: stormvogel.model.Model,
@@ -49,7 +47,7 @@ class Scheduler:
             for _, state in self.model:
                 induced_dtmc.new_state(labels=state.labels, valuations=state.valuations)
                 action = self.get_choice_of_state(state)
-                choices = state.get_outgoing_choice(action)
+                choices = state.get_outgoing_transitions(action)
                 assert choices is not None
                 induced_dtmc.add_choice(s=state, choices=choices)
 
