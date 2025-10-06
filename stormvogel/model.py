@@ -115,7 +115,7 @@ class State:
         id: The id of this state.
         model: The model this state belongs to.
         observation: the observation of this state in case the model is a pomdp.
-        name: the name of this state.
+        name: the name of this state. (unique identifier in case ids change)
     """
 
     labels: list[str]
@@ -292,14 +292,14 @@ class Action:
 
     labels: frozenset[str]
 
-    @staticmethod
-    def create(labels: frozenset[str] | str | None = None) -> "Action":
+    def __init__(self, labels: str | frozenset[str] | None):
         if isinstance(labels, str):
-            return Action(frozenset({labels}))
-        elif isinstance(labels, frozenset):
-            return Action(labels)
-        else:
-            return Action(frozenset())
+            labels = frozenset({labels})
+        elif labels is None:
+            labels = frozenset()
+
+        # we use object.__setattr__ because of the immutability of the class
+        object.__setattr__(self, "labels", labels)
 
     def __lt__(self, other):
         if not isinstance(other, Action):
@@ -937,7 +937,7 @@ class Model:
                 "Called new_action on a model that does not support actions"
             )
         assert self.actions is not None
-        action = Action.create(labels)
+        action = Action(labels)
         self.actions.add(action)
         return action
 
@@ -1065,7 +1065,7 @@ class Model:
                 "Called method action on a model that does not support actions"
             )
         assert self.actions is not None
-        action = Action.create(labels)
+        action = Action(labels)
 
         if action not in self.actions:
             self.new_action(labels)
