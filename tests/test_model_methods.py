@@ -423,7 +423,7 @@ def test_valuation_methods():
     mdp = stormvogel.examples.monty_hall.create_monty_hall_mdp()
     assert mdp.get_variables() == {"car_pos", "chosen_pos", "reveal_pos"}
 
-    # we test the unassigned_variables function + the set_valuation_at_remaining_states function on the die model
+    # we test the unassigned_variables function + the add_valuation_at_remaining_states function on the die model
     dtmc = stormvogel.model.new_dtmc()
     init = dtmc.get_initial_state()
     init.set_choice(
@@ -436,6 +436,6 @@ def test_valuation_methods():
 
     assert dtmc.has_unassigned_variables()
 
-    dtmc.set_valuation_at_remaining_states()  # TODO more elaborate test, especially when unassigned_variables() returns more information
+    dtmc.add_valuation_at_remaining_states()  # TODO more elaborate test, especially when unassigned_variables() returns more information
 
     assert not dtmc.has_unassigned_variables()

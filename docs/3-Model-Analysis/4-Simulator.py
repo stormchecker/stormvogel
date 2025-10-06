@@ -39,7 +39,7 @@ vis.highlight_path(path, "red", 1, clear=True)
 
 # %%
 def scheduler(s: State) -> Action:
-    return Action.create("rawr")
+    return Action("rawr")
 
 path2 = stormvogel.simulator.simulate_path(lion, steps=5, seed=1234, scheduler=scheduler)
 

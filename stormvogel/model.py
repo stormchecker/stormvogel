@@ -115,7 +115,7 @@ class State:
         id: The id of this state.
         model: The model this state belongs to.
         observation: the observation of this state in case the model is a pomdp.
-        name: the name of this state.
+        name: the name of this state. (unique identifier in case ids change)
     """
 
     labels: list[str]
@@ -292,14 +292,14 @@ class Action:
 
     labels: frozenset[str]
 
-    @staticmethod
-    def create(labels: frozenset[str] | str | None = None) -> "Action":
+    def __init__(self, labels: str | frozenset[str] | None):
         if isinstance(labels, str):
-            return Action(frozenset({labels}))
-        elif isinstance(labels, frozenset):
-            return Action(labels)
-        else:
-            return Action(frozenset())
+            labels = frozenset({labels})
+        elif labels is None:
+            labels = frozenset()
+
+        # we use object.__setattr__ because of the immutability of the class
+        object.__setattr__(self, "labels", labels)
 
     def __lt__(self, other):
         if not isinstance(other, Action):
@@ -354,8 +354,15 @@ class Branch:
     def __add__(self, other):
         return Branch(self.branch + other.branch)
 
-    def sum_probabilities(self) -> Value:
-        return sum([prob for (prob, _) in self.branch])  # type: ignore
+    def sum_probabilities(self) -> Number:
+        sum = 0
+        for prob, _ in self.branch:
+            if not isinstance(prob, Number):
+                raise ValueError(
+                    "Summing probabilities is only defined for numerical values."
+                )
+            sum += prob
+        return sum
 
     def __iter__(self):
         return iter(self.branch)
@@ -370,7 +377,7 @@ class Choice:
         choice: The choices dictionary. For each available action, we have a branch containing the transitions.
     """
 
-    choics: dict[Action, Branch]
+    choice: dict[Action, Branch]
 
     def __init__(self, choice: dict[Action, Branch]):
         # Input validation, see RuntimeError.
@@ -410,14 +417,12 @@ class Choice:
 
         return True
 
-    def sum_probabilities(self, action) -> Value:
+    def sum_probabilities(self, action) -> Number:
         return self.choice[action].sum_probabilities()
 
-    def is_stochastic(self, epsilon: Value) -> bool:
+    def is_stochastic(self, epsilon: Number) -> bool:
         """returns whether the probabilities in the branches sum to 1"""
-        return all(
-            [abs(self.sum_probabilities(a) - 1) <= epsilon for a in self.choice]  # type: ignore
-        )
+        return all([abs(self.sum_probabilities(a) - 1) <= epsilon for a in self.choice])
 
     def __getitem__(self, item):
         return self.choice[item]
@@ -578,7 +583,7 @@ class Model:
         name: An optional name for this model.
         type: The model type.
         states: The states of the model. The keys are the state's ids.
-        choices: The choices of this model.
+        choices: The choices of this model. The keys are the state ids.
         actions: The actions of the model, if this is a model that supports actions.
         rewards: The rewardsmodels of this model.
         exit_rates: The exit rates of the model, optional if this model supports rates.
@@ -678,7 +683,7 @@ class Model:
                         return True
         return False
 
-    def is_stochastic(self, epsilon: Value = 0.000001) -> bool | None:
+    def is_stochastic(self, epsilon: Number = 0.000001) -> bool | None:
         """For discrete models: Checks if all sums of outgoing transition probabilities for all states equal 1, with at most epsilon rounding error.
         For continuous models: Checks if all sums of outgoing rates sum to 0
         """
@@ -715,6 +720,11 @@ class Model:
 
     def normalize(self):
         """Normalizes a model (for states where outgoing transition probabilities don't sum to 1, we divide each probability by the sum)"""
+        if self.is_parametric() or self.is_interval_model():
+            raise RuntimeError(
+                "normalize method undefined for parametric or interval models"
+            )
+
         if not self.supports_rates():
             self.add_self_loops()
             for _, state in self:
@@ -818,7 +828,7 @@ class Model:
                     state, [(float(0) if self.supports_rates() else float(1), state)]
                 )
 
-    def set_valuation_at_remaining_states(
+    def add_valuation_at_remaining_states(
         self, variables: list[str] | None = None, value: int | bool | float = 0
     ):
         """sets (dummy) value to variables in all states where they don't have a value yet"""
@@ -937,7 +947,7 @@ class Model:
                 "Called new_action on a model that does not support actions"
             )
         assert self.actions is not None
-        action = Action.create(labels)
+        action = Action(labels)
         self.actions.add(action)
         return action
 
@@ -1065,7 +1075,7 @@ class Model:
                 "Called method action on a model that does not support actions"
             )
         assert self.actions is not None
-        action = Action.create(labels)
+        action = Action(labels)
 
         if action not in self.actions:
             self.new_action(labels)

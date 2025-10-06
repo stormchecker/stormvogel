@@ -70,7 +70,7 @@ def create_monty_hall_pomdp():
     pomdp.add_self_loops()
 
     # we set the value -1 to all unassigned variables in the states
-    pomdp.set_valuation_at_remaining_states(value=-1)
+    pomdp.add_valuation_at_remaining_states(value=-1)
 
     # we add the observations TODO: let it make sense
     for _, state in pomdp:
