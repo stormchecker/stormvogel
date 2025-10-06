@@ -101,7 +101,8 @@ def stormvogel_to_stormpy(
         choice_labeling: stormpy.storage.ChoiceLabeling | None,
     ) -> stormpy.storage.SparseMatrix:
         """
-        Takes a model and creates a stormpy sparsematrix that represents the same choices
+        Takes a model and creates a stormpy sparsematrix that represents the same choices.
+        We also create the choice_labeling by reference simultaneously
         """
 
         assert stormpy is not None
@@ -195,9 +196,7 @@ def stormvogel_to_stormpy(
         reward_models = {}
         for rewardmodel in model.rewards:
             reward_models[rewardmodel.name] = stormpy.SparseRewardModel(
-                optional_state_action_reward_vector=list(
-                    rewardmodel.get_reward_vector()
-                )
+                optional_state_action_reward_vector=rewardmodel.get_reward_vector()
             )
 
         return reward_models
