@@ -15,8 +15,6 @@ class Scheduler:
     # taken actions are hashed by the state id
     taken_actions: dict[int, stormvogel.model.Action]
 
-    # TODO functionality to convert a lambda scheduler to this object
-
     def __init__(
         self,
         model: stormvogel.model.Model,
@@ -25,10 +23,10 @@ class Scheduler:
         self.model = model
         self.taken_actions = taken_actions
 
-    def get_choice_of_state(
+    def get_action_at_state(
         self, state: stormvogel.model.State | int
     ) -> stormvogel.model.Action:
-        """returns the choice in the scheduler for the given state if present in the model"""
+        """returns the action in the scheduler for the given state if present in the model"""
         if isinstance(state, int):
             state = self.model.get_state_by_id(state)
         if state in self.model.states.values():
@@ -45,13 +43,13 @@ class Scheduler:
             for reward_model in self.model.rewards:
                 induced_dtmc.new_reward_model(reward_model.name)
 
-            # we add all the states and choices according to the choices
+            # we add all the states and transitions according to the chosen actions
             for _, state in self.model:
                 induced_dtmc.new_state(labels=state.labels, valuations=state.valuations)
-                action = self.get_choice_of_state(state)
-                choices = state.get_outgoing_choice(action)
-                assert choices is not None
-                induced_dtmc.add_choice(s=state, choices=choices)
+                action = self.get_action_at_state(state)
+                choice = state.get_outgoing_transitions(action)
+                assert choice is not None
+                induced_dtmc.add_choice(s=state, choices=choice)
 
                 # we also add the rewards
                 for reward_model in self.model.rewards:
@@ -66,9 +64,10 @@ class Scheduler:
         return "taken actions: " + str(self.taken_actions)
 
     def __eq__(self, other) -> bool:
-        if isinstance(other, Scheduler):
-            return self.taken_actions == other.taken_actions
-        return False
+        if not isinstance(other, Scheduler):
+            return False
+
+        return self.taken_actions == other.taken_actions
 
 
 def random_scheduler(model: stormvogel.model.Model) -> Scheduler:
@@ -149,9 +148,10 @@ class Result:
         return max_val
 
     def __eq__(self, other) -> bool:
-        if isinstance(other, Result):
-            return self.values == other.values and self.scheduler == other.scheduler
-        return False
+        if not isinstance(other, Result):
+            return False
+
+        return self.values == other.values and self.scheduler == other.scheduler
 
     def __iter__(self):
         return iter(self.values.items())

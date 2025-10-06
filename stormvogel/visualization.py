@@ -185,8 +185,8 @@ class VisualizationBase:
         if self.scheduler is None:
             return default
 
-        choice = self.scheduler.get_choice_of_state(self.model.get_state_by_id(s_id))
-        return "scheduled_actions" if a == choice else default
+        action = self.scheduler.get_action_at_state(self.model.get_state_by_id(s_id))
+        return "scheduled_actions" if a == action else default
 
     def _format_rewards(
         self, s: stormvogel.model.State, a: stormvogel.model.Action
@@ -314,10 +314,10 @@ class VisualizationBase:
                   Otherwise, the dictionary will be empty.
         """
         properties = dict()
-        choices = state.get_outgoing_choice(action)
-        if choices is None:
+        transitions = state.get_outgoing_transitions(action)
+        if transitions is None:
             return properties
-        for prob, target in choices:
+        for prob, target in transitions:
             if next_state.id == target.id:
                 properties["label"] = self._format_number(prob)
                 return properties

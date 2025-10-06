@@ -37,7 +37,7 @@ def render_model_gif(
             path = simulator.simulate_path(model, max_length)
     frames = [state_to_image(model.get_initial_state())]  # List to store frames
 
-    for i in range(1, min(max_length, len(path) + 1)):
+    for i in range(1, min(max_length, len(path))):
         state = path.get_step(i)
         if not isinstance(state, stormvogel.model.State):
             state = state[1]

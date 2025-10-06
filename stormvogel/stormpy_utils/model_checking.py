@@ -13,8 +13,10 @@ def model_checking(
     model: stormvogel.model.Model, prop: str | None = None, scheduler: bool = True
 ) -> stormvogel.result.Result | None:
     """
-    Instead of calling this function, the stormpy model checker can be used by first mapping a model to a stormpy model,
-    then calling the stormpy model checker with it followed by converting the model checker result to a stormvogel result.
+    Instead of calling this function, the storm model checker can be used.
+    In order to to that, convert this model using the mapping and then do storm model checking.
+    After that, map it back.
+
     This function just performs this procedure automatically.
     """
 

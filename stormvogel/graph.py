@@ -164,9 +164,9 @@ class ModelGraph(DiGraph):
                 props = state_properties(state)
             G.add_state(state, **props)
 
-        for state_id, transition in model.choices.items():
+        for state_id, choice in model.choices.items():
             state = model.get_state_by_id(state_id)
-            for action, branch in transition.transition.items():
+            for action, branch in choice.choice.items():
                 action_props = dict()
                 if action_properties is not None:
                     action_props = action_properties(state, action)
