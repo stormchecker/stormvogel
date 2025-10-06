@@ -364,6 +364,7 @@ class JSVisualization(VisualizationBase):
         """
         import ipywidgets as widgets  # local, heavy
         import IPython.display as ipd  # local, heavy
+        import os
 
         super().__init__(model, layout, result, scheduler)
         self.initial_state_id = model.get_initial_state().id
@@ -397,7 +398,7 @@ class JSVisualization(VisualizationBase):
         else:
             self.network_wrapper = f"nw_{self.name}"
         self.new_nodes_hidden: bool = False
-        if do_init_server:
+        if do_init_server and os.environ.get("DOCUMENTATION", "0").lower() != "1":
             import stormvogel.communication_server  # ensure submodule is loaded
 
             self.server: stormvogel.communication_server.CommunicationServer = (
