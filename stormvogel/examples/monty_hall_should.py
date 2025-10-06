@@ -77,7 +77,7 @@ def create_monty_hall_mdp2():
     mdp.add_self_loops()
 
     # we set the value -1 to all unassigned variables in the states
-    mdp.set_valuation_at_remaining_states(value=-1)
+    mdp.add_valuation_at_remaining_states(value=-1)
 
     return mdp
 

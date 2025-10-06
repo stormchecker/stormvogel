@@ -71,17 +71,17 @@ from stormvogel.model import Action
 def my_scheduler(s: stormvogel.model.State):
     # "←" "↓" "→" "↑"
     if s.is_initial():
-        return Action.create("→")
+        return Action("→")
     env_id = int(s.labels[0])
     x,y = to_coordinate(env_id,env)
     if x < 2 and y == 0:
-        return Action.create("→")
+        return Action("→")
     elif x == 2 and y < 2:
-        return Action.create("↓")
+        return Action("↓")
     elif x > 0 and y == 2:
-        return Action.create("←")
+        return Action("←")
     else:
-        return Action.create("↑")
+        return Action("↑")
 
 gs = to_gymnasium_scheduler(sv_model, my_scheduler, GRID_ACTION_LABEL_MAP)
 filename = gymnasium_render_model_gif(env, gs, filename="ice3")

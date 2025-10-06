@@ -583,7 +583,7 @@ class Model:
         name: An optional name for this model.
         type: The model type.
         states: The states of the model. The keys are the state's ids.
-        choices: The choices of this model.
+        choices: The choices of this model. The keys are the state ids.
         actions: The actions of the model, if this is a model that supports actions.
         rewards: The rewardsmodels of this model.
         exit_rates: The exit rates of the model, optional if this model supports rates.
@@ -720,6 +720,11 @@ class Model:
 
     def normalize(self):
         """Normalizes a model (for states where outgoing transition probabilities don't sum to 1, we divide each probability by the sum)"""
+        if self.is_parametric() or self.is_interval_model():
+            raise RuntimeError(
+                "normalize method undefined for parametric or interval models"
+            )
+
         if not self.supports_rates():
             self.add_self_loops()
             for _, state in self:
@@ -823,7 +828,7 @@ class Model:
                     state, [(float(0) if self.supports_rates() else float(1), state)]
                 )
 
-    def set_valuation_at_remaining_states(
+    def add_valuation_at_remaining_states(
         self, variables: list[str] | None = None, value: int | bool | float = 0
     ):
         """sets (dummy) value to variables in all states where they don't have a value yet"""
