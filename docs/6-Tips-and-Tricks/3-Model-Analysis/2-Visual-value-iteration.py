@@ -48,11 +48,11 @@ def naive_value_iteration(
         old_values = values_matrix[len(values_matrix) - 1]
         new_values = [None for state in model.get_states()]
         for sid, state in model.states.items():
-            transitions = model.get_choice(state)
+            choice = model.get_choice(state)
             # Now we have to take a decision for an action.
-            actions = transitions.transition.keys()
+            actions = choice.choice.keys()
             action_values = {}
-            for action, branch in transitions.transition.items():
+            for action, branch in choice.choice.items():
                 branch_value = sum([prob * old_values[state.id] for (prob, state) in branch.branch])
                 action_values[action] = branch_value
             # We take the action with the highest value.
