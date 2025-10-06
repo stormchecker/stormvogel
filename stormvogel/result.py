@@ -4,10 +4,11 @@ import random
 
 class Scheduler:
     """
-    Scheduler object specifies what action to take in each state
+    Scheduler object specifies what action to take in each state.
+    All schedulers are nondeterminstic and memoryless.
 
     Args:
-        model: mdp model associated with the scheduler
+        model: model associated with the scheduler (has to support actions)
         taken_actions: for each state the action we choose in that state
     """
 

@@ -23,9 +23,7 @@ def model_checking(
     assert stormpy is not None
 
     if not model.is_stochastic():
-        raise RuntimeError(
-            "We can only do model checking on stochastic models. Make sure that all outgoing transition probabilities sum to one in each state."
-        )
+        raise RuntimeError("Model checking only works on stochastic models.")
 
     # the user must provide a property string, otherwise we provide the widget for building one
     if prop:
