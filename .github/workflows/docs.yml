@@ -76,6 +76,8 @@ jobs:
             docs/**/*.ipynb
 
       - name: Run documentation notebooks
+        env:
+          DOCUMENTATION: 1
         run: |
          poetry run jupyter nbconvert --execute --to notebook --inplace ${{ steps.glob.outputs.paths }} --ExecutePreprocessor.kernel_name=python3
 
