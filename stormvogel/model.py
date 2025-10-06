@@ -354,8 +354,15 @@ class Branch:
     def __add__(self, other):
         return Branch(self.branch + other.branch)
 
-    def sum_probabilities(self) -> Value:
-        return sum([prob for (prob, _) in self.branch])  # type: ignore
+    def sum_probabilities(self) -> Number:
+        sum = 0
+        for prob, _ in self.branch:
+            if not isinstance(prob, Number):
+                raise ValueError(
+                    "Summing probabilities is only defined for numerical values."
+                )
+            sum += prob
+        return sum
 
     def __iter__(self):
         return iter(self.branch)
@@ -370,7 +377,7 @@ class Choice:
         choice: The choices dictionary. For each available action, we have a branch containing the transitions.
     """
 
-    choics: dict[Action, Branch]
+    choice: dict[Action, Branch]
 
     def __init__(self, choice: dict[Action, Branch]):
         # Input validation, see RuntimeError.
@@ -410,14 +417,12 @@ class Choice:
 
         return True
 
-    def sum_probabilities(self, action) -> Value:
+    def sum_probabilities(self, action) -> Number:
         return self.choice[action].sum_probabilities()
 
-    def is_stochastic(self, epsilon: Value) -> bool:
+    def is_stochastic(self, epsilon: Number) -> bool:
         """returns whether the probabilities in the branches sum to 1"""
-        return all(
-            [abs(self.sum_probabilities(a) - 1) <= epsilon for a in self.choice]  # type: ignore
-        )
+        return all([abs(self.sum_probabilities(a) - 1) <= epsilon for a in self.choice])
 
     def __getitem__(self, item):
         return self.choice[item]
@@ -678,7 +683,7 @@ class Model:
                         return True
         return False
 
-    def is_stochastic(self, epsilon: Value = 0.000001) -> bool | None:
+    def is_stochastic(self, epsilon: Number = 0.000001) -> bool | None:
         """For discrete models: Checks if all sums of outgoing transition probabilities for all states equal 1, with at most epsilon rounding error.
         For continuous models: Checks if all sums of outgoing rates sum to 0
         """
