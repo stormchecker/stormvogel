@@ -68,9 +68,10 @@ class Scheduler:
         return add + "taken actions: " + str(self.taken_actions)
 
     def __eq__(self, other) -> bool:
-        if isinstance(other, Scheduler):
-            return self.taken_actions == other.taken_actions
-        return False
+        if not isinstance(other, Scheduler):
+            return False
+
+        return self.taken_actions == other.taken_actions
 
 
 def random_scheduler(model: stormvogel.model.Model) -> Scheduler:
@@ -151,9 +152,10 @@ class Result:
         return max_val
 
     def __eq__(self, other) -> bool:
-        if isinstance(other, Result):
-            return self.values == other.values and self.scheduler == other.scheduler
-        return False
+        if not isinstance(other, Result):
+            return False
+
+        return self.values == other.values and self.scheduler == other.scheduler
 
     def __iter__(self):
         return iter(self.values.items())

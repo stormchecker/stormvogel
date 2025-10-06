@@ -99,22 +99,24 @@ class Path:
         return path
 
     def __eq__(self, other):
-        if isinstance(other, Path):
-            if len(self.path) != len(other.path):
-                return False
-            elif not self.model.supports_actions():
-                return self.path == other.path and self.model == other.model
-            else:
-                for tuple, other_tuple in zip(sorted(self.path), sorted(other.path)):
-                    assert not (
-                        isinstance(tuple, stormvogel.model.State)
-                        or isinstance(other_tuple, stormvogel.model.State)
-                    )
-                    if not (tuple[0] == other_tuple[0] or tuple[1] == other_tuple[1]):
-                        return False
-                return self.model == other.model
-        else:
+        if not isinstance(other, Path):
             return False
+
+        if len(self.path) != len(other.path):
+            return False
+
+        if self.model.supports_actions():
+            for tuple, other_tuple in zip(sorted(self.path), sorted(other.path)):
+                assert not (
+                    isinstance(tuple, stormvogel.model.State)
+                    or isinstance(other_tuple, stormvogel.model.State)
+                )
+                if not (tuple[0] == other_tuple[0] or tuple[1] == other_tuple[1]):
+                    return False
+
+            return self.model == other.model
+        else:
+            return self.path == other.path and self.model == other.model
 
     def __len__(self):
         return len(self.path)

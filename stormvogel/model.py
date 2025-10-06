@@ -254,21 +254,24 @@ class State:
         return res
 
     def __eq__(self, other):
-        if isinstance(other, State):
-            if self.id != other.id:
-                return False
-            if self.model.supports_observations():
-                if (
-                    self.observation is not None
-                    and other.observation is not None
-                    and self.observation != other.observation
-                ):
-                    return False
-            return (
-                sorted(self.labels) == sorted(other.labels)
-                and self.valuations == other.valuations
-            )
-        return False
+        if not isinstance(other, State):
+            return False
+
+        if self.id != other.id:
+            return False
+
+        if (
+            self.model.supports_observations()
+            and self.observation is not None
+            and other.observation is not None
+            and self.observation != other.observation
+        ):
+            return False
+
+        return (
+            sorted(self.labels) == sorted(other.labels)
+            and self.valuations == other.valuations
+        )
 
     def __lt__(self, other):
         if not isinstance(other, State):
@@ -343,9 +346,10 @@ class Branch:
         return ", ".join(parts)
 
     def __eq__(self, other):
-        if isinstance(other, Branch):
-            return sorted(self.branch) == sorted(other.branch)
-        return False
+        if not isinstance(other, Branch):
+            return False
+
+        return sorted(self.branch) == sorted(other.branch)
 
     def __add__(self, other):
         return Branch(self.branch + other.branch)
@@ -390,19 +394,21 @@ class Choice:
         return self.choice.keys() == {EmptyAction}
 
     def __eq__(self, other):
-        if isinstance(other, Choice):
-            if len(self.choice) != len(other.choice):
-                return False
-            for action, other_action in zip(
-                sorted(self.choice.keys()), sorted(other.choice.keys())
+        if not isinstance(other, Choice):
+            return False
+
+        if len(self.choice) != len(other.choice):
+            return False
+
+        for action, other_action in zip(
+            sorted(self.choice.keys()), sorted(other.choice.keys())
+        ):
+            if not (
+                action == other_action and self.choice[action] == other.choice[action]
             ):
-                if not (
-                    action == other_action
-                    and self.choice[action] == other.choice[action]
-                ):
-                    return False
-            return True
-        return False
+                return False
+
+        return True
 
     def sum_probabilities(self, action) -> Value:
         return self.choice[action].sum_probabilities()
@@ -555,9 +561,10 @@ class RewardModel:
         return self.name < other.name
 
     def __eq__(self, other) -> bool:
-        if isinstance(other, RewardModel):
-            return self.name == other.name and self.rewards == other.rewards
-        return False
+        if not isinstance(other, RewardModel):
+            return False
+
+        return self.name == other.name and self.rewards == other.rewards
 
     def __iter__(self):
         return iter(self.rewards.items())
@@ -1248,17 +1255,18 @@ class Model:
         return "\n".join(res)
 
     def __eq__(self, other) -> bool:
-        if isinstance(other, Model):
-            return (
-                self.actions == other.actions
-                and self.type == other.type
-                and self.states == other.states
-                and self.choices == other.choices
-                and sorted(self.rewards) == sorted(other.rewards)
-                and self.exit_rates == other.exit_rates
-                and self.markovian_states == other.markovian_states
-            )
-        return False
+        if not isinstance(other, Model):
+            return False
+
+        return (
+            self.actions == other.actions
+            and self.type == other.type
+            and self.states == other.states
+            and self.choices == other.choices
+            and sorted(self.rewards) == sorted(other.rewards)
+            and self.exit_rates == other.exit_rates
+            and self.markovian_states == other.markovian_states
+        )
 
     def __getitem__(self, state_id: int):
         return self.states[state_id]

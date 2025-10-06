@@ -111,9 +111,9 @@ class Polynomial:
         return sorted(self.terms.items()) < sorted(other.terms.items())
 
     def __eq__(self, other) -> bool:
-        if isinstance(other, Polynomial):
-            return self.terms == other.terms
-        return False
+        if not isinstance(other, Polynomial):
+            return False
+        return self.terms == other.terms
 
     def __iter__(self):
         return iter(self.terms.items())
