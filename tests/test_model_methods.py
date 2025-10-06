@@ -235,8 +235,8 @@ def test_reassign_ids_removed_states():
     assert dtmc == other_dtmc
 
 
-def test_remove_choices_between_states():
-    # we make a model and remove choices between two states
+def test_remove_transitions_between_states():
+    # we make a model and remove transitions between two states
     dtmc = stormvogel.model.new_dtmc()
     state = dtmc.new_state()
     dtmc.set_choice(
@@ -244,9 +244,9 @@ def test_remove_choices_between_states():
         [(1, state)],
     )
     dtmc.set_choice(state, [(1, dtmc.get_initial_state())])
-    dtmc.remove_choices_between_states(state, dtmc.get_initial_state())
+    dtmc.remove_transitions_between_states(state, dtmc.get_initial_state())
 
-    # we create a model with the choices between the two states already missing
+    # we create a model with the transitions between the two states already missing
     new_dtmc = stormvogel.model.new_dtmc()
     state = new_dtmc.new_state()
     new_dtmc.set_choice(
@@ -299,7 +299,7 @@ def test_add_choice():
         mdp3.add_choice(mdp3.get_initial_state(), [(action3, state3)])
     assert (
         str(excinfo.value)
-        == "You cannot add a transition with an non-empty action to a transition which has an empty action. Use set_choice instead."
+        == "You cannot add a choice with an non-empty action to a choice which has an empty action. Use set_choice instead."
     )
     # And the other way round.
     mdp3 = stormvogel.model.new_mdp()
@@ -314,7 +314,7 @@ def test_add_choice():
         mdp3.add_choice(mdp3.get_initial_state(), [(0.5, state3)])
     assert (
         str(excinfo.value)
-        == "You cannot add a transition with an empty action to a transition which has no empty action. Use set_choice instead."
+        == "You cannot add a choice with an empty action to a choice which has no empty action. Use set_choice instead."
     )
 
     # Empty action case, add the branches together.
@@ -334,9 +334,9 @@ def test_add_choice():
     action6b = mdp6.new_action("b")
     mdp6.set_choice(mdp6.get_initial_state(), [(action6a, state6)])
     mdp6.add_choice(mdp6.get_initial_state(), [(action6b, state6)])
-    # print(mdp6.get_choice(mdp6.get_initial_state()).transition)
+    # print(mdp6.get_choice(mdp6.get_initial_state()).choice)
     # print([(action6a, state6), (action6b, state6)])
-    assert len(mdp6.get_choice(mdp6.get_initial_state()).transition) == 2
+    assert len(mdp6.get_choice(mdp6.get_initial_state()).choice) == 2
 
 
 def test_get_sub_model():

@@ -120,7 +120,7 @@ class Path:
         return len(self.path)
 
 
-def get_choice_at_state(
+def get_action_at_state(
     state: stormvogel.model.State,
     scheduler: stormvogel.result.Scheduler
     | Callable[[stormvogel.model.State], stormvogel.model.Action],
@@ -128,7 +128,7 @@ def get_choice_at_state(
     """Helper function to obtain the chosen action in a state by a scheduler."""
     assert scheduler is not None
     if isinstance(scheduler, stormvogel.result.Scheduler):
-        action = scheduler.get_choice_of_state(state)
+        action = scheduler.get_action_at_state(state)
     elif callable(scheduler):
         action = scheduler(state)
     else:
@@ -146,7 +146,7 @@ def step(
 
     # we go to the next state according to the probability distribution of the transition
     transitions = state.get_outgoing_transitions(action)
-    assert transitions is not None  # what if there are no choices?
+    assert transitions is not None  # what if there are no transitions?
 
     # we build the probability distribution
     probability_distribution = []
@@ -218,7 +218,7 @@ def simulate_path(
         for i in range(steps):
             # we first choose an action (randomly or according to scheduler)
             action = (
-                get_choice_at_state(model.get_state_by_id(state_id), scheduler)
+                get_action_at_state(model.get_state_by_id(state_id), scheduler)
                 if scheduler
                 else random.choice(model.get_state_by_id(state_id).available_actions())
             )
@@ -301,11 +301,11 @@ def simulate(
 
     # we keep track of the following sets
     discovered_states = {0}
-    discovered_choices = set()
+    discovered_transitions = set()
 
     # we distinguish between models with and without actions
     if not partial_model.supports_actions():
-        discovered_states_before_choices = set()
+        discovered_states_before_transitions = set()
         # now we start stepping through the model for the given number of runs
         for i in range(runs):
             # we start at state 0 and we begin taking steps
@@ -332,33 +332,31 @@ def simulate(
                 else:
                     new_state = partial_model.get_state_by_name(str(state_id))
 
-                # we also add the choices that we travelled through, so we need to keep track of the last state
-                # and of the discovered choices so that we don't add duplicates
-                if (last_state_id, state_id) not in discovered_choices:
-                    discovered_choices.add((last_state_id, state_id))
-                    choices = model.get_choice(last_state_id)
+                # we also add the transitions that we travelled through, so we need to keep track of the last state
+                # and of the discovered transitions so that we don't add duplicates
+                if (last_state_id, state_id) not in discovered_transitions:
+                    discovered_transitions.add((last_state_id, state_id))
+                    choice = model.get_choice(last_state_id)
 
                     # we calculate the transition probability
                     probability = 0
-                    for tuple in choices.transition[
-                        stormvogel.model.EmptyAction
-                    ].branch:
+                    for tuple in choice.choice[stormvogel.model.EmptyAction].branch:
                         if tuple[1].id == state_id:
                             assert isinstance(tuple[0], float) or isinstance(
                                 tuple[0], int
                             )
                             probability += float(
                                 tuple[0]
-                            )  # if there are multiple choices between the same pair of states, they collapse
+                            )  # if there are multiple transitions between the same pair of states, they collapse
                     assert new_state is not None
 
                     # if the starting state of the transition is known, we append the existing branch
                     # otherwise we make a new branch
-                    if last_state_id in discovered_states_before_choices:
-                        discovered_states_before_choices.add(last_state_id)
+                    if last_state_id in discovered_states_before_transitions:
+                        discovered_states_before_transitions.add(last_state_id)
                         s = partial_model.get_state_by_name(str(last_state_id))
                         assert s is not None
-                        branch = partial_model.choices[s.id].transition[
+                        branch = partial_model.choices[s.id].choice[
                             stormvogel.modle.EmptyAction
                         ]
                         branch.branch.append((probability, new_state))
@@ -378,7 +376,7 @@ def simulate(
             for j in range(steps):
                 # we first choose an action
                 action = (
-                    get_choice_at_state(model.get_state_by_id(last_state_id), scheduler)
+                    get_action_at_state(model.get_state_by_id(last_state_id), scheduler)
                     if scheduler
                     else random.choice(
                         model.get_state_by_id(last_state_id).available_actions()
@@ -413,25 +411,25 @@ def simulate(
                 else:
                     new_state = partial_model.get_state_by_name(str(state_id))
 
-                # we also add the choices that we travelled through, so we need to keep track of the last state
-                # and of the discovered choices so that we don't add duplicates
-                if (last_state_id, state_id, action) not in discovered_choices:
-                    choices = model.get_state_by_id(
+                # we also add the transitions that we travelled through, so we need to keep track of the last state
+                # and of the discovered transitions so that we don't add duplicates
+                if (last_state_id, state_id, action) not in discovered_transitions:
+                    transitions = model.get_state_by_id(
                         last_state_id
                     ).get_outgoing_transitions(action)
-                    discovered_choices.add((last_state_id, state_id, action))
+                    discovered_transitions.add((last_state_id, state_id, action))
 
                     # we calculate the transition probability
                     probability = 0
-                    assert choices is not None
-                    for tuple in choices:
+                    assert transitions is not None
+                    for tuple in transitions:
                         if tuple[1].id == state_id:
                             assert isinstance(tuple[0], float) or isinstance(
                                 tuple[0], int
                             )
                             probability += float(
                                 tuple[0]
-                            )  # if there are multiple choices between the same pair of action with next state, they collapse
+                            )  # if there are multiple transitions between the same pair of action with next state, they collapse
 
                     # if the starting state of the transition action pair is known, we append the existing branch
                     # otherwise we make a new branch
@@ -439,16 +437,16 @@ def simulate(
                     if (last_state_id, action) in discovered_actions:
                         s = partial_model.get_state_by_name(str(last_state_id))
                         assert s is not None
-                        branch = partial_model.choices[s.id].transition[action]
+                        branch = partial_model.choices[s.id].choice[action]
                         branch.branch.append((probability, new_state))
                     else:
                         discovered_actions.add((last_state_id, action))
                         branch = stormvogel.model.Branch(probability, new_state)
-                        trans = stormvogel.model.Choice({action: branch})
-                        assert trans is not None
+                        choice = stormvogel.model.Choice({action: branch})
+                        assert choice is not None
                         s = partial_model.get_state_by_name(str(last_state_id))
                         assert s is not None
-                        s.add_choice(trans)
+                        s.add_choice(choice)
 
                 last_state_id = state_id
 

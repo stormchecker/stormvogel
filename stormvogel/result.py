@@ -23,10 +23,10 @@ class Scheduler:
         self.model = model
         self.taken_actions = taken_actions
 
-    def get_choice_of_state(
+    def get_action_at_state(
         self, state: stormvogel.model.State | int
     ) -> stormvogel.model.Action:
-        """returns the choice in the scheduler for the given state if present in the model"""
+        """returns the action in the scheduler for the given state if present in the model"""
         if isinstance(state, int):
             state = self.model.get_state_by_id(state)
         if state in self.model.states.values():
@@ -43,13 +43,13 @@ class Scheduler:
             for reward_model in self.model.rewards:
                 induced_dtmc.new_reward_model(reward_model.name)
 
-            # we add all the states and choices according to the choices
+            # we add all the states and transitions according to the chosen actions
             for _, state in self.model:
                 induced_dtmc.new_state(labels=state.labels, valuations=state.valuations)
-                action = self.get_choice_of_state(state)
-                choices = state.get_outgoing_transitions(action)
-                assert choices is not None
-                induced_dtmc.add_choice(s=state, choices=choices)
+                action = self.get_action_at_state(state)
+                choice = state.get_outgoing_transitions(action)
+                assert choice is not None
+                induced_dtmc.add_choice(s=state, choices=choice)
 
                 # we also add the rewards
                 for reward_model in self.model.rewards:

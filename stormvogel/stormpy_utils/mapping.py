@@ -584,7 +584,7 @@ def stormvogel_to_stormpy(
     # we throw the neccessary errors first
     if not model.all_states_outgoing_transition():
         raise RuntimeError(
-            "This model has states with no outgoing choices.\nUse the add_self_loops() function to add self loops to all states with no outgoing transition."
+            "This model has states with no outgoing transitions.\nUse the add_self_loops() function to add self loops to all states with no outgoing transition."
         )
 
     if model.has_unassigned_variables():
@@ -794,7 +794,7 @@ def stormpy_to_stormvogel(
         # we add the states
         add_states(model, sparsedtmc)
 
-        # we add the choices
+        # we add the transitions
         matrix = sparsedtmc.transition_matrix
         for state in sparsedtmc.states:
             row = matrix.get_row(state.id)
@@ -835,13 +835,13 @@ def stormpy_to_stormvogel(
         # we add the states
         add_states(model, sparsemdp)
 
-        # we add the choices
+        # we add the transitions
         matrix = sparsemdp.transition_matrix
         for index, state in enumerate(sparsemdp.states):
             row_group_start = matrix.get_row_group_start(index)
             row_group_end = matrix.get_row_group_end(index)
 
-            # within a row group we add for each action the choices
+            # within a row group we add for each action the transitions
             transition = dict()
             for i in range(row_group_start, row_group_end):
                 row = matrix.get_row(i)
@@ -870,7 +870,7 @@ def stormpy_to_stormvogel(
                 choices = stormvogel.model.Choice(transition)
                 model.set_choice(model.get_state_by_id(state.id), choices)
 
-        # we add self loops to all states with no outgoing choices
+        # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
 
         # we add the reward models to the state action pairs
@@ -892,7 +892,7 @@ def stormpy_to_stormvogel(
         # we add the states
         add_states(model, sparsectmc)
 
-        # we add the choices
+        # we add the transitions
         matrix = sparsectmc.transition_matrix
         for state in sparsectmc.states:
             row = matrix.get_row(state.id)
@@ -911,7 +911,7 @@ def stormpy_to_stormvogel(
             )
             model.set_choice(model.get_state_by_id(state.id), choices)
 
-        # we add self loops to all states with no outgoing choices
+        # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
 
         # we add the reward models to the states
@@ -937,13 +937,13 @@ def stormpy_to_stormvogel(
         # we add the states
         add_states(model, sparsepomdp)
 
-        # we add the choices
+        # we add the transitions
         matrix = sparsepomdp.transition_matrix
         for index, state in enumerate(sparsepomdp.states):
             row_group_start = matrix.get_row_group_start(index)
             row_group_end = matrix.get_row_group_end(index)
 
-            # within a row group we add for each action the choices
+            # within a row group we add for each action the transitions
             transition = dict()
             for i in range(row_group_start, row_group_end):
                 row = matrix.get_row(i)
@@ -972,7 +972,7 @@ def stormpy_to_stormvogel(
                 choices = stormvogel.model.Choice(transition)
                 model.set_choice(model.get_state_by_id(state.id), choices)
 
-        # we add self loops to all states with no outgoing choices
+        # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
 
         # we add the reward models to the state action pairs
@@ -998,13 +998,13 @@ def stormpy_to_stormvogel(
         # we add the states
         add_states(model, sparsema)
 
-        # we add the choices
+        # we add the transitions
         matrix = sparsema.transition_matrix
         for index, state in enumerate(sparsema.states):
             row_group_start = matrix.get_row_group_start(index)
             row_group_end = matrix.get_row_group_end(index)
 
-            # within a row group we add for each action the choices
+            # within a row group we add for each action the transitions
             transition = dict()
             for i in range(row_group_start, row_group_end):
                 row = matrix.get_row(i)
@@ -1033,7 +1033,7 @@ def stormpy_to_stormvogel(
                 choices = stormvogel.model.Choice(transition)
                 model.set_choice(model.get_state_by_id(state.id), choices)
 
-        # we add self loops to all states with no outgoing choices
+        # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
 
         # we add the reward models to the state action pairs

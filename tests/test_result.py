@@ -1000,4 +1000,4 @@ def test_random_scheduler():
     lion = stormvogel.examples.create_lion_mdp()
     sched = stormvogel.result.random_scheduler(lion)
     for i, _ in lion:
-        sched.get_choice_of_state(i)
+        sched.get_action_at_state(i)
