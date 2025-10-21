@@ -9,6 +9,8 @@ import stormvogel.examples.stormpy_examples.stormpy_pomdp
 import stormvogel.examples.nuclear_fusion_ctmc
 import stormvogel.examples.monty_hall_pomdp
 import stormvogel.examples.stormpy_examples.stormpy_ma
+import pytest
+import re
 from typing import Union
 
 try:
@@ -415,6 +417,22 @@ def test_zero_mapping():
         stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
         new_stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
 
-        print(new_stormvogel_dtmc)
-
         assert stormvogel_dtmc == new_stormvogel_dtmc
+
+
+# we test if a model with multiple states without incoming transitions (>2) gives an error
+def test_labels():
+    if stormpy is not None:
+        model = stormvogel.model.new_dtmc(create_initial_state=False)
+        model.new_state()
+        model.new_state()
+        model.get_state_by_id(1).add_choice([(1, model.get_state_by_id(0))])
+        model.add_self_loops()
+
+        with pytest.raises(
+            RuntimeError,
+            match=re.escape(
+                "There is more than one state in this model without incoming transitions."
+            ),
+        ):
+            mapping.stormvogel_to_stormpy(model)

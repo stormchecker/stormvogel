@@ -245,7 +245,7 @@ class State:
 
     def is_initial(self):
         """Returns whether this state is initial."""
-        return self == self.model.get_initial_state()
+        return "init" in self.labels
 
     def __str__(self):
         res = f"id: {self.id}, labels: {self.labels}, valuations: {self.valuations}"
@@ -851,7 +851,26 @@ class Model:
                 return False
         return True
 
-    def has_zero_transitions(self) -> bool:
+    def all_non_init_states_incoming_transition(self) -> bool:
+        """checks if all states except the initial state have an incoming transition"""
+        for _, state in self:
+            # if it is initial then it is ok
+            if state.is_initial():
+                continue
+
+            # if it is not initial we check if it has incoming transitions
+            incoming = False
+            for index, transition in self.choices.items():
+                for action, branch in transition:
+                    for index_tuple, tuple in enumerate(branch):
+                        if tuple[1].id == state.id:
+                            incoming = True
+            if not incoming:
+                return False
+
+        return True
+
+    def has_zero_transition(self) -> bool:
         """checks if the model has transitions with probability zero"""
         for _, state in self:
             for action in state.available_actions():
@@ -985,7 +1004,7 @@ class Model:
 
         if state in self.states.values():
             # we remove the state from the transitions
-            # first we remove transitions that go into the state
+            # first we remove incoming transitions of the state
             remove_actions_index = []
             for index, transition in self.choices.items():
                 for action, branch in transition:
@@ -1126,15 +1145,24 @@ class Model:
     def get_initial_state(self) -> State:
         """Gets the initial state (contains label "init", or has id 0)."""
 
-        # TODO support for multiple initial states
-        init = self.get_states_with_label("init")
+        if len(self.states) == 0:
+            raise RuntimeError(
+                "This model does not have an initial state because it does not have any states."
+            )
+
+        init = []
+        for _, state in self:
+            if state.is_initial():
+                init.append(state)
+
         if len(init) == 0:
-            if len(list(self.states)) == 0:
-                raise RuntimeError(
-                    "This model does not have an initial state because it does not have any states."
-                )
-            return self.get_state_by_id(0)
-        return init[0]
+            raise RuntimeError("This model does not have an initial state.")
+        elif len(init) == 1:
+            return init[0]
+        else:
+            raise RuntimeError(
+                "This model has multiple initial states, which is not supported."
+            )
 
     def get_ordered_labels(self) -> list[list[str]]:
         """Get all the labels of this model, ordered by id.
