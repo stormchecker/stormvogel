@@ -153,6 +153,7 @@ def step(
     # we build the probability distribution
     probability_distribution = []
     for t in transitions:
+        # this action is not supported for parametric and interval models
         assert isinstance(t[0], stormvogel.model.Number)
         probability_distribution.append(float(t[0]))
 

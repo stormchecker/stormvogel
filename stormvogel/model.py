@@ -687,10 +687,11 @@ class Model:
         """For discrete models: Checks if all sums of outgoing transition probabilities for all states equal 1, with at most epsilon rounding error.
         For continuous models: Checks if all sums of outgoing rates sum to 0
         """
+
+        # if the model is parametric or an interval model, it should be trivially true, as the probabilities do
+        # not even sum to a constant.
         if self.is_parametric() or self.is_interval_model():
-            raise RuntimeError(
-                "is_stochastic method undefined for parametric or interval models"
-            )
+            return True
 
         if not self.supports_rates():
             return all(
