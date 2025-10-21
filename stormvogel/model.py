@@ -1009,6 +1009,9 @@ class Model:
         for index, state in enumerate(self.states.values()):
             state.id = index
 
+        # we also reset the counter
+        self.id_counter = max(self.states.keys()) + 1
+
     def remove_state(
         self, state: State, normalize: bool = True, reassign_ids: bool = False
     ):
