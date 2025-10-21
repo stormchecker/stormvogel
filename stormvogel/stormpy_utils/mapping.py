@@ -1,6 +1,7 @@
 import stormvogel.model
 import re
 import stormvogel.parametric as parametric
+import warnings
 
 import json
 from typing import Optional, Union, cast
@@ -588,6 +589,12 @@ def stormvogel_to_stormpy(
 
     if model.has_unassigned_variables():
         raise RuntimeError("Each state should have a value for each variable")
+
+    # we give a warning if the model has transitions with probability=0
+    if model.has_zero_transitions():
+        warnings.warn(
+            "Exporting a model that has transitions with probability=0. Stormpy assumes that these do not explicitly exist."
+        )
 
     # we make a mapping between stormvogel and stormpy ids in case they are out of order.
     stormpy_id = {}

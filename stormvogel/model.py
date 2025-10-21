@@ -735,21 +735,13 @@ class Model:
                     transitions = state.get_outgoing_transitions(action)
                     assert transitions is not None
                     for tuple in transitions:
-                        if (
-                            isinstance(tuple[0], float)
-                            or isinstance(tuple[0], Fraction)
-                            or isinstance(tuple[0], int)
-                        ):
+                        if isinstance(tuple[0], Number):
                             sum_prob += tuple[0]
 
                     # then we divide each value by the sum
                     new_transitions = []
                     for tuple in transitions:
-                        if (
-                            isinstance(tuple[0], float)
-                            or isinstance(tuple[0], Fraction)
-                            or isinstance(tuple[0], int)
-                        ):
+                        if isinstance(tuple[0], Number):
                             normalized_transition = (
                                 tuple[0] / sum_prob,
                                 tuple[1],
@@ -867,6 +859,18 @@ class Model:
             if self.choices.get(id) is None:
                 return False
         return True
+
+    def has_zero_transitions(self) -> bool:
+        """checks if the model has transitions with probability zero"""
+        for _, state in self:
+            for action in state.available_actions():
+                transitions = state.get_outgoing_transitions(action)
+                assert transitions is not None
+                for tuple in transitions:
+                    if isinstance(tuple[0], Number):
+                        if tuple[0] == 0:
+                            return True
+        return False
 
     def add_markovian_state(self, markovian_state: State):
         """adds a state to the markovian states (in case of markov automatas)"""
@@ -1246,7 +1250,7 @@ class Model:
         return dot
 
     def __str__(self) -> str:
-        res = [f"{self.type} with name {self.name}"]
+        res = [f"{self.type}"]
         res += ["", "States:"] + [f"{state}" for (_id, state) in self]
         res += ["", "Choices:"] + [
             f"{id}: {transition}" for (id, transition) in self.choices.items()

@@ -222,15 +222,8 @@ def test_stormvogel_to_stormpy_and_back_pomdp():
         stormvogel_pomdp = (
             stormvogel.examples.monty_hall_pomdp.create_monty_hall_pomdp()
         )
-        # print(stormvogel_pomdp)
         stormpy_pomdp = mapping.stormvogel_to_stormpy(stormvogel_pomdp)
-        # print(stormpy_pomdp)
         new_stormvogel_pomdp = mapping.stormpy_to_stormvogel(stormpy_pomdp)
-        # print(new_stormvogel_pomdp)
-        # print(stormvogel_pomdp.actions)
-        # print()
-        # print(new_stormvogel_pomdp.actions)
-        # print(stormvogel_pomdp.actions == new_stormvogel_pomdp.actions)
 
         assert new_stormvogel_pomdp == stormvogel_pomdp
 
@@ -406,6 +399,22 @@ def test_id_mapping():
         # we compare (should be unequal)
         assert new_stormvogel_dtmc != stormvogel_dtmc
 
-        # we reassign ids of original model and compare again
+        # we reassign ids of original model and compare again (should be equal now)
         stormvogel_dtmc.reassign_ids()
         assert new_stormvogel_dtmc == stormvogel_dtmc
+
+
+# test if zero transitions get transported correctly
+def test_zero_mapping():
+    if stormpy is not None:
+        stormvogel_dtmc = stormvogel.model.new_dtmc()
+        init = stormvogel_dtmc.get_initial_state()
+        init.set_choice([(0, stormvogel_dtmc.new_state())])
+        stormvogel_dtmc.add_self_loops()
+
+        stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
+        new_stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
+
+        print(new_stormvogel_dtmc)
+
+        assert stormvogel_dtmc == new_stormvogel_dtmc
