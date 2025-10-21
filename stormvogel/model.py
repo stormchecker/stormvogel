@@ -424,6 +424,16 @@ class Choice:
         """returns whether the probabilities in the branches sum to 1"""
         return all([abs(self.sum_probabilities(a) - 1) <= epsilon for a in self.choice])
 
+    def has_zero_transition(self) -> bool:
+        for _, branch in self:
+            transitions = branch.branch
+            assert transitions is not None
+            for tuple in transitions:
+                if isinstance(tuple[0], Number):
+                    if tuple[0] == 0:
+                        return True
+        return False
+
     def __getitem__(self, item):
         return self.choice[item]
 
@@ -872,14 +882,9 @@ class Model:
 
     def has_zero_transition(self) -> bool:
         """checks if the model has transitions with probability zero"""
-        for _, state in self:
-            for action in state.available_actions():
-                transitions = state.get_outgoing_transitions(action)
-                assert transitions is not None
-                for tuple in transitions:
-                    if isinstance(tuple[0], Number):
-                        if tuple[0] == 0:
-                            return True
+        for _, choice in self.choices.items():
+            if choice.has_zero_transition():
+                return True
         return False
 
     def add_markovian_state(self, markovian_state: State):
@@ -893,6 +898,10 @@ class Model:
         """Set the choice for a state."""
         if not isinstance(choices, Choice):
             choices = choice_from_shorthand(choices)
+
+        if choices.has_zero_transition() and not self.supports_rates():
+            raise RuntimeError("All numerical transition values should be nonzero.")
+
         if self.actions is not None and EmptyAction in choices.choice.keys():
             self.actions.add(EmptyAction)
         self.choices[s.id] = choices
@@ -902,6 +911,9 @@ class Model:
 
         if not isinstance(choices, Choice):
             choices = choice_from_shorthand(choices)
+
+        if choices.has_zero_transition() and not self.supports_rates():
+            raise RuntimeError("All numerical transition values should be nonzero.")
 
         try:
             existing_choices = self.get_choice(s)

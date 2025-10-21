@@ -1,7 +1,6 @@
 import stormvogel.model
 import re
 import stormvogel.parametric as parametric
-import warnings
 
 import json
 from typing import Optional, Union, cast
@@ -596,9 +595,9 @@ def stormvogel_to_stormpy(
         )
 
     # we give a warning if the model has transitions with probability=0
-    if model.has_zero_transition():
-        warnings.warn(
-            "Exporting a model that has transitions with probability=0. Stormpy assumes that these do not explicitly exist."
+    if model.has_zero_transition() and not model.supports_rates():
+        raise RuntimeError(
+            "This model has transitions with probability=0. Stormpy assumes that these do not explicitly exist."
         )
 
     # we make a mapping between stormvogel and stormpy ids in case they are out of order.

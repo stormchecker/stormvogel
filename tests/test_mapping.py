@@ -406,23 +406,6 @@ def test_id_mapping():
         assert new_stormvogel_dtmc == stormvogel_dtmc
 
 
-# test if zero transitions get transported correctly
-# this fails in the pipeline
-"""
-def test_zero_mapping():
-    if stormpy is not None:
-        stormvogel_dtmc = stormvogel.model.new_dtmc()
-        init = stormvogel_dtmc.get_initial_state()
-        init.set_choice([(0, stormvogel_dtmc.new_state())])
-        stormvogel_dtmc.add_self_loops()
-
-        stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
-        new_stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
-
-        assert stormvogel_dtmc == new_stormvogel_dtmc
-"""
-
-
 # we test if a model with multiple states without incoming transitions (>2) gives an error
 def test_labels():
     if stormpy is not None:
