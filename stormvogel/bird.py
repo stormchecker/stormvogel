@@ -167,7 +167,7 @@ def build_bird(
                     )
 
                 if s not in state_lookup:
-                    new_state = model.new_state(id=len(model.get_states()))
+                    new_state = model.new_state()
                     state_lookup[s] = new_state
                     branch.append((val, new_state))
                     states_to_be_visited.append(s)

@@ -634,6 +634,9 @@ class Model:
         # We also keep track of used state names
         self.used_names = set()
 
+        # we initialize the used id counter
+        self.id_counter = 0
+
         # Add the initial state if specified to do so
         if create_initial_state:
             self.new_state(["init"])
@@ -708,11 +711,7 @@ class Model:
                     transitions = state.get_outgoing_transitions(action)
                     assert transitions is not None
                     for transition in transitions:
-                        if (
-                            isinstance(transition[0], float)
-                            or isinstance(transition[0], Fraction)
-                            or isinstance(transition[0], int)
-                        ):
+                        if isinstance(transition[0], Number):
                             sum_rates += transition[0]
                     if sum_rates != 0:
                         return False
@@ -802,14 +801,6 @@ class Model:
                 if id == i:
                     return (s, a)
                 i += 1
-
-    def __free_state_id(self) -> int:
-        """Gets a free id in the states dict."""
-        # TODO: slow, not sure if that will become a problem though
-        i = 0
-        while i in self.states:
-            i += 1
-        return i
 
     def add_self_loops(self):
         """adds self loops to all states that do not have an outgoing transition"""
@@ -1091,15 +1082,12 @@ class Model:
         labels: list[str] | str | None = None,
         valuations: dict[str, int | bool | float] | None = None,
         name: str | None = None,
-        id: int | None = None,
     ) -> State:
         """Creates a new state and returns it."""
 
-        # we can either provide an id, or check which one is free
-        if id is None:
-            state_id = self.__free_state_id()
-        else:
-            state_id = id
+        # we set the id from the counter and increase it
+        state_id = self.id_counter
+        self.id_counter += 1
 
         if isinstance(labels, list):
             state = State(labels, valuations or {}, state_id, self, name=name)

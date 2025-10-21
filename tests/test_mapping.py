@@ -298,7 +298,7 @@ def test_stormpy_to_stormvogel_and_back_ma():
         assert sparse_equal(stormpy_ma, new_stormpy_ma)
 
 
-# Tests for modified models:
+# Tests for modified models (to test if removing states does not cause problems)
 
 
 def test_modified_stormpy_to_stormvogel_and_back():
@@ -341,7 +341,7 @@ def test_modified_stormpy_to_stormvogel_and_back():
         # we modify the model
         assert stormvogel_dtmc is not None
         stormvogel_dtmc.remove_state(stormvogel_dtmc.get_initial_state())
-        stormvogel_dtmc.new_state(name="three", labels=["three"], id=4)
+        stormvogel_dtmc.new_state(name="three", labels=["three"])
         stormvogel_dtmc.add_self_loops()
 
         # we map it back to stormpy
