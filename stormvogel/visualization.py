@@ -367,7 +367,12 @@ class JSVisualization(VisualizationBase):
         import os
 
         super().__init__(model, layout, result, scheduler)
-        self.initial_state_id = model.get_initial_state().id
+
+        try:
+            self.initial_state_id = model.get_initial_state().id
+        except RuntimeError:
+            self.initial_state_id = 0
+
         if output is None:
             self.output = widgets.Output()
         else:
