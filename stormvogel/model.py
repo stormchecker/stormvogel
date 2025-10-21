@@ -245,7 +245,7 @@ class State:
 
     def is_initial(self):
         """Returns whether this state is initial."""
-        return self == self.model.get_initial_state()
+        return "init" in self.labels
 
     def __str__(self):
         res = f"id: {self.id}, labels: {self.labels}, valuations: {self.valuations}"
@@ -423,6 +423,16 @@ class Choice:
     def is_stochastic(self, epsilon: Number) -> bool:
         """returns whether the probabilities in the branches sum to 1"""
         return all([abs(self.sum_probabilities(a) - 1) <= epsilon for a in self.choice])
+
+    def has_zero_transition(self) -> bool:
+        for _, branch in self:
+            transitions = branch.branch
+            assert transitions is not None
+            for tuple in transitions:
+                if isinstance(tuple[0], Number):
+                    if tuple[0] == 0:
+                        return True
+        return False
 
     def __getitem__(self, item):
         return self.choice[item]
@@ -634,6 +644,9 @@ class Model:
         # We also keep track of used state names
         self.used_names = set()
 
+        # we initialize the used id counter
+        self.id_counter = 0
+
         # Add the initial state if specified to do so
         if create_initial_state:
             self.new_state(["init"])
@@ -708,11 +721,7 @@ class Model:
                     transitions = state.get_outgoing_transitions(action)
                     assert transitions is not None
                     for transition in transitions:
-                        if (
-                            isinstance(transition[0], float)
-                            or isinstance(transition[0], Fraction)
-                            or isinstance(transition[0], int)
-                        ):
+                        if isinstance(transition[0], Number):
                             sum_rates += transition[0]
                     if sum_rates != 0:
                         return False
@@ -735,21 +744,13 @@ class Model:
                     transitions = state.get_outgoing_transitions(action)
                     assert transitions is not None
                     for tuple in transitions:
-                        if (
-                            isinstance(tuple[0], float)
-                            or isinstance(tuple[0], Fraction)
-                            or isinstance(tuple[0], int)
-                        ):
+                        if isinstance(tuple[0], Number):
                             sum_prob += tuple[0]
 
                     # then we divide each value by the sum
                     new_transitions = []
                     for tuple in transitions:
-                        if (
-                            isinstance(tuple[0], float)
-                            or isinstance(tuple[0], Fraction)
-                            or isinstance(tuple[0], int)
-                        ):
+                        if isinstance(tuple[0], Number):
                             normalized_transition = (
                                 tuple[0] / sum_prob,
                                 tuple[1],
@@ -811,14 +812,6 @@ class Model:
                     return (s, a)
                 i += 1
 
-    def __free_state_id(self) -> int:
-        """Gets a free id in the states dict."""
-        # TODO: slow, not sure if that will become a problem though
-        i = 0
-        while i in self.states:
-            i += 1
-        return i
-
     def add_self_loops(self):
         """adds self loops to all states that do not have an outgoing transition"""
         for id, state in self:
@@ -868,6 +861,32 @@ class Model:
                 return False
         return True
 
+    def all_non_init_states_incoming_transition(self) -> bool:
+        """checks if all states except the initial state have an incoming transition"""
+        for _, state in self:
+            # if it is initial then it is ok
+            if state.is_initial():
+                continue
+
+            # if it is not initial we check if it has incoming transitions
+            incoming = False
+            for index, transition in self.choices.items():
+                for action, branch in transition:
+                    for index_tuple, tuple in enumerate(branch):
+                        if tuple[1].id == state.id:
+                            incoming = True
+            if not incoming:
+                return False
+
+        return True
+
+    def has_zero_transition(self) -> bool:
+        """checks if the model has transitions with probability zero"""
+        for _, choice in self.choices.items():
+            if choice.has_zero_transition():
+                return True
+        return False
+
     def add_markovian_state(self, markovian_state: State):
         """adds a state to the markovian states (in case of markov automatas)"""
         if self.get_type() == ModelType.MA and self.markovian_states is not None:
@@ -879,6 +898,10 @@ class Model:
         """Set the choice for a state."""
         if not isinstance(choices, Choice):
             choices = choice_from_shorthand(choices)
+
+        if choices.has_zero_transition() and not self.supports_rates():
+            raise RuntimeError("All numerical transition values should be nonzero.")
+
         if self.actions is not None and EmptyAction in choices.choice.keys():
             self.actions.add(EmptyAction)
         self.choices[s.id] = choices
@@ -888,6 +911,9 @@ class Model:
 
         if not isinstance(choices, Choice):
             choices = choice_from_shorthand(choices)
+
+        if choices.has_zero_transition() and not self.supports_rates():
+            raise RuntimeError("All numerical transition values should be nonzero.")
 
         try:
             existing_choices = self.get_choice(s)
@@ -983,6 +1009,9 @@ class Model:
         for index, state in enumerate(self.states.values()):
             state.id = index
 
+        # we also reset the counter
+        self.id_counter = max(self.states.keys()) + 1
+
     def remove_state(
         self, state: State, normalize: bool = True, reassign_ids: bool = False
     ):
@@ -990,7 +1019,7 @@ class Model:
 
         if state in self.states.values():
             # we remove the state from the transitions
-            # first we remove transitions that go into the state
+            # first we remove incoming transitions of the state
             remove_actions_index = []
             for index, transition in self.choices.items():
                 for action, branch in transition:
@@ -1087,15 +1116,12 @@ class Model:
         labels: list[str] | str | None = None,
         valuations: dict[str, int | bool | float] | None = None,
         name: str | None = None,
-        id: int | None = None,
     ) -> State:
         """Creates a new state and returns it."""
 
-        # we can either provide an id, or check which one is free
-        if id is None:
-            state_id = self.__free_state_id()
-        else:
-            state_id = id
+        # we set the id from the counter and increase it
+        state_id = self.id_counter
+        self.id_counter += 1
 
         if isinstance(labels, list):
             state = State(labels, valuations or {}, state_id, self, name=name)
@@ -1134,15 +1160,24 @@ class Model:
     def get_initial_state(self) -> State:
         """Gets the initial state (contains label "init", or has id 0)."""
 
-        # TODO support for multiple initial states
-        init = self.get_states_with_label("init")
+        if len(self.states) == 0:
+            raise RuntimeError(
+                "This model does not have an initial state because it does not have any states."
+            )
+
+        init = []
+        for _, state in self:
+            if state.is_initial():
+                init.append(state)
+
         if len(init) == 0:
-            if len(list(self.states)) == 0:
-                raise RuntimeError(
-                    "This model does not have an initial state because it does not have any states."
-                )
-            return self.get_state_by_id(0)
-        return init[0]
+            raise RuntimeError("This model does not have an initial state.")
+        elif len(init) == 1:
+            return init[0]
+        else:
+            raise RuntimeError(
+                "This model has multiple initial states, which is not supported."
+            )
 
     def get_ordered_labels(self) -> list[list[str]]:
         """Get all the labels of this model, ordered by id.
@@ -1246,7 +1281,7 @@ class Model:
         return dot
 
     def __str__(self) -> str:
-        res = [f"{self.type} with name {self.name}"]
+        res = [f"{self.type}"]
         res += ["", "States:"] + [f"{state}" for (_id, state) in self]
         res += ["", "Choices:"] + [
             f"{id}: {transition}" for (id, transition) in self.choices.items()

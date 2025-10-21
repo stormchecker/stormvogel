@@ -2,6 +2,7 @@
 import stormvogel.examples.monty_hall
 import stormvogel.examples.die
 import stormvogel.stormpy_utils.model_checking
+import stormvogel.model
 import pytest
 
 try:

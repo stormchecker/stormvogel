@@ -169,19 +169,19 @@ def stormvogel_to_stormpy(
 
     def add_labels(model: stormvogel.model.Model) -> stormpy.storage.StateLabeling:
         """
-        Takes a model creates a state labelling object that determines which states get which labels in the stormpy representation
+        Takes a model and creates a state labelling object that determines which states get which labels in the stormpy representation
         """
         assert stormpy is not None
 
-        # we first add all the different labels
+        # we first initialize all labels
         state_labeling = stormpy.storage.StateLabeling(len(model.states.keys()))
         for label in model.get_labels():
             state_labeling.add_label(label)
 
         # then we assign the labels to the correct states
-        for state in model.states.items():
-            for label in state[1].labels:
-                state_labeling.add_label_to_state(label, model.stormpy_id[state[0]])
+        for _, state in model:
+            for label in state.labels:
+                state_labeling.add_label_to_state(label, model.stormpy_id[state.id])
 
         return state_labeling
 
@@ -284,10 +284,10 @@ def stormvogel_to_stormpy(
         # we determine the number of choices and the labels
         count = 0
         labels = set()
-        for state in model.states.values():
+        for _, state in model:
             for action in state.available_actions():
                 count += 1
-                if not action == stormvogel.model.EmptyAction:
+                if action != stormvogel.model.EmptyAction:
                     for label in action.labels:
                         labels.add(label)
 
@@ -588,6 +588,17 @@ def stormvogel_to_stormpy(
 
     if model.has_unassigned_variables():
         raise RuntimeError("Each state should have a value for each variable")
+
+    if not model.all_non_init_states_incoming_transition():
+        raise RuntimeError(
+            "There is more than one state in this model without incoming transitions."
+        )
+
+    # we give a warning if the model has transitions with probability=0
+    if model.has_zero_transition() and not model.supports_rates():
+        raise RuntimeError(
+            "This model has transitions with probability=0. Stormpy assumes that these do not explicitly exist."
+        )
 
     # we make a mapping between stormvogel and stormpy ids in case they are out of order.
     stormpy_id = {}

@@ -9,6 +9,8 @@ import stormvogel.examples.stormpy_examples.stormpy_pomdp
 import stormvogel.examples.nuclear_fusion_ctmc
 import stormvogel.examples.monty_hall_pomdp
 import stormvogel.examples.stormpy_examples.stormpy_ma
+import pytest
+import re
 from typing import Union
 
 try:
@@ -222,15 +224,8 @@ def test_stormvogel_to_stormpy_and_back_pomdp():
         stormvogel_pomdp = (
             stormvogel.examples.monty_hall_pomdp.create_monty_hall_pomdp()
         )
-        # print(stormvogel_pomdp)
         stormpy_pomdp = mapping.stormvogel_to_stormpy(stormvogel_pomdp)
-        # print(stormpy_pomdp)
         new_stormvogel_pomdp = mapping.stormpy_to_stormvogel(stormpy_pomdp)
-        # print(new_stormvogel_pomdp)
-        # print(stormvogel_pomdp.actions)
-        # print()
-        # print(new_stormvogel_pomdp.actions)
-        # print(stormvogel_pomdp.actions == new_stormvogel_pomdp.actions)
 
         assert new_stormvogel_pomdp == stormvogel_pomdp
 
@@ -305,7 +300,7 @@ def test_stormpy_to_stormvogel_and_back_ma():
         assert sparse_equal(stormpy_ma, new_stormpy_ma)
 
 
-# Tests for modified models:
+# Tests for modified models (to test if removing states does not cause problems)
 
 
 def test_modified_stormpy_to_stormvogel_and_back():
@@ -348,7 +343,7 @@ def test_modified_stormpy_to_stormvogel_and_back():
         # we modify the model
         assert stormvogel_dtmc is not None
         stormvogel_dtmc.remove_state(stormvogel_dtmc.get_initial_state())
-        stormvogel_dtmc.new_state(name="three", labels=["three"], id=4)
+        stormvogel_dtmc.new_state(name="three", labels=["three"])
         stormvogel_dtmc.add_self_loops()
 
         # we map it back to stormpy
@@ -406,6 +401,24 @@ def test_id_mapping():
         # we compare (should be unequal)
         assert new_stormvogel_dtmc != stormvogel_dtmc
 
-        # we reassign ids of original model and compare again
+        # we reassign ids of original model and compare again (should be equal now)
         stormvogel_dtmc.reassign_ids()
         assert new_stormvogel_dtmc == stormvogel_dtmc
+
+
+# we test if a model with multiple states without incoming transitions (>2) gives an error
+def test_labels():
+    if stormpy is not None:
+        model = stormvogel.model.new_dtmc(create_initial_state=False)
+        model.new_state()
+        model.new_state()
+        model.get_state_by_id(1).add_choice([(1, model.get_state_by_id(0))])
+        model.add_self_loops()
+
+        with pytest.raises(
+            RuntimeError,
+            match=re.escape(
+                "There is more than one state in this model without incoming transitions."
+            ),
+        ):
+            mapping.stormvogel_to_stormpy(model)
