@@ -594,7 +594,6 @@ def stormvogel_to_stormpy(
             "There is more than one state in this model without incoming transitions."
         )
 
-    # we give a warning if the model has transitions with probability=0
     if model.has_zero_transition() and not model.supports_rates():
         raise RuntimeError(
             "This model has transitions with probability=0. Stormpy assumes that these do not explicitly exist."
