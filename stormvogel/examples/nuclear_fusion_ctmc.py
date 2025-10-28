@@ -2,7 +2,7 @@ import stormvogel.model
 
 
 def create_nuclear_fusion_ctmc():
-    # Create a new model with the name "Nuclear fusion"
+    # Create a new model
     ctmc = stormvogel.model.new_ctmc()
 
     # hydrogen fuses into helium

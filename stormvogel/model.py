@@ -97,9 +97,9 @@ class Observation:
         return self.observation
 
     def __eq__(self, other):
-        if isinstance(other, Observation):
-            return self.observation == other.observation
-        return False
+        if not isinstance(other, Observation):
+            return False
+        return self.observation == other.observation
 
     def __str__(self):
         return f"Observation: {self.observation}"
@@ -131,6 +131,7 @@ class State:
         valuations: dict[str, int | float | bool],
         id: int,
         model,
+        observation: int | None = None,
         name: str | None = None,
     ):
         self.model = model
@@ -143,7 +144,7 @@ class State:
         self.labels = labels
         self.valuations = valuations
         self.id = id
-        self.observation = None
+        self.observation = observation
 
         # names must be unique, because they are the identifier of a state in case ids are changed
         if name is None:
@@ -199,48 +200,60 @@ class State:
         """Add choices to this state."""
         self.model.add_choice(self, choices)
 
+    def get_choice(self) -> "Choice | None":
+        """Gets the choice of this state."""
+
+        if self.id in self.model.choices:
+            return self.model.get_choice(self)
+        else:
+            return None
+
     def add_valuation(self, variable: str, value: int | bool | float):
         """Adds a valuation to the state."""
         self.valuations[variable] = value
 
+    def get_valuation(self, variable: str) -> int | bool | float:
+        return self.valuations[variable]
+
     def available_actions(self) -> list["Action"]:
         """returns the list of all available actions in this state"""
-        if self.model.supports_actions() and self.id in self.model.choices.keys():
-            action_list = []
-            for action, branch in self.model.choices[self.id]:
-                action_list.append(action)
-            return action_list
+        choice = self.get_choice()
+        if self.model.supports_actions() and choice is not None:
+            return list(choice.choice.keys())
         else:
             return [EmptyAction]
 
     def get_outgoing_transitions(
         self, action: "Action | None" = None
     ) -> list[tuple[Value, "State"]] | None:
-        """gets the outgoing transitions of this state"""
+        """gets the outgoing transitions of this state (after a specific action)"""
 
-        # if the model supports actions we need to provide one
+        choice = self.get_choice()
+        assert choice is not None
+
+        # if the model supports actions we need to provide an action
         if action and self.model.supports_actions():
-            if self.id in self.model.choices.keys():
-                branch = self.model.choices[self.id].choice[action]
-                return branch.branch
-        elif self.model.supports_actions() and not action:
+            if self.id in self.model.choices:
+                return choice.choice[action].branch
+        elif not action and self.model.supports_actions():
             raise RuntimeError("You need to provide a specific action")
         else:
-            if self.id in self.model.choices.keys():
-                branch = self.model.choices[self.id].choice[EmptyAction]
-                return branch.branch
+            if self.id in self.model.choices:
+                return choice.choice[EmptyAction].branch
 
     def is_absorbing(self) -> bool:
         """returns if the state has a nonzero transition going to another state or not"""
 
+        # if the state has no choice it is trivially true
+        choice = self.get_choice()
+        if choice is None:
+            return True
+
         # for all actions we check if the state has outgoing transitions to a different state with value != 0
-        for action in self.available_actions():
-            transitions = self.get_outgoing_transitions(action)
-            if transitions is not None:
-                for transition in transitions:
-                    assert isinstance(transition[0], (int, float))
-                    if float(transition[0]) != 0 and transition[1] != self:
-                        return False
+        for _, branch in choice:
+            for transition in branch:
+                if transition[1] != self:
+                    return False
         return True
 
     def is_initial(self):
@@ -426,12 +439,9 @@ class Choice:
 
     def has_zero_transition(self) -> bool:
         for _, branch in self:
-            transitions = branch.branch
-            assert transitions is not None
-            for tuple in transitions:
-                if isinstance(tuple[0], Number):
-                    if tuple[0] == 0:
-                        return True
+            for transition in branch:
+                if isinstance(transition[0], Number) and transition[0] == 0:
+                    return True
         return False
 
     def __getitem__(self, item):
@@ -441,10 +451,15 @@ class Choice:
         return iter(self.choice.items())
 
 
-ChoiceShorthand = list[tuple[Value, State]] | list[tuple[Action, State]]
+ChoiceShorthand = (
+    list[tuple[Value, State]]
+    | list[tuple[Action, State]]
+    | list[tuple[Value, int]]
+    | list[tuple[Action, int]]
+)
 
 
-def choice_from_shorthand(shorthand: ChoiceShorthand) -> Choice:
+def choice_from_shorthand(shorthand: ChoiceShorthand, model: "Model") -> Choice:
     """Get a Choice object from a ChoiceShorthand. Use for all choices in DTMCs and for empty actions in MDPs.
 
     There are two possible ways to define a ChoiceShorthand.
@@ -452,6 +467,16 @@ def choice_from_shorthand(shorthand: ChoiceShorthand) -> Choice:
     - using only the action and the target state (implies probability=1)."""
     if len(shorthand) == 0:
         raise RuntimeError("Choice cannot be empty")
+
+    # We convert the shorthand so that we have states instead of ids
+    converted_shorthand = []
+    for value_or_action, state in shorthand:
+        if isinstance(state, int):
+            if state not in model.states:
+                raise RuntimeError("This id is not known yet. Use states instead.")
+            state = model.get_state_by_id(state)
+        converted_shorthand.append((value_or_action, state))
+    shorthand = converted_shorthand
 
     # Check the type of the first element
     first_element = shorthand[0][0]
@@ -590,7 +615,6 @@ class Model:
     """Represents a model.
 
     Args:
-        name: An optional name for this model.
         type: The model type.
         states: The states of the model. The keys are the state's ids.
         choices: The choices of this model. The keys are the state ids.
@@ -662,38 +686,43 @@ class Model:
             + f"and {len(self.get_labels())} distinct labels."
         )
 
-    def get_actions(self):
+    def get_actions(self) -> set[Action] | None:
         """Return the actions of the model. Returns None if actions are not supported."""
         return self.actions
 
-    def supports_actions(self):
+    def supports_actions(self) -> bool:
         """Returns whether this model supports actions."""
         return self.get_type() in (ModelType.MDP, ModelType.POMDP, ModelType.MA)
 
-    def supports_rates(self):
+    def supports_rates(self) -> bool:
         """Returns whether this model supports rates."""
         return self.get_type() in (ModelType.CTMC, ModelType.MA)
 
-    def supports_observations(self):
+    def supports_observations(self) -> bool:
         """Returns whether this model supports observations."""
         return self.get_type() == ModelType.POMDP
 
-    def is_interval_model(self):
-        """Returns whether this model is an interval model, i.e., containts interval values)"""
+    def iterate_transitions(self) -> list[tuple[Value, State]]:
+        """iterates through all transitions in all choices of the model"""
+        transitions = []
         for transition in self.choices.values():
             for action, branch in transition:
-                for tup in branch:
-                    if isinstance(tup[0], Interval):
-                        return True
+                for transition in branch:
+                    transitions.append(transition)
+        return transitions
+
+    def is_interval_model(self) -> bool:
+        """Returns whether this model is an interval model, i.e., containts interval values)"""
+        for transition in self.iterate_transitions():
+            if isinstance(transition[0], Interval):
+                return True
         return False
 
-    def is_parametric(self):
+    def is_parametric(self) -> bool:
         """Returns whether this model contains parametric transition values"""
-        for transition in self.choices.values():
-            for action, branch in transition:
-                for tup in branch:
-                    if isinstance(tup[0], parametric.Parametric):
-                        return True
+        for transition in self.iterate_transitions():
+            if isinstance(transition[0], parametric.Parametric):
+                return True
         return False
 
     def is_stochastic(self, epsilon: Number = 0.000001) -> bool | None:
@@ -814,9 +843,9 @@ class Model:
 
     def add_self_loops(self):
         """adds self loops to all states that do not have an outgoing transition"""
-        for id, state in self:
+        for _, state in self:
             if (
-                self.choices.get(id) is None
+                state.get_choice() is None
             ):  # TODO what if the state has a choice but it is empty?
                 self.set_choice(
                     state, [(float(0) if self.supports_rates() else float(1), state)]
@@ -839,25 +868,22 @@ class Model:
                 if var not in state.valuations.keys():
                     state.valuations[var] = value
 
-    def has_unassigned_variables(self) -> bool:
-        """we return whether this model has variables without a value"""
+    def unassigned_variables(self) -> list[tuple[State, str]]:
+        """we return a list of tuples of state variable pairs that are unassigned"""
         variables = self.get_variables()
 
-        # if there are no variables at all, it is trivially true
-        if variables == set():
-            return False
-
         # we check all variables in all states
+        unassigned = []
         for _, state in self:
             for variable in variables:
                 if variable not in state.valuations.keys():
-                    return True
-        return False
+                    unassigned.append((state, variable))
+        return unassigned
 
     def all_states_outgoing_transition(self) -> bool:
-        """checks if all states have an outgoing transition"""
-        for id, _ in self:
-            if self.choices.get(id) is None:
+        """checks if all states have a choice"""
+        for _, state in self:
+            if state.get_choice() is None:  # TODO what if there is an empty choice
                 return False
         return True
 
@@ -870,11 +896,9 @@ class Model:
 
             # if it is not initial we check if it has incoming transitions
             incoming = False
-            for index, transition in self.choices.items():
-                for action, branch in transition:
-                    for index_tuple, tuple in enumerate(branch):
-                        if tuple[1].id == state.id:
-                            incoming = True
+            for transition in self.iterate_transitions():
+                if transition[1].id == state.id:
+                    incoming = True
             if not incoming:
                 return False
 
@@ -897,10 +921,10 @@ class Model:
     def set_choice(self, s: State, choices: Choice | ChoiceShorthand) -> None:
         """Set the choice for a state."""
         if not isinstance(choices, Choice):
-            choices = choice_from_shorthand(choices)
+            choices = choice_from_shorthand(choices, self)
 
         if choices.has_zero_transition() and not self.supports_rates():
-            raise RuntimeError("All numerical transition values should be nonzero.")
+            raise RuntimeError("All transition probabilities should be nonzero.")
 
         if self.actions is not None and EmptyAction in choices.choice.keys():
             self.actions.add(EmptyAction)
@@ -910,10 +934,10 @@ class Model:
         """Add new choices from a state to the model. If no choice currently exists, the result will be the same as set_choice."""
 
         if not isinstance(choices, Choice):
-            choices = choice_from_shorthand(choices)
+            choices = choice_from_shorthand(choices, self)
 
         if choices.has_zero_transition() and not self.supports_rates():
-            raise RuntimeError("All numerical transition values should be nonzero.")
+            raise RuntimeError("All transition probabilities should be nonzero.")
 
         try:
             existing_choices = self.get_choice(s)
@@ -1115,6 +1139,7 @@ class Model:
         self,
         labels: list[str] | str | None = None,
         valuations: dict[str, int | bool | float] | None = None,
+        observation: int | None = None,
         name: str | None = None,
     ) -> State:
         """Creates a new state and returns it."""
@@ -1124,11 +1149,27 @@ class Model:
         self.id_counter += 1
 
         if isinstance(labels, list):
-            state = State(labels, valuations or {}, state_id, self, name=name)
+            state = State(
+                labels,
+                valuations or {},
+                state_id,
+                self,
+                observation=observation,
+                name=name,
+            )
         elif isinstance(labels, str):
-            state = State([labels], valuations or {}, state_id, self, name=name)
+            state = State(
+                [labels],
+                valuations or {},
+                state_id,
+                self,
+                observation=observation,
+                name=name,
+            )
         elif labels is None:
-            state = State([], valuations or {}, state_id, self, name=name)
+            state = State(
+                [], valuations or {}, state_id, self, observation=observation, name=name
+            )
 
         self.states[state_id] = state
 
@@ -1138,7 +1179,7 @@ class Model:
         """Get all states with a given label."""
         # TODO: slow, not sure if that will become a problem though
         collected_states = []
-        for _id, state in self:
+        for _, state in self:
             if label in state.labels:
                 collected_states.append(state)
         return collected_states
@@ -1214,11 +1255,9 @@ class Model:
     def get_parameters(self) -> set[str]:
         """Returns the set of parameters of this model"""
         parameters = set()
-        for transition in self.choices.values():
-            for action, branch in transition:
-                for tup in branch:
-                    if isinstance(tup[0], parametric.Parametric):
-                        parameters = parameters.union(tup[0].get_variables())
+        for transition in self.iterate_transitions():
+            if isinstance(transition[0], parametric.Parametric):
+                parameters = parameters.union(transition[0].get_variables())
         return parameters
 
     def get_states(self) -> list[State]:

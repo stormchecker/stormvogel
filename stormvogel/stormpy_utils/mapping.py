@@ -586,7 +586,7 @@ def stormvogel_to_stormpy(
             "This model has states with no outgoing transitions.\nUse the add_self_loops() function to add self loops to all states with no outgoing transition."
         )
 
-    if model.has_unassigned_variables():
+    if model.unassigned_variables():
         raise RuntimeError("Each state should have a value for each variable")
 
     if not model.all_non_init_states_incoming_transition():
@@ -594,7 +594,6 @@ def stormvogel_to_stormpy(
             "There is more than one state in this model without incoming transitions."
         )
 
-    # we give a warning if the model has transitions with probability=0
     if model.has_zero_transition() and not model.supports_rates():
         raise RuntimeError(
             "This model has transitions with probability=0. Stormpy assumes that these do not explicitly exist."
@@ -798,7 +797,7 @@ def stormpy_to_stormvogel(
         Takes a dtmc stormpy representation as input and outputs a simple stormvogel representation
         """
 
-        # we create the model (it seems names are not stored in sparsedtmcs)
+        # we create the model
         model = stormvogel.model.new_dtmc(create_initial_state=False)
 
         # we add the states
@@ -819,7 +818,8 @@ def stormpy_to_stormvogel(
                 cast(
                     list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                     choiceshorthand,
-                )
+                ),
+                model,
             )
             model.set_choice(model.get_state_by_id(state.id), choices)
 
@@ -917,7 +917,8 @@ def stormpy_to_stormvogel(
                 cast(
                     list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                     choiceshorthand,
-                )
+                ),
+                model,
             )
             model.set_choice(model.get_state_by_id(state.id), choices)
 
@@ -941,7 +942,7 @@ def stormpy_to_stormvogel(
         Takes a pomdp stormpy representation as input and outputs a simple stormvogel representation
         """
 
-        # we create the model (it seems names are not stored in sparsepomdps)
+        # we create the model
         model = stormvogel.model.new_pomdp(create_initial_state=False)
 
         # we add the states
@@ -1002,7 +1003,7 @@ def stormpy_to_stormvogel(
         Takes a ma stormpy representation as input and outputs a simple stormvogel representation
         """
 
-        # we create the model (it seems names are not stored in sparsemas)
+        # we create the model
         model = stormvogel.model.new_ma(create_initial_state=False)
 
         # we add the states

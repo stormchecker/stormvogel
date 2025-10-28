@@ -6,7 +6,7 @@ import pytest
 
 @pytest.mark.tags("stormpy")
 def test_pmc_conversion():
-    # Create a new model with the name "simple pmc"
+    # Create a new model
     pmc = stormvogel.model.new_dtmc()
 
     init = pmc.get_initial_state()
@@ -48,7 +48,7 @@ def test_pmc_conversion():
 
 @pytest.mark.tags("stormpy")
 def test_pmdp_conversion():
-    # Create a new model with the name "simple pmdp"
+    # Create a new model
     pmdp = stormvogel.model.new_mdp()
 
     init = pmdp.get_initial_state()

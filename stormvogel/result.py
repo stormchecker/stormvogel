@@ -120,12 +120,8 @@ class Result:
             raise RuntimeError("This state is not a part of the model")
 
     def __str__(self) -> str:
-        add = ""
-        if self.model.name is not None:
-            add = "model: " + str(self.model.name) + "\n"
         return (
-            add
-            + "values: \n "
+            "values: \n "
             + str(self.values)
             + "\n"
             + "scheduler: \n "
