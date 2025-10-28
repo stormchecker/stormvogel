@@ -600,7 +600,6 @@ class Model:
     """Represents a model.
 
     Args:
-        name: An optional name for this model.
         type: The model type.
         states: The states of the model. The keys are the state's ids.
         choices: The choices of this model. The keys are the state ids.

@@ -797,7 +797,7 @@ def stormpy_to_stormvogel(
         Takes a dtmc stormpy representation as input and outputs a simple stormvogel representation
         """
 
-        # we create the model (it seems names are not stored in sparsedtmcs)
+        # we create the model
         model = stormvogel.model.new_dtmc(create_initial_state=False)
 
         # we add the states
@@ -940,7 +940,7 @@ def stormpy_to_stormvogel(
         Takes a pomdp stormpy representation as input and outputs a simple stormvogel representation
         """
 
-        # we create the model (it seems names are not stored in sparsepomdps)
+        # we create the model
         model = stormvogel.model.new_pomdp(create_initial_state=False)
 
         # we add the states
@@ -1001,7 +1001,7 @@ def stormpy_to_stormvogel(
         Takes a ma stormpy representation as input and outputs a simple stormvogel representation
         """
 
-        # we create the model (it seems names are not stored in sparsemas)
+        # we create the model
         model = stormvogel.model.new_ma(create_initial_state=False)
 
         # we add the states
