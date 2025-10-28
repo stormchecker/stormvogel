@@ -818,7 +818,8 @@ def stormpy_to_stormvogel(
                 cast(
                     list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                     choiceshorthand,
-                )
+                ),
+                model,
             )
             model.set_choice(model.get_state_by_id(state.id), choices)
 
@@ -916,7 +917,8 @@ def stormpy_to_stormvogel(
                 cast(
                     list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                     choiceshorthand,
-                )
+                ),
+                model,
             )
             model.set_choice(model.get_state_by_id(state.id), choices)
 
