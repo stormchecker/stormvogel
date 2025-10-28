@@ -868,20 +868,17 @@ class Model:
                 if var not in state.valuations.keys():
                     state.valuations[var] = value
 
-    def has_unassigned_variables(self) -> bool:
-        """we return whether this model has variables without a value"""
+    def unassigned_variables(self) -> list[tuple[State, str]]:
+        """we return a list of tuples of state variable pairs that are unassigned"""
         variables = self.get_variables()
 
-        # if there are no variables at all, it is trivially true
-        if variables == set():
-            return False
-
         # we check all variables in all states
+        unassigned = []
         for _, state in self:
             for variable in variables:
                 if variable not in state.valuations.keys():
-                    return True
-        return False
+                    unassigned.append((state, variable))
+        return unassigned
 
     def all_states_outgoing_transition(self) -> bool:
         """checks if all states have a choice"""

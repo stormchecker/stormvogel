@@ -473,8 +473,8 @@ def test_valuation_methods():
     )
     dtmc.add_self_loops()
 
-    assert dtmc.has_unassigned_variables()
+    assert dtmc.unassigned_variables() == [(init, "rolled")]
 
-    dtmc.add_valuation_at_remaining_states()  # TODO more elaborate test, especially when unassigned_variables() returns more information
+    dtmc.add_valuation_at_remaining_states()
 
-    assert not dtmc.has_unassigned_variables()
+    assert not dtmc.unassigned_variables()
