@@ -28,6 +28,8 @@ def create_study_mdp():
     pass_test.set_choice([(1, end)])
     fail_test.set_choice([(1, end)])
 
+    mdp.add_self_loops()
+
     reward_model = mdp.new_reward_model("R")
     reward_model.set_state_action_reward(pass_test, stormvogel.model.EmptyAction, 100)
     reward_model.set_state_action_reward(fail_test, stormvogel.model.EmptyAction, 0)

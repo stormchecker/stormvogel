@@ -37,3 +37,6 @@ def test_convert_imc():
     new_imc = mapping.stormpy_to_stormvogel(stormpy_imc)
 
     assert imc == new_imc
+
+
+# TODO test the other way around

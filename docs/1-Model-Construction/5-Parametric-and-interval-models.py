@@ -85,14 +85,14 @@ def labels(s: bird.State):
     if s.s == 7:
         return f"rolled{str(s.d)}"
 
-knuth_yao = bird.build_bird(
+knuth_yao_pmc = bird.build_bird(
     delta=delta,
     init=bird.State(s=0),
     labels=labels,
     modeltype=model.ModelType.DTMC,
 )
 
-vis = show(knuth_yao)
+vis = show(knuth_yao_pmc)
 
 # %% [markdown]
 # We can now evaluate the model by assigning the variable x to any concrete value. This induces a regular dtmc with fixed probabilities.
@@ -100,8 +100,8 @@ vis = show(knuth_yao)
 # %%
 p = 1/2
 
-eval_knuth_yao = knuth_yao.parameter_valuation({"x":p})
-vis = show(eval_knuth_yao)
+eval_knuth_yao_pmc = knuth_yao_pmc.parameter_valuation({"x":p})
+vis = show(eval_knuth_yao_pmc)
 
 # %% [markdown]
 # # Interval Models
@@ -136,12 +136,12 @@ def delta(s: bird.State):
         case 4:
             return [
                 (interval, bird.State(s=7, d=2)),
-                (inv_interval, bird.State(s=7, d=3)),
+                (invx, bird.State(s=7, d=3)),
             ]
         case 5:
             return [
                 (interval, bird.State(s=7, d=4)),
-                (inv_interval, bird.State(s=7, d=5)),
+                (invx, bird.State(s=7, d=5)),
             ]
         case 6:
             return [(interval, bird.State(s=2)), (inv_interval, bird.State(s=7, d=6))]
@@ -152,13 +152,13 @@ def labels(s: bird.State):
     if s.s == 7:
         return f"rolled{str(s.d)}"
 
-knuth_yao = bird.build_bird(
+knuth_yao_imc = bird.build_bird(
     delta=delta,
     init=bird.State(s=0),
     labels=labels,
     modeltype=model.ModelType.DTMC,
 )
 
-vis = show(knuth_yao)
+vis = show(knuth_yao_imc)
 
 # %%
