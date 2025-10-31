@@ -35,7 +35,11 @@ def value_to_stormpy(
                 assert isinstance(exponent, tuple)
                 for index, exp in enumerate(exponent):
                     for i in range(exp):
-                        stormpy_term *= variables[index]
+                        stormpy_term *= variables[
+                            [str(var) for var in variables].index(
+                                polynomial.variables[index]
+                            )
+                        ]
                 terms.append(stormpy_term)
         polynomial = stormpy.pycarl.cln.Polynomial(terms)
         factorized_polynomial = stormpy.pycarl.cln.FactorizedPolynomial(
@@ -44,9 +48,9 @@ def value_to_stormpy(
         return factorized_polynomial
 
     if model.is_parametric():
-        # we have a special case for floats as they are not just a specific case of a polynomial in stormvogel
-        if isinstance(value, float):
-            rational = stormpy.pycarl.cln.Rational(value)
+        # we have a special case for numbers as they are not just a specific case of a polynomial in stormvogel
+        if isinstance(value, stormvogel.model.Number):
+            rational = stormpy.pycarl.cln.Rational(float(value))
             polynomial = stormpy.pycarl.cln.Polynomial(rational)
             factorized_polynomial = stormpy.pycarl.cln.FactorizedPolynomial(
                 polynomial, stormpy.pycarl.cln.factorization_cache
@@ -54,32 +58,30 @@ def value_to_stormpy(
             factorized_rational = stormpy.pycarl.cln.FactorizedRationalFunction(
                 factorized_polynomial
             )
-            return factorized_rational
         elif isinstance(value, parametric.RationalFunction):
             factorized_numerator = convert_polynomial(value.numerator)
             factorized_denominator = convert_polynomial(value.denominator)
 
             # TODO gives segmentation fault
-            factorized_rational_function = (
-                stormpy.pycarl.cln.FactorizedRationalFunction(
-                    factorized_numerator, factorized_denominator
-                )
+            factorized_rational = stormpy.pycarl.cln.FactorizedRationalFunction(
+                factorized_numerator, factorized_denominator
             )
-            return factorized_rational_function
-        elif isinstance(value, parametric.Polynomial):
+        else:
+            assert isinstance(value, parametric.Polynomial)
             factorized_rational = stormpy.pycarl.cln.FactorizedRationalFunction(
                 convert_polynomial(value)
             )
-            return factorized_rational
+
+        return factorized_rational
     elif model.is_interval_model():
         # in the case of interval models, we convert intervals, and regular values are converted
         # to intervals where the lower and upper value are the same
         if isinstance(value, stormvogel.model.Interval):
             interval = stormpy.pycarl.Interval(value[0], value[1])
-            return interval
         else:
             interval = stormpy.pycarl.Interval(value, value)
-            return interval
+
+        return interval
     else:
         return value
 
@@ -608,8 +610,8 @@ def stormvogel_to_stormpy(
     # we store the pycarl parameters of a model
     stormpy.pycarl.clear_variable_pool()
     variables = []
-    for p in range(len(model.get_parameters())):
-        var = stormpy.pycarl.Variable()
+    for p in model.get_parameters():
+        var = stormpy.pycarl.Variable(p)
         variables.append(var)
 
     # we check the type to handle the model correctly
@@ -649,10 +651,10 @@ def value_to_stormvogel(value, sparsemodel) -> stormvogel.model.Value:
 
         # we create the list of variables
         # TODO make this more concise
-        variables = polynomial.gather_variables()
-        variables = re.sub(r"{|}", "", str(variables))
-        variables = re.sub(r"<Variable (\w+).*?>", r"\1", variables)
-        variables_list = [v.strip() for v in variables.split(",")]
+        var = polynomial.gather_variables()
+        var = re.sub(r"{|}", "", str(var))
+        var = re.sub(r"<Variable (\w+).*?>", r"\1", var)
+        variables_list = [v.strip() for v in var.split(",")]
 
         # we convert the polynomial to a more suitable list format
         parts = re.split(r"\+(?![^(]*\))", str(polynomial))
@@ -665,11 +667,10 @@ def value_to_stormvogel(value, sparsemodel) -> stormvogel.model.Value:
         # we initialize the polynomial
         stormvogel_polynomial = parametric.Polynomial(variables_list)
 
-        # and then we convert it to a dictionary of terms
-        length_tuple = len(variables_list)
+        # and then we add the terms to it
         for term in term_list:
             # we iterate through all terms, variables and exponents
-            index_tuple = [0 for i in range(length_tuple)]
+            index_tuple = [0 for i in range(len(variables_list))]
             for i in range(len(term)):
                 for j, var in enumerate(variables_list):
                     # we check if there is an exponent or not
