@@ -19,7 +19,7 @@ class Interval:
     """represents an interval value for interval models
 
     Args:
-        bottem: the bottom (left) element of the interval
+        bottom: the bottom (left) element of the interval
         top: the top (right) element of the interval
     """
 
