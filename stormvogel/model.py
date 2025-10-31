@@ -460,9 +460,11 @@ class Choice:
 
 ChoiceShorthand = (
     list[tuple[Value, State]]
-    | list[tuple[Action, State]]
     | list[tuple[Value, int]]
+    | list[tuple[Action, State]]
     | list[tuple[Action, int]]
+    | dict[Action, list[tuple[Value, State]]]
+    | dict[Action, list[tuple[Value, int]]]
 )
 
 
@@ -472,30 +474,53 @@ def choice_from_shorthand(shorthand: ChoiceShorthand, model: "Model") -> Choice:
     There are two possible ways to define a ChoiceShorthand.
     - using only the probability and the target state (implies default action when in an MDP).
     - using only the action and the target state (implies probability=1)."""
-    if len(shorthand) == 0:
-        raise RuntimeError("Choice cannot be empty")
 
-    # We convert the shorthand so that we have states instead of ids
-    converted_shorthand = []
-    for value_or_action, state in shorthand:
-        if isinstance(state, int):
-            if state not in model.states:
-                raise RuntimeError("This id is not known yet. Use states instead.")
-            state = model.get_state_by_id(state)
-        converted_shorthand.append((value_or_action, state))
-    shorthand = converted_shorthand
+    if isinstance(shorthand, dict):
+        # We convert the shorthand so that we have states instead of ids
+        converted_shorthand = dict()
+        for action, branch in shorthand.items():
+            converted_shorthand[action] = []
+            for value, state in branch:
+                if isinstance(state, int):
+                    if state not in model.states:
+                        raise RuntimeError(
+                            "This id is not known yet. Use states instead."
+                        )
+                    state = model.get_state_by_id(state)
+                converted_shorthand[action].append((value, state))
+        shorthand = converted_shorthand
 
-    # Check the type of the first element
-    first_element = shorthand[0][0]
-    if isinstance(first_element, Action):
-        transition_content = {}
-        for action, state in shorthand:
+        transition_content = dict()
+        for action, branch in shorthand.items():
             assert isinstance(action, Action)
-            transition_content[action] = Branch(1, state)
+            transition_content[action] = Branch(branch)
         return Choice(transition_content)
-    elif isinstance(first_element, Value):
-        return Choice({EmptyAction: Branch(cast(list[tuple[Value, State]], shorthand))})
-    raise RuntimeError(f"Type of {first_element} not supported in choice {shorthand}")
+    else:
+        # We convert the shorthand so that we have states instead of ids
+        converted_shorthand = []
+        for value_or_action, state in shorthand:
+            if isinstance(state, int):
+                if state not in model.states:
+                    raise RuntimeError("This id is not known yet. Use states instead.")
+                state = model.get_state_by_id(state)
+            converted_shorthand.append((value_or_action, state))
+        shorthand = converted_shorthand
+
+        # Check the type of the first element
+        first_element = shorthand[0][0]
+        if isinstance(first_element, Action):
+            transition_content = dict()
+            for action, state in shorthand:
+                assert isinstance(action, Action)
+                transition_content[action] = Branch(1, state)
+            return Choice(transition_content)
+        elif isinstance(first_element, Value):
+            return Choice(
+                {EmptyAction: Branch(cast(list[tuple[Value, State]], shorthand))}
+            )
+        raise RuntimeError(
+            f"Type of {first_element} not supported in choice {shorthand}"
+        )
 
 
 @dataclass()

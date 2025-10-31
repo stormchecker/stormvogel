@@ -100,6 +100,7 @@ vis = show(knuth_yao_pmc)
 # %%
 p = 1/2
 
+
 eval_knuth_yao_pmc = knuth_yao_pmc.parameter_valuation({"x":p})
 vis = show(eval_knuth_yao_pmc)
 

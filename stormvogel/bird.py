@@ -201,7 +201,7 @@ def build_bird(
     state_lookup = {init: init_state}
     while len(states_to_be_visited) > 0:
         state = states_to_be_visited.popleft()
-        transition = {}
+        choice = {}
 
         if model.supports_actions():
             # we loop over all available actions and call the delta function for each actions
@@ -232,7 +232,7 @@ def build_bird(
                 branch = add_new_choices(tuples, state)
 
                 if branch != []:
-                    transition[stormvogel_action] = stormvogel.model.Branch(branch)
+                    choice[stormvogel_action] = stormvogel.model.Branch(branch)
         else:
             delta = cast(Callable[[Any], Any], delta)
             tuples = delta(state)
@@ -245,15 +245,13 @@ def build_bird(
             branch = add_new_choices(tuples, state)
 
             if branch != []:
-                transition[stormvogel.model.EmptyAction] = stormvogel.model.Branch(
-                    branch
-                )
+                choice[stormvogel.model.EmptyAction] = branch
 
         s = state_lookup[state]
         assert s is not None
         model.add_choice(
             s,
-            stormvogel.model.Choice(transition),
+            choice,
         )
 
         # if at some point we discovered more than max_size states, we complain

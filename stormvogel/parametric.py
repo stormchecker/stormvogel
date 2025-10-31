@@ -113,6 +113,7 @@ class Polynomial:
     def __eq__(self, other) -> bool:
         if not isinstance(other, Polynomial):
             return False
+
         return self.terms == other.terms
 
     def __iter__(self):
