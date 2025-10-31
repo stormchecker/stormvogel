@@ -97,6 +97,7 @@ def test_choice_from_shorthand():
                 transition_shorthand,
             ),
             mdp,
+<<<<<<< HEAD
         )
         == transition
     )
@@ -197,9 +198,47 @@ def test_choice_from_shorthand():
                 transition_shorthand,
             ),
             mdp,
+=======
+>>>>>>> origin/main
         )
         == transition
     )
+
+    # We test if it works with ids instead
+    dtmc = stormvogel.model.new_dtmc()
+    transition_shorthand = [(1 / 2, dtmc.get_state_by_id(0))]
+    branch = stormvogel.model.Branch(
+        cast(
+            list[tuple[stormvogel.model.Value, stormvogel.model.State]],
+            transition_shorthand,
+        )
+    )
+    action = stormvogel.model.EmptyAction
+    transition = stormvogel.model.Choice({action: branch})
+
+    assert (
+        stormvogel.model.choice_from_shorthand(
+            cast(
+                list[tuple[stormvogel.model.Value, stormvogel.model.State]],
+                [(1 / 2, 0)],
+            ),
+            dtmc,
+        )
+        == transition
+    )
+
+    # should produce an error when we choose id=1
+    with pytest.raises(
+        RuntimeError,
+        match=re.escape("This id is not known yet. Use states instead."),
+    ):
+        stormvogel.model.choice_from_shorthand(
+            cast(
+                list[tuple[stormvogel.model.Value, stormvogel.model.State]],
+                [(1 / 2, 1)],
+            ),
+            dtmc,
+        )
 
 
 def test_is_stochastic():

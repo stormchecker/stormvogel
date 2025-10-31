@@ -100,8 +100,13 @@ vis = show(knuth_yao_pmc)
 # %%
 p = 1/2
 
+<<<<<<<< HEAD:docs/1-Model-Construction/5-Parametric-and-interval-models.py
 eval_knuth_yao_pmc = knuth_yao_pmc.parameter_valuation({"x":p})
 vis = show(eval_knuth_yao_pmc)
+========
+eval_knuth_yao = knuth_yao.parameter_valuation({"x":p})
+vis = show(eval_knuth_yao)
+>>>>>>>> origin/main:docs/1-Model-Construction/5-Parametric-models.py
 
 # %% [markdown]
 # # Interval Models
@@ -136,12 +141,20 @@ def delta(s: bird.State):
         case 4:
             return [
                 (interval, bird.State(s=7, d=2)),
+<<<<<<<< HEAD:docs/1-Model-Construction/5-Parametric-and-interval-models.py
                 (invx, bird.State(s=7, d=3)),
+========
+                (inv_interval, bird.State(s=7, d=3)),
+>>>>>>>> origin/main:docs/1-Model-Construction/5-Parametric-models.py
             ]
         case 5:
             return [
                 (interval, bird.State(s=7, d=4)),
+<<<<<<<< HEAD:docs/1-Model-Construction/5-Parametric-and-interval-models.py
                 (invx, bird.State(s=7, d=5)),
+========
+                (inv_interval, bird.State(s=7, d=5)),
+>>>>>>>> origin/main:docs/1-Model-Construction/5-Parametric-models.py
             ]
         case 6:
             return [(interval, bird.State(s=2)), (inv_interval, bird.State(s=7, d=6))]
@@ -152,13 +165,21 @@ def labels(s: bird.State):
     if s.s == 7:
         return f"rolled{str(s.d)}"
 
+<<<<<<<< HEAD:docs/1-Model-Construction/5-Parametric-and-interval-models.py
 knuth_yao_imc = bird.build_bird(
+========
+knuth_yao = bird.build_bird(
+>>>>>>>> origin/main:docs/1-Model-Construction/5-Parametric-models.py
     delta=delta,
     init=bird.State(s=0),
     labels=labels,
     modeltype=model.ModelType.DTMC,
 )
 
+<<<<<<<< HEAD:docs/1-Model-Construction/5-Parametric-and-interval-models.py
 vis = show(knuth_yao_imc)
+========
+vis = show(knuth_yao)
+>>>>>>>> origin/main:docs/1-Model-Construction/5-Parametric-models.py
 
 # %%
