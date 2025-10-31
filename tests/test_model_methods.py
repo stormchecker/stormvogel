@@ -97,7 +97,6 @@ def test_choice_from_shorthand():
                 transition_shorthand,
             ),
             mdp,
-<<<<<<< HEAD
         )
         == transition
     )
@@ -198,8 +197,6 @@ def test_choice_from_shorthand():
                 transition_shorthand,
             ),
             mdp,
-=======
->>>>>>> origin/main
         )
         == transition
     )
