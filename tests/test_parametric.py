@@ -94,6 +94,9 @@ def test_pmdp_conversion():
     assert pmdp == new_pmdp
 
 
+# TODO test the other way around
+
+
 def test_pmc_valuations():
     # we build a simple pmc
     pmc = stormvogel.model.new_dtmc()

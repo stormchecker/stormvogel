@@ -16,6 +16,13 @@ Number = int | float | Fraction
 
 @dataclass
 class Interval:
+    """represents an interval value for interval models
+
+    Args:
+        bottom: the bottom (left) element of the interval
+        top: the top (right) element of the interval
+    """
+
     bottom: Number
     top: Number
 
