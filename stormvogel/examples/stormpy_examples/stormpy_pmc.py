@@ -1,7 +1,7 @@
 def example_parametric_models_01():
     import stormpy.examples
     import stormpy.examples.files
-    
+
     path = stormpy.examples.files.prism_pdtmc_die
     prism_program = stormpy.parse_prism_program(path)
 
