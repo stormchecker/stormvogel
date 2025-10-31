@@ -476,9 +476,6 @@ def choice_from_shorthand(shorthand: ChoiceShorthand, model: "Model") -> Choice:
     - using only the action and the target state (implies probability=1)."""
 
     if isinstance(shorthand, dict):
-        if len(shorthand.keys()) == 0:
-            raise RuntimeError("Choice cannot be empty")
-
         # We convert the shorthand so that we have states instead of ids
         converted_shorthand = dict()
         for action, branch in shorthand.items():
@@ -499,9 +496,6 @@ def choice_from_shorthand(shorthand: ChoiceShorthand, model: "Model") -> Choice:
             transition_content[action] = Branch(branch)
         return Choice(transition_content)
     else:
-        if len(shorthand) == 0:
-            raise RuntimeError("Choice cannot be empty")
-
         # We convert the shorthand so that we have states instead of ids
         converted_shorthand = []
         for value_or_action, state in shorthand:
