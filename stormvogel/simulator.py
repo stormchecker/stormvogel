@@ -444,12 +444,9 @@ def simulate(
                         branch.branch.append((probability, new_state))
                     else:
                         discovered_actions.add((last_state_id, action))
-                        branch = stormvogel.model.Branch(probability, new_state)
-                        choice = stormvogel.model.Choice({action: branch})
-                        assert choice is not None
                         s = partial_model.get_state_by_name(str(last_state_id))
                         assert s is not None
-                        s.add_choice(choice)
+                        s.add_choice({action: [(probability, new_state)]})
 
                 last_state_id = state_id
 

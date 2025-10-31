@@ -13,16 +13,10 @@ def create_study_mdp():
     end = mdp.new_state("end")
 
     init.set_choice(
-        stormvogel.model.Choice(
-            {
-                study: stormvogel.model.Branch(
-                    [(9 / 10, pass_test), (1 / 10, fail_test)]
-                ),
-                not_study: stormvogel.model.Branch(
-                    [(4 / 10, pass_test), (6 / 10, fail_test)]
-                ),
-            }
-        )
+        {
+            study: [(9 / 10, pass_test), (1 / 10, fail_test)],
+            not_study: [(4 / 10, pass_test), (6 / 10, fail_test)],
+        }
     )
 
     pass_test.set_choice([(1, end)])

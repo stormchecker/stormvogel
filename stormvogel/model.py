@@ -494,11 +494,9 @@ def choice_from_shorthand(shorthand: ChoiceShorthand, model: "Model") -> Choice:
         shorthand = converted_shorthand
 
         transition_content = dict()
-        print(shorthand.items())
         for action, branch in shorthand.items():
             assert isinstance(action, Action)
             transition_content[action] = Branch(branch)
-            print(branch[1])
         return Choice(transition_content)
     else:
         # We convert the shorthand so that we have states instead of ids

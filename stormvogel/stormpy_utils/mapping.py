@@ -852,7 +852,7 @@ def stormpy_to_stormvogel(
             row_group_end = matrix.get_row_group_end(index)
 
             # within a row group we add for each action the transitions
-            transition = dict()
+            choice = dict()
             for i in range(row_group_start, row_group_end):
                 row = matrix.get_row(i)
 
@@ -871,14 +871,13 @@ def stormpy_to_stormvogel(
                     )
                     for x in row
                 ]
-                transition[action] = stormvogel.model.Branch(
+                choice[action] = stormvogel.model.Branch(
                     cast(
                         list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                         branch,
                     )
                 )
-                choices = stormvogel.model.Choice(transition)
-                model.set_choice(model.get_state_by_id(state.id), choices)
+                model.set_choice(model.get_state_by_id(state.id), choice)
 
         # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
@@ -955,7 +954,7 @@ def stormpy_to_stormvogel(
             row_group_end = matrix.get_row_group_end(index)
 
             # within a row group we add for each action the transitions
-            transition = dict()
+            choice = dict()
             for i in range(row_group_start, row_group_end):
                 row = matrix.get_row(i)
 
@@ -974,14 +973,13 @@ def stormpy_to_stormvogel(
                     )
                     for x in row
                 ]
-                transition[action] = stormvogel.model.Branch(
+                choice[action] = stormvogel.model.Branch(
                     cast(
                         list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                         branch,
                     )
                 )
-                choices = stormvogel.model.Choice(transition)
-                model.set_choice(model.get_state_by_id(state.id), choices)
+                model.set_choice(model.get_state_by_id(state.id), choice)
 
         # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
@@ -1016,7 +1014,7 @@ def stormpy_to_stormvogel(
             row_group_end = matrix.get_row_group_end(index)
 
             # within a row group we add for each action the transitions
-            transition = dict()
+            choice = dict()
             for i in range(row_group_start, row_group_end):
                 row = matrix.get_row(i)
 
@@ -1035,14 +1033,13 @@ def stormpy_to_stormvogel(
                     )
                     for x in row
                 ]
-                transition[action] = stormvogel.model.Branch(
+                choice[action] = stormvogel.model.Branch(
                     cast(
                         list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                         branch,
                     )
                 )
-                choices = stormvogel.model.Choice(transition)
-                model.set_choice(model.get_state_by_id(state.id), choices)
+                model.set_choice(model.get_state_by_id(state.id), choice)
 
         # we add self loops to all states with no outgoing transitions
         model.add_self_loops()

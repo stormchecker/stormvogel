@@ -1,4 +1,4 @@
-from stormvogel.model import Model, ModelType, Branch, Choice
+from stormvogel.model import Model, ModelType
 
 
 def create_lion_mdp():
@@ -16,49 +16,33 @@ def create_lion_mdp():
     init.set_choice([(1, satisfied)])
 
     full.set_choice(
-        Choice(
-            {
-                hunt: Branch(
-                    [
-                        (0.5, satisfied),
-                        (0.5, full),
-                    ]
-                ),
-                rawr: Branch([(0.9, full), (0.1, satisfied)]),
-            }
-        )
+        {
+            hunt: [(0.5, satisfied), (0.5, full)],
+            rawr: [(0.9, full), (0.1, satisfied)],
+        }
     )
 
     satisfied.set_choice(
-        Choice(
-            {
-                hunt: Branch([(0.5, satisfied), (0.3, full), (0.2, hungry)]),
-                rawr: Branch([(0.9, satisfied), (0.1, hungry)]),
-            }
-        )
+        {
+            hunt: [(0.5, satisfied), (0.3, full), (0.2, hungry)],
+            rawr: [(0.9, satisfied), (0.1, hungry)],
+        }
     )
 
     hungry.set_choice(
-        Choice(
-            {
-                hunt: Branch(
-                    [(0.2, full), (0.5, satisfied), (0.1, hungry), (0.2, starving)]
-                ),
-                rawr: Branch([(0.9, hungry), (0.1, starving)]),
-            }
-        )
+        {
+            hunt: [(0.2, full), (0.5, satisfied), (0.1, hungry), (0.2, starving)],
+            rawr: [(0.9, hungry), (0.1, starving)],
+        }
     )
 
     starving.set_choice(
-        Choice(
-            {
-                hunt: Branch(
-                    [(0.1, full), (0.5, satisfied), (0.2, hungry), (0.2, dead)]
-                ),
-                rawr: Branch([(0.9, starving), (0.1, dead)]),
-            }
-        )
+        {
+            hunt: [(0.1, full), (0.5, satisfied), (0.2, hungry), (0.2, dead)],
+            rawr: [(0.9, starving), (0.1, dead)],
+        }
     )
+
     lion.add_self_loops()
 
     reward_model = lion.new_reward_model("R")
