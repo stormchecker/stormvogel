@@ -137,6 +137,70 @@ def test_choice_from_shorthand():
             dtmc,
         )
 
+    # we test it for nontrivial action transitions
+    mdp = stormvogel.model.new_mdp()
+    state1 = mdp.new_state()
+    state2 = mdp.new_state()
+    action0 = mdp.new_action(frozenset({"0"}))
+    action1 = mdp.new_action(frozenset({"1"}))
+    transition_shorthand = {
+        action0: [(1 / 2, state1), (1 / 2, state2)],
+        action1: [(1 / 2, state1), (1 / 2, state2)],
+    }
+    branch = stormvogel.model.Branch(
+        cast(
+            list[tuple[stormvogel.model.Value, stormvogel.model.State]],
+            [(1 / 2, state1), (1 / 2, state2)],
+        )
+    )
+    transition = stormvogel.model.Choice({action0: branch, action1: branch})
+
+    assert (
+        stormvogel.model.choice_from_shorthand(
+            cast(
+                dict[
+                    stormvogel.model.Action,
+                    list[tuple[stormvogel.model.Value, stormvogel.model.State]],
+                ],
+                transition_shorthand,
+            ),
+            mdp,
+        )
+        == transition
+    )
+
+    # and for the same model but with ids as states
+    mdp = stormvogel.model.new_mdp()
+    state1 = mdp.new_state()
+    state2 = mdp.new_state()
+    action0 = mdp.new_action(frozenset({"0"}))
+    action1 = mdp.new_action(frozenset({"1"}))
+    transition_shorthand = {
+        action0: [(1 / 2, 1), (1 / 2, 2)],
+        action1: [(1 / 2, 1), (1 / 2, 2)],
+    }
+    branch = stormvogel.model.Branch(
+        cast(
+            list[tuple[stormvogel.model.Value, stormvogel.model.State]],
+            [(1 / 2, state1), (1 / 2, state2)],
+        )
+    )
+    transition = stormvogel.model.Choice({action0: branch, action1: branch})
+
+    assert (
+        stormvogel.model.choice_from_shorthand(
+            cast(
+                dict[
+                    stormvogel.model.Action,
+                    list[tuple[stormvogel.model.Value, stormvogel.model.State]],
+                ],
+                transition_shorthand,
+            ),
+            mdp,
+        )
+        == transition
+    )
+
 
 def test_is_stochastic():
     # we check for an instance where it is not stochastic
