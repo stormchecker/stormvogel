@@ -83,7 +83,7 @@ vis = show(bird_study, layout=Layout("layouts/pinkgreen.json"))
 # %%
 from stormvogel import *
 
-mdp = stormvogel.model.new_mdp("Study")
+mdp = stormvogel.model.new_mdp()
 
 init = mdp.get_initial_state()
 study = mdp.action("study")
