@@ -475,7 +475,6 @@ def choice_from_shorthand(shorthand: ChoiceShorthand, model: "Model") -> Choice:
     - using only the probability and the target state (implies default action when in an MDP).
     - using only the action and the target state (implies probability=1)."""
 
-
     if isinstance(shorthand, dict):
         if len(shorthand.keys()) == 0:
             raise RuntimeError("Choice cannot be empty")
