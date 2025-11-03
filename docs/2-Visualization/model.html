@@ -43499,7 +43499,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
 // exports.Element = SVGCanvasElement;
 </script>
     <style type="text/css">
-      #nKKNaDVgWB {
+      #HSQKQCbhmM {
         width: 800px;
         height: 600px;
         border: 1px solid lightgray;
@@ -43507,7 +43507,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
     </style>
   </head>
   <body>
-    <div id="nKKNaDVgWB"></div>
+    <div id="HSQKQCbhmM"></div>
     <script type="text/javascript">
         //js
 class NetworkWrapper {
@@ -43522,6 +43522,7 @@ class NetworkWrapper {
     };
     this.network = new vis.Network(container, this.data, options);
     var this_ = this; // Events will not work if you use 'this' directly :))))) No idea why.
+    this_.network.setData(this_.data);
 
     // Set user-triggered events.
     this.network.on( 'click', function(properties) {
@@ -43832,8 +43833,8 @@ class NetworkWrapper {
   "physics": true,
   "autoResize": true
 };
-    var container_local = document.getElementById("nKKNaDVgWB");
-    var nw_nKKNaDVgWB = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
+    var container_local = document.getElementById("HSQKQCbhmM");
+    var nw_HSQKQCbhmM = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
 
     </script>
   </body>
