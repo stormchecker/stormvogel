@@ -1,4 +1,4 @@
-"""Contains the code responsible for representing the structure of a model as a graph"""
+"""Contains the code responsible for representing the structure of a model as a graph."""
 
 from collections.abc import Callable
 from enum import Enum
@@ -7,7 +7,7 @@ from networkx import DiGraph
 
 from stormvogel.model import Action, EmptyAction, Model, State, Value
 
-ACTION_ID_OFFSET = 10**10
+ACTION_ID_OFFSET = 10**10  # Offset to avoid ID clashes between state and action nodes
 
 
 class NodeType(Enum):
@@ -90,7 +90,7 @@ class ModelGraph(DiGraph):
         next_state: int | State,
         probability: Value,
         **attr,
-    ):
+    ) -> None:
         """
         Adds a transition to the graph with an associated probability.
 
@@ -114,9 +114,11 @@ class ModelGraph(DiGraph):
         if isinstance(next_state, State):
             next_state = next_state.id
         action_id = self._state_action_id_map.get((state, action), None)
-        assert state in self.nodes
-        assert action == EmptyAction or action_id is not None
-        assert next_state in self.nodes
+        assert state in self.nodes, "State {state} not in graph."
+        assert (
+            action == EmptyAction or action_id is not None
+        ), "Action node for action {action} in state {state} not in graph."
+        assert next_state in self.nodes, "Next state {next_state} not in graph."
         if action == EmptyAction:
             self.add_edge(state, next_state, probability=probability, **attr)
         else:
@@ -166,7 +168,7 @@ class ModelGraph(DiGraph):
 
         for state_id, choice in model.choices.items():
             state = model.get_state_by_id(state_id)
-            for action, branch in choice.choice.items():
+            for action, branch in choice:
                 action_props = dict()
                 if action_properties is not None:
                     action_props = action_properties(state, action)
