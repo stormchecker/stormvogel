@@ -18,6 +18,7 @@ class Displayable:
             output (widgets.Output, optional): Output window. Defaults to widgets.Output().
             do_display (bool, optional): Controls if it should display. Defaults to True.
             debug_output (widgets.Output, optional): Useful for debugging. Defaults to widgets.Output().
+            spam (widgets.Output, optional): Used for side-effect displays. Defaults to widgets.Output().
         """
         if output is None:
             self.output = widgets.Output()

@@ -8,8 +8,8 @@ class Scheduler:
     All schedulers are nondeterminstic and memoryless.
 
     Args:
-        model: model associated with the scheduler (has to support actions)
-        taken_actions: for each state the action we choose in that state
+        model: model associated with the scheduler (has to support actions).
+        taken_actions: for each state the action we choose in that state.
     """
 
     model: stormvogel.model.Model

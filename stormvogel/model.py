@@ -1202,6 +1202,8 @@ class Model:
             state = State(
                 [], valuations or {}, state_id, self, observation=observation, name=name
             )
+        else:
+            raise RuntimeError("Unkown type for labels.")
 
         self.states[state_id] = state
 

@@ -8,7 +8,7 @@ import http.server
 import random
 import string
 import threading
-from typing import Callable
+from typing import Any, Callable
 import logging
 from time import sleep
 import socket
@@ -16,7 +16,7 @@ import json
 
 
 def random_word(k: int) -> str:
-    """Random word of length k"""
+    """Random word of length k. Used to generate event ids."""
     return "".join(random.choices(string.ascii_letters, k=k))
 
 
@@ -33,7 +33,7 @@ port_range = range(min_port, max_port)
 server_port: int = 8888
 """Global variable storing the port that is being used by this process. Changes when initialize_server is called."""
 
-events: dict[str, Callable] = {}
+events: dict[str, Callable[[str], Any]] = {}
 """Dictionary that stores currently active events, along with their function, hashed by randomly generated ids."""
 
 server_running: bool = False
@@ -44,12 +44,13 @@ server: "CommunicationServer | None" = None
 
 
 class CommunicationServer:
-    def __init__(self, server_port: int = 8080) -> None:
-        """Run a web server in the background to receive Javascript communications.
-        It works by having a list of events, each with a unique id.
-        The Javascript code sends a POST request to the server with the id and the data.
-        The server then looks up the event with that id and calls the function associated with it.
+    """Run a web server in the background to receive Javascript communications.
+    It works by having a list of events, each with a unique id.
+    The Javascript code sends a POST request to the server with the id and the data.
+    The server then looks up the event with that id and calls the function associated with it."""
 
+    def __init__(self, server_port: int = 8080) -> None:
+        """Initialize the communication server.
         Args:
             server_port (int, optional): Defaults to 8080.
         """
@@ -72,6 +73,7 @@ function return_id_result(url, id, data) {
         ipd.display(ipd.Javascript(js))
         # These should both do the same thing, but just in case.
 
+        # This inner class actually runs the server.
         class InnerServer(http.server.BaseHTTPRequestHandler):
             def do_POST(self):
                 """Handle POST requests.
@@ -86,7 +88,7 @@ function return_id_result(url, id, data) {
                 f(data)
 
             def log_message(self, format, *args):
-                """To prevent an unwanted default log message from coming up. Not used by stormvogel."""
+                # Overrides default log message
                 pass
 
         self.web_server: http.server.HTTPServer = http.server.HTTPServer(
@@ -109,7 +111,7 @@ function return_id_result(url, id, data) {
         except KeyboardInterrupt:
             pass
 
-    def add_event(self, js: str, function: Callable) -> str:
+    def add_event(self, js: str, function: Callable[[str], Any]) -> str:
         """Add an event using some JavaScript code.
         Within your js, use the special function FUNCTION(...) to call the Python function.
 
@@ -137,13 +139,11 @@ function return_id_result(url, id, data) {
             "FUNCTION(",
             f"return_id_result('http://127.0.0.1:{self.server_port}', '{id}', ",
         )
-        # ipd.display(ipd.HTML(f"<script>{returning_js}</script>"))
         ipd.display(ipd.Javascript(returning_js))
-        # print(returning_js)
         events[id] = function
         return id
 
-    def remove_event(self, event_id: str) -> Callable:
+    def remove_event(self, event_id: str) -> Callable[[str], Any]:
         """Remove the event associated with this event id."""
         return events.pop(event_id)
 
@@ -152,11 +152,12 @@ function return_id_result(url, id, data) {
 
         Example:
             js = "RETURN(37 + 42);"
-            Then the function result returns "79" as a string.
+            Then the function result returns "79" as a string, but the arithmatic is executed in javascript.
         """
-        result = None
+        # We implement this by using our add_event function, and waiting for the result to be set.
+        result = None  # Variable that will contain the result when received.
 
-        def on_result(data: str):
+        def on_result(data: str):  # Called when the javascript returns a result.
             nonlocal result
             result = data
 
@@ -212,6 +213,7 @@ def find_free_port() -> int:
 def initialize_server() -> CommunicationServer | None:
     """If server is None, then create a new server and store it in global variable server.
     Use the port stored in global variable server_port.
+    If the server is already initialized, just return it.
 
     Returns:
         CommunicationServer | None: The server if successful.
@@ -230,9 +232,11 @@ def initialize_server() -> CommunicationServer | None:
         )
     ipd.display(output)
     try:
-        if server is None:
+        if (
+            server is None
+        ):  # If the server is not initialized yet, try to initialize it.
             server_port = find_free_port()
-            if server_port == -1:
+            if server_port == -1:  # Could not find a free port.
                 __warn_no_free_port()
                 with output:
                     ipd.clear_output()
@@ -242,7 +246,7 @@ def initialize_server() -> CommunicationServer | None:
             try:
                 server.result("RETURN('test message')")
                 logging.info("Succesfully received test message.")
-            except TimeoutError:
+            except TimeoutError:  # Test request failed.
                 __warn_request()
         with output:
             ipd.clear_output()
