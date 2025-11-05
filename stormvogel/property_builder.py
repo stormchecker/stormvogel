@@ -122,6 +122,8 @@ def build_property_string(model: stormvogel.model.Model):
             return f'[{op1} U{v["time_bound"]} {op2}]'
         elif v["operator"] == "LRA":
             return f'[{v["operator"]}]'
+        elif v["operator"] == "C":
+            return f'[{v["operator"]}{v["time_bound"]}]'
         else:
             return f'[{v["operator"]}{v["time_bound"]} {op1}]'
 
