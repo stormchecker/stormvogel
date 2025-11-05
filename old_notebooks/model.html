@@ -43499,7 +43499,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
 // exports.Element = SVGCanvasElement;
 </script>
     <style type="text/css">
-      #VkcHRvqHRI {
+      #OJmTPjMpKI {
         width: 800px;
         height: 600px;
         border: 1px solid lightgray;
@@ -43507,7 +43507,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
     </style>
   </head>
   <body>
-    <div id="VkcHRvqHRI"></div>
+    <div id="OJmTPjMpKI"></div>
     <script type="text/javascript">
         //js
 class NetworkWrapper {
@@ -43617,37 +43617,26 @@ class NetworkWrapper {
     </script>
     <script type="text/javascript">
         //js
-    var nodes_local = new vis.DataSet([{ id: 0, label: `init,green light,still`, group: "states" },
-{ id: 1, label: `red light,still`, group: "states" },
-{ id: 2, label: `green light,moving`, group: "states" },
-{ id: 3, label: `red light,moving`, group: "states" },
-{ id: 4, label: `accident`, group: "states" },
-{ id: 10000000000, label: `accelerate`, group: "actions" },
-{ id: 10000000001, label: `wait`, group: "actions" },
-{ id: 10000000002, label: `accelerate`, group: "actions" },
-{ id: 10000000003, label: `wait`, group: "actions" },
-{ id: 10000000004, label: `brake`, group: "actions" },
-{ id: 10000000005, label: `wait`, group: "actions" },
-{ id: 10000000006, label: `brake`, group: "actions" },
-{ id: 10000000007, label: `wait`, group: "actions" },
+    var nodes_local = new vis.DataSet([{ id: 0, label: `init`, group: "states" },
+{ id: 1, label: `rolled1`, group: "states" },
+{ id: 2, label: `rolled2`, group: "states" },
+{ id: 3, label: `rolled3`, group: "states" },
+{ id: 4, label: `rolled4`, group: "states" },
+{ id: 5, label: `rolled5`, group: "states" },
+{ id: 6, label: `rolled6`, group: "states" },
 ]);
-    var edges_local = new vis.DataSet([{ from: 0, to: 10000000000 },
-{ from: 0, to: 10000000001 },
-{ from: 1, to: 10000000002 },
-{ from: 1, to: 10000000003 },
-{ from: 2, to: 10000000004 },
-{ from: 2, to: 10000000005 },
-{ from: 3, to: 10000000006 },
-{ from: 3, to: 10000000007 },
+    var edges_local = new vis.DataSet([{ from: 0, to: 1, label: "1/6" },
+{ from: 0, to: 2, label: "1/6" },
+{ from: 0, to: 3, label: "1/6" },
+{ from: 0, to: 4, label: "1/6" },
+{ from: 0, to: 5, label: "1/6" },
+{ from: 0, to: 6, label: "1/6" },
+{ from: 1, to: 1, label: "1" },
+{ from: 2, to: 2, label: "1" },
+{ from: 3, to: 3, label: "1" },
 { from: 4, to: 4, label: "1" },
-{ from: 10000000000, to: 2, label: "1" },
-{ from: 10000000001, to: 1, label: "1" },
-{ from: 10000000002, to: 3, label: "1" },
-{ from: 10000000003, to: 0, label: "1" },
-{ from: 10000000004, to: 0, label: "1" },
-{ from: 10000000005, to: 3, label: "1" },
-{ from: 10000000006, to: 1, label: "1" },
-{ from: 10000000007, to: 4, label: "1" },
+{ from: 5, to: 5, label: "1" },
+{ from: 6, to: 6, label: "1" },
 ]);
     var options_local = {
   "__fake_macros": {
@@ -43771,8 +43760,8 @@ class NetworkWrapper {
   "physics": true,
   "autoResize": true
 };
-    var container_local = document.getElementById("VkcHRvqHRI");
-    var nw_VkcHRvqHRI = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
+    var container_local = document.getElementById("OJmTPjMpKI");
+    var nw_OJmTPjMpKI = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
 
     </script>
   </body>

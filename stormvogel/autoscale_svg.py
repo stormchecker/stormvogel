@@ -33,8 +33,8 @@ def autoscale_svg(raw_svg: str, target_width: float) -> str:
             xmax = x1 if xmax is None else max(xmax, x1)
             ymin = y0 if ymin is None else min(ymin, y0)
             ymax = y1 if ymax is None else max(ymax, y1)
-    width = xmax - xmin
-    height = ymax - ymin
+    width = xmax - xmin + 10  # Add small margin of 1 to avoid clipping
+    height = ymax - ymin + 10
 
     # Set the viewBox and the width/height attributes to match the content size
     root.attrib["viewBox"] = f"{xmin} {ymin} {width} {height}"
