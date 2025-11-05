@@ -61,7 +61,7 @@
   "results": {
     "show_results": true,
     "result_symbol": "\u2606",
-    "result_colors": false,
+    "result_colors": true,
     "min_result_color": "#ffffff",
     "max_result_color": "#ff0000"
   },
