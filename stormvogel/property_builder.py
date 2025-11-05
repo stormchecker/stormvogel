@@ -35,6 +35,9 @@ def build_property_string(model: stormvogel.model.Model):
     # Explanation for operands.
     operand_explanation = 'An operand may use either labels, or variables with bounds. For example: "init" means that the state has label "init", and x>=5 means that the value of variable x is at least 5.'
 
+    # Explanation for time bounds.
+    time_bound_explanation = 'The time bound is used for bounded properties. For example "<=10" means that the property must hold within 10 time steps. Leave empty for unbounded properties.'
+
     # Choose a path property. Relevant if P was chosen.
     path_prop_schema = {
         "__html": "<h4>Path property</h4>",
@@ -61,6 +64,7 @@ def build_property_string(model: stormvogel.model.Model):
                 "__widget": "Text",
             },
             "time_bound": {
+                "__html": time_bound_explanation,
                 "__description": "Time bound",
                 "__widget": "Text",
             },
@@ -88,6 +92,7 @@ def build_property_string(model: stormvogel.model.Model):
                 "__widget": "Text",
             },
             "time_bound": {
+                "__html": time_bound_explanation,
                 "__description": "Time bound",
                 "__widget": "Text",
             },
@@ -107,7 +112,7 @@ def build_property_string(model: stormvogel.model.Model):
         "r": {
             "__collapse": False,
             "operand": {
-                "__html": "<h4>Steady-state property</h4>",
+                "__html": f"<h4>Steady-state property</h4>{operand_explanation}",
                 "__description": "Operand",
                 "__widget": "Text",
             },
