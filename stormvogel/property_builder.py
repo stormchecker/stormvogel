@@ -32,22 +32,26 @@ def build_property_string(model: stormvogel.model.Model):
         "__kwargs": {"options": ["max", "min"]},
     }
 
+    # Explanation for operands.
+    operand_explanation = 'An operand may use either labels, or variables with bounds. For example: "init" means that the state has label "init", and x>=5 means that the value of variable x is at least 5.'
+
     # Choose a path property. Relevant if P was chosen.
     path_prop_schema = {
         "__html": "<h4>Path property</h4>",
-        "operator": {
+        "r": {
             "__collapse": False,
-            "r": {
+            "operator": {
                 "__description": "Choose the operator",
                 "__widget": "ToggleButtons",
                 "__kwargs": {"options": ["F", "G", "X", "U"]},
             },
-            "__html": """<ul>
+            "__html": f"""<ul>
                 <li><b>F (eventually). </b> The probability that operand 1 will eventually hold.</li>
                 <li><b>G (always). </b> The probability that operand 1 always holds.</li>
                 <li><b>X (next). </b> The probability that operand 1 holds in the next step.</li>
                 <li><b>U (until). </b> The probability that operand 1 holds, until operand 2 holds.</li>
-                </ul>""",
+                </ul>
+                {operand_explanation}""",
             "operand1": {
                 "__description": "Operand 1",
                 "__widget": "Text",
@@ -66,19 +70,19 @@ def build_property_string(model: stormvogel.model.Model):
     # Choose a reward property. Relevant if R was chosen.
     reward_prop_schema = {
         "__html": "<h4>Reward property</h4>",
-        "operator": {
+        "r": {
             "__collapse": False,
-            "r": {
+            "operator": {
                 "__description": "Choose the operator",
                 "__widget": "ToggleButtons",
                 "__kwargs": {"options": ["F", "C", "LRA"]},
             },
-            "__html": """<ul>
+            "__html": f"""<ul>
                 <li><b>F (eventually). </b> The reward that is accumulated until the operand holds.</li>
                 <li><b>C (total, cummulative reward). </b> The total reward that is accumulated when the system runs forever.</li>
                 <li><b>LRA (gain / mean payoff / long run average). </b> The average expected reward per step if the system runs forever.</li>
                 </ul>
-                An operand may use either labels, or variables with bounds. For example: "init" means that the state has label "init", and x>=5 means that the value of variable x is at least 5.""",
+                {operand_explanation}""",
             "operand1": {
                 "__description": "Operand",
                 "__widget": "Text",
@@ -100,7 +104,7 @@ def build_property_string(model: stormvogel.model.Model):
 
     # Select a steady-state property. Relevant if S was chosen.
     steady_prop_schema = {
-        "operand": {
+        "r": {
             "__collapse": False,
             "operand": {
                 "__html": "<h4>Steady-state property</h4>",
@@ -112,19 +116,21 @@ def build_property_string(model: stormvogel.model.Model):
 
     def values_to_path_reward_property(v: dict) -> str:
         """Convert the dictionary of values to a property string for path or reward properties."""
-        if v["r"] == "U":
-            return f'[{v["operand1"]} U{v["time_bound"]} {v["operand2"]}]'
-        elif v["r"] == "LRA" or v["r"] == "C":
-            return f'[{v["r"]}]'
+        op1 = v["operand1"].replace(" ", "")
+        if v["operator"] == "U":
+            op2 = v["operand2"].replace(" ", "")
+            return f'[{op1} U{v["time_bound"]} {op2}]'
+        elif v["operator"] == "LRA":
+            return f'[{v["operator"]}]'
         else:
-            return f'[{v["r"]}{v["time_bound"]} {v["operand1"]}]'
+            return f'[{v["operator"]}{v["time_bound"]} {op1}]'
 
     def values_to_first_part_property(v: dict, reward_model="") -> str:
         """Convert the dictionary of values to a property string for the first part."""
         type_ = v["r"]["type"]
         opt_ = ""
         if model.supports_actions():
-            opt_ = v["r"]["opt"] + " "
+            opt_ = v["r"]["opt"]
         return (
             type_ + opt_ + "=?"
             if reward_model == ""
@@ -151,7 +157,7 @@ def build_property_string(model: stormvogel.model.Model):
         # Small 'r' stands for 'root'.
         first_part_values = {
             "r": {
-                "type": "R",
+                "type": "P",
                 "opt": "max",
             }
         }
@@ -186,16 +192,12 @@ def build_property_string(model: stormvogel.model.Model):
             if type_ == "S":
                 de_steady_prop.show()
 
-            with property_string_output:
-                ipd.clear_output()
-                print(self.first_part_values)
-
         def on_update_path_prop(self):
             with property_string_output:
                 ipd.clear_output()
                 first_part = values_to_first_part_property(self.first_part_values)
                 second_part = values_to_path_reward_property(self.path_prop_values["r"])
-                print(first_part + second_part)
+                print(first_part + " " + second_part)
 
         def on_update_reward_prop(self):
             with property_string_output:
@@ -204,14 +206,14 @@ def build_property_string(model: stormvogel.model.Model):
                 second_part = values_to_path_reward_property(
                     self.reward_prop_values["r"]
                 )
-                print(first_part + second_part)
+                print(first_part + " " + second_part)
 
         def on_update_steady_prop(self):
             with property_string_output:
                 ipd.clear_output()
                 first_part = values_to_first_part_property(self.first_part_values)
                 second_part = "[" + self.steady_prop_values["r"]["operand"] + "]"
-                print(first_part + second_part)
+                print(first_part + " " + second_part)
 
     v = Values()
 
