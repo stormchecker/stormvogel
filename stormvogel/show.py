@@ -16,7 +16,7 @@ def show(
     result: stormvogel.result.Result | None = None,
     engine: str = "js",
     pos_function: Callable[["ModelGraph"], dict[int, Any]] | None = None,
-    pos_function_scaling: int = 500,
+    pos_function_scaling: int = 750,
     scheduler: stormvogel.result.Scheduler | None = None,
     layout: Layout | None = None,
     show_editor: bool = False,
@@ -32,8 +32,10 @@ def show(
         model (Model): The stormvogel model to be displayed.
         engine (str): The engine that should be used for the visualization.
             Can be either "js" for the interactive html/JavaScript visualization, or "mpl" for matplotlib.
-        pos_function (Callable | None): Function that takes a graph and maps it to a dictionary of node positions.
+        pos_function (Callable | None): Function that takes a ModelGraph and maps it to a dictionary of node positions.
             It is often useful to import these from networkx, see https://networkx.org/documentation/stable/_modules/networkx/drawing/layout.html for some examples.
+            In particular, nx.nx.bfs_layout seems to work great for models with a directed acyclic graph structure.
+            Defaults to None.
         pos_function_scaling (int): Scaling factor for the positions when using networkx positions. Defaults to 500.
         result (Result, optional): A result associatied with the model.
             The results are displayed as numbers on a state. Enable the layout editor for options.
@@ -62,8 +64,11 @@ def show(
         from stormvogel.graph import ModelGraph
 
         G = ModelGraph.from_model(model)
-        pos = pos_function(G)
-        layout = layout.set_nx_pos(pos, scale=pos_function_scaling)
+        try:
+            pos = pos_function(G)
+            layout = layout.set_nx_pos(pos, scale=pos_function_scaling)
+        finally:
+            pass
 
     if engine == "js":
         vis = JSVisualization(
