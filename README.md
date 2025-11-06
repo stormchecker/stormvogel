@@ -41,6 +41,11 @@ Note that you might have to tweak these steps a bit to get it to work on your pa
     If installing stormpy fails in poetry, you can also try to follow the official [stormpy installation instructions](https://moves-rwth.github.io/stormpy/installation.html), and run `poetry shell` on top of the `virtualenv` environment that they describe there.
 4. Install `pre-commit` hook: `pre-commit install`
 
+## Running
+```
+jupyter lab
+```
+
 ## Testing
 Notice that part of the tests will fail if stormpy is not installed.
 ```
