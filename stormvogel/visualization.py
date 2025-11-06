@@ -342,7 +342,6 @@ class JSVisualization(VisualizationBase):
         do_init_server: bool = True,
         max_states: int = 1000,
         max_physics_states: int = 500,
-        spam: widgets.Output | None = None,  # type: ignore[name-defined]
     ) -> None:
         """Create and show a visualization of a Model using a visjs Network
         Args:
@@ -363,7 +362,6 @@ class JSVisualization(VisualizationBase):
             max_physics_states (int): If the model has more states, then physics are disabled.
         """
         import ipywidgets as widgets  # local, heavy
-        import IPython.display as ipd  # local, heavy
         import os
 
         super().__init__(model, layout, result, scheduler)
@@ -381,12 +379,6 @@ class JSVisualization(VisualizationBase):
             self.debug_output: widgets.Output = widgets.Output()
         else:
             self.debug_output = debug_output
-        if spam is None:
-            self.spam = widgets.Output()
-        else:
-            self.spam = spam
-        with self.output:
-            ipd.display(self.spam)
 
         # vis stuff
         self.name: str = name or random_word(10)
@@ -589,7 +581,7 @@ class JSVisualization(VisualizationBase):
         self.initial_state_id = initial_node_id
         self.layout.set_value(["misc", "explore"], True)
 
-    def get_positions(self) -> dict:
+    def get_positions(self) -> dict[int, dict[str, int]]:
         """Get the current positions of the nodes on the canvas. Returns empty dict if unsuccessful.
         Example result: {0: {"x": 5, "y": 10}}"""
         import json
@@ -1188,7 +1180,7 @@ class MplVisualization(VisualizationBase):
         def hover(event):
             cont, ind = nodes.contains(event)
             if self.hover_node is not None:
-                self.hover_node(nodes, edges, event, ax)
+                self.hover_node(nodes, edges, event, ax)  # type: ignore
             else:
                 if cont:
                     update_title(ind)

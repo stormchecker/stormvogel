@@ -1,4 +1,6 @@
-"""Contains the code responsible for saving/loading layouts and modifying them interactively."""
+"""Layout stores and manages loading/saving of the layout file, and the schema file.
+This schema file may be used by the LayoutEditor to create an editor for this Layout.
+The Layout object also provides methods to manipulate the layout and the schema, such as setting node positions from a NetworkX layout."""
 
 from typing import Any, Self
 
@@ -9,30 +11,32 @@ import os
 import json
 import copy
 
-PACKAGE_ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
+PACKAGE_ROOT_DIR = os.path.dirname(
+    os.path.realpath(__file__)
+)  # Get the stormvogel/ directory.
 
 
 class Layout:
-    """Responsible for loading/saving layout jsons."""
+    """Create a Layout object that stores the layout and schema.
+    Upon creation, the layout and schema dicts are loaded from "layouts/default.json" and "layouts/schema.json", unless specified otherwise.
+    You can load a custom layout file by setting either path or relative_path, or provide a custom layout dict instead.
+
+    Args:
+        path (str, optional): Path to a custom layout file.
+            Leave to None for a default layout. Defaults to None.
+        path_relative (bool, optional): If set to True, then stormvogel will look for a custom layout
+            file relative to the current working directory. Defaults to True.
+        layout_dict (dict, optional): If set, this dictionary is used as the layout instead of the
+            file specified in path. Whenever keys are not present here, their default values from "layouts/default.json" are used.
+    """
 
     def __init__(
         self,
         path: str | None = None,
         path_relative: bool = True,
         layout_dict: dict | None = None,
-    ) -> None:
-        """Load a new Layout from a json file.
-        Whenever keys are not present in the provided json file, their default values are used instead
-        as specified in DEFAULTS (=layouts/default.json).
-
-        Args:
-            path (str, optional): Path to your custom layout file.
-                Leave to None for an empty/default layout. Defaults to None.
-            path_relative (bool, optional): If set to True, then stormvogel will look for a custom layout
-                file relative to the current working directory. Defaults to True.
-            layout_dict (dict, optional): If set, this dictionary is used as the layout instead of the
-                file specified in path.
-        """
+    ):
+        # Open the default layout file.
         with open(os.path.join(PACKAGE_ROOT_DIR, "layouts/default.json")) as f:
             default_str = f.read()
         self.default_dict: dict = json.loads(default_str)
@@ -45,13 +49,13 @@ class Layout:
             )
             self.load_schema()
 
-    def load_schema(self):
+    def load_schema(self) -> None:
         """Load in the schema. Used for the layout editor. Stored as self.schema."""
         with open(os.path.join(PACKAGE_ROOT_DIR, "layouts/schema.json")) as f:
             schema_str = f.read()
         self.schema = json.loads(schema_str)
 
-    def load(self, path: str | None = None, path_relative: bool = True):
+    def load(self, path: str | None = None, path_relative: bool = True) -> None:
         """Load the layout and schema file at the specified path.
         They are stored as self.layout and self.schema respectively."""
         if path is None:
@@ -71,7 +75,8 @@ class Layout:
         self.load_schema()
 
     def add_active_group(self, group: str) -> None:
-        """Make a group active if it is not already."""
+        """The user can specify which groups of states can be edited seperately. We refer to such groups as active groups.
+        Make a group active if it is not already."""
         if group not in self.layout["edit_groups"]["groups"]:
             self.layout["edit_groups"]["groups"].append(group)
 
@@ -80,8 +85,8 @@ class Layout:
         if group in self.layout["edit_groups"]["groups"]:
             self.layout["edit_groups"]["groups"].remove(group)
 
-    def set_possible_groups(self, groups: set[str]):
-        """Set the groups of states that the user can choose from under edit_groups."""
+    def set_possible_groups(self, groups: set[str]) -> None:
+        """Set the groups of states that the user can choose to make active, under edit_groups in the layout editor."""
         self.schema["edit_groups"]["groups"]["__kwargs"]["allowed_tags"] = list(groups)
 
         # Save changes to the schema. The visualization object will handle putting nodes into the correct groups.
@@ -121,14 +126,14 @@ class Layout:
         with open(complete_path, "w") as f:
             json.dump(self.layout, f, indent=2)
 
-    def set_value(self, path: list[str], value: Any):
+    def set_value(self, path: list[str], value: Any) -> None:
         """Set a value in the layout. Also works if a key in the path does not exist."""
         stormvogel.rdict.rset(self.layout, path, value, create_new_keys=True)
 
     def __str__(self) -> str:
         return json.dumps(self.layout, indent=2)
 
-    def copy_settings(self):
+    def copy_settings(self) -> None:
         """Copy some settings from one place in the layout to another place in the layout.
         They differ because visjs requires for them to be arranged a certain way which is not nice for an editor."""
         self.layout["physics"] = self.layout["misc"]["enable_physics"]
