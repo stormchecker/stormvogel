@@ -21,7 +21,7 @@
 # - The source code, hosted at [Github](https://github.com/moves-rwth/stormvogel)
 # - The python packages, hosted at [Pypi](https://pypi.org/project/stormvogel/)
 # - User documentation, which includes this notebook [Docs](https://moves-rwth.github.io/stormvogel/)
-# - Reach out to us at [Discord Server](https://discord.gg/byeKSasJY6)
+# - Reach out to us at our [Discord Server](https://discord.gg/byeKSasJY6)
 #
 
 # %% [markdown]
@@ -65,10 +65,10 @@ vis = show(examples.create_car_mdp(), layout=stormvogel.layout.Layout("layouts/c
 # Probabilistic model checking is a general technique and can be applied to any problem which can be modelled as Markov model, such as an Markov decision process (MDP). Given that these models are used in many different domains, the use of probabilistic model checking is not limited to software and hardware verification.
 #
 # ## Tools for Probabilistic Model Checking
-# The research community in probabilistic model checking is largely tool driven. While many smaller prototype implementations exist, some larger ecosystems have emerged, in particular PRISM, Modest, and Storm. For an overview of the field, we refer to this recent paper.  Stormvogel, as the name suggests, has been primarily developed on top of the ecosystem that the model checker Storm provides.
+# The research community in probabilistic model checking is largely tool driven. While many smaller prototype implementations exist, some larger ecosystems have emerged, in particular PRISM, Modest, and Storm. For an overview of the field, we refer to [this recent paper](https://www.prismmodelchecker.org/papers/pfqa-pmc-appls.pdf).  Stormvogel, as the name suggests, has been primarily developed on top of the ecosystem that the model checker Storm provides.
 #
 #
-# ### What is Storm, Stormpy and Stormvogel?
+# ### Storm, Stormpy and Stormvogel
 # * [Storm](https://www.stormchecker.org/) is a probabilistic model checker, written in C++, whose primary goal is to provide the fastest algorithms for standard probabilistic model checking queries. This goal comes at a cost of a steep learning curve.
 # * [Stormpy](https://moves-rwth.github.io/stormpy/) is an low-level API with Python bindings for Storm that allows developers working with Storm to quickly prototype new algorithms.  It is structured mostly similarly to Storm itself.
 # * Stormvogel is a collection of Python APIs and visualization tools with ease-of-use as top priority: The goal of Stormvogel is to provide an accessible way to do probabilistic model checking and to provide educational tools about model checking. It can be easily interfaced with Stormpy to profit from high-performance model checking.
@@ -76,20 +76,19 @@ vis = show(examples.create_car_mdp(), layout=stormvogel.layout.Layout("layouts/c
 # ## What does Stormvogel provide?
 # While Stormvogel is still under active development, these are the current key features.
 #
-# * APIs for constructing Markov models in dedicated data structures. Currently, DTMCs, MDPs, CTMCs, POMDPs and Markov Automata are supported.
-#   - The `model` API can be used to construct a model directly by explicitely defining a set of states and transitions.
-#   - The `bird` API can be used to construct a model by defining a delta function. The structure is similar to PRISM.
-#   - The `PRISM` API can be used to construct a model using the PRISM syntax, which has been the standard in model checking over the last years.
-# * Seamless conversion between stormvogel and stormpy models with some runtime overhead. This allows, e.g., also using formats such as JANI that are not supported by stormvogel directly.
+# * APIs for constructing Markov models in dedicated data structures. Currently, DTMCs, MDPs, CTMCs, MAs and POMDPs are supported.
+#   - The *model* API can be used to construct a model directly by explicitely defining a set of states and transitions.
+#   - The *bird* API can be used to construct a model by defining a delta function. The structure is similar to PRISM.
+# * Seamless conversion between stormvogel and stormpy models with some runtime overhead. This allows, e.g., also using formats such as PRISM and JANI that are not supported by stormvogel directly.
 # * Visualization in notebooks.
-#   - Visualize your models by displaying the states, actions and edges.
-#   - Edit and save/load the layout of your models interactively using a GUI.
+#   - Visualize models by displaying the states, actions and edges.
+#   - Edit and save/load the layout of models interactively using a GUI.
 #   - Display model checking results in an interactive way.
 #   - Visualize a simulation of a model.
 # * An interface for model checking.
-#   - A function for model checking that takes a `PRISM` property string. Note that this uses Storm under the hood, so it is probably fast.
-#   - A GUI for making it easier to construct these property strings for beginners (the *property builder*)
-# * An extensive documentation, with examples and documentation
+#   - A function for model checking that takes a PRISM property string. This uses Storm under the hood, so it is efficient.
+#   - A GUI for making it easier to construct property strings for beginners (the *property builder*).
+# * An extensive documentation, with ample examples.
 #
 # Details about these can be found in the remaining notebooks.
 #
@@ -98,7 +97,9 @@ vis = show(examples.create_car_mdp(), layout=stormvogel.layout.Layout("layouts/c
 #
 # Stormvogel was developed at the Radboud University in 2024-2025 by Linus Heck, Pim Leerkes and Ivo Melse under the supervision of Sebastian Junges (Radboud) and Matthias Volk (Eindhoven University of Technology). We would like to thank the Dutch Research Council (NWO) for providing funding for the project via the NWO Open Science Fund Grant StormAE.
 #
-# Good luck using stormvogel! And if you ever get bored or frustrated, the bird is here to cheer you up! (This bird is in fact a singleton DTMC!)
+# Furthermore, we would like to thank our contributers Luko van der Maas, Nicklas Osmers.
+#
+# Good luck using stormvogel!
 
 # %%
 bird = show_bird()

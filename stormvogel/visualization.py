@@ -1108,7 +1108,7 @@ class MplVisualization(VisualizationBase):
             edge_colors[edge] = color
 
         pos = {
-            node: np.array((pos["x"], pos["y"]))
+            int(node): np.array((pos["x"], pos["y"]))
             for node, pos in self.layout.layout["positions"].items()
         }
         if len(pos) != len(self.G.nodes):
