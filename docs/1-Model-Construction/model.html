@@ -43499,15 +43499,15 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
 // exports.Element = SVGCanvasElement;
 </script>
     <style type="text/css">
-      #XEVJOIUOVn {
-        width: 461px;
-        height: 358px;
+      #ZLPyuBDIXe {
+        width: 800px;
+        height: 600px;
         border: 1px solid lightgray;
       }
     </style>
   </head>
   <body>
-    <div id="ZUTUVzYAMf"></div>
+    <div id="ZLPyuBDIXe"></div>
     <script type="text/javascript">
         //js
 class NetworkWrapper {
@@ -43617,17 +43617,45 @@ class NetworkWrapper {
     </script>
     <script type="text/javascript">
         //js
-    var nodes_local = new vis.DataSet([{ id: 0, label: `init`, group: "states" },
-{ id: 1, label: `try`, group: "states" },
-{ id: 2, label: `fail`, group: "states" },
-{ id: 3, label: `success`, group: "states" },
+    var nodes_local = new vis.DataSet([{ id: 0, label: `init,flip
+€	R: 0
+☆ 50
+ʘ 0`, group: "states" },
+{ id: 1, label: `heads
+☆ 50
+ʘ 0`, group: "states" },
+{ id: 2, label: `tails
+☆ 50
+ʘ 0`, group: "states" },
+{ id: 3, label: `correct,done
+€	R: 100
+☆ 100
+ʘ 0`, group: "states" },
+{ id: 4, label: `wrong,done
+€	R: 0
+☆ 0
+ʘ 0`, group: "states" },
+{ id: 10000000000, label: `guess,heads
+€	R: 0`, group: "scheduled_actions" },
+{ id: 10000000001, label: `guess,tails
+€	R: 0`, group: "actions" },
+{ id: 10000000002, label: `guess,heads
+€	R: 0`, group: "scheduled_actions" },
+{ id: 10000000003, label: `guess,tails
+€	R: 0`, group: "actions" },
 ]);
-    var edges_local = new vis.DataSet([{ from: 0, to: 1, label: "1" },
-{ from: 1, to: 1, label: "1/100" },
-{ from: 1, to: 2, label: "1/100" },
-{ from: 1, to: 3, label: "49/50" },
-{ from: 2, to: 0, label: "1" },
+    var edges_local = new vis.DataSet([{ from: 0, to: 1, label: "1/2" },
+{ from: 0, to: 2, label: "1/2" },
+{ from: 1, to: 10000000000, color: "red" },
+{ from: 1, to: 10000000001 },
+{ from: 2, to: 10000000002, color: "red" },
+{ from: 2, to: 10000000003 },
 { from: 3, to: 3, label: "1" },
+{ from: 4, to: 4, label: "1" },
+{ from: 10000000000, to: 3, label: "1", color: "red" },
+{ from: 10000000001, to: 4, label: "1" },
+{ from: 10000000002, to: 4, label: "1", color: "red" },
+{ from: 10000000003, to: 3, label: "1" },
 ]);
     var options_local = {
   "__fake_macros": {
@@ -43652,14 +43680,15 @@ class NetworkWrapper {
   "edit_groups": {
     "groups": [
       "states",
-      "actions"
+      "actions",
+      "scheduled_actions"
     ]
   },
   "groups": {
     "actions": {
       "borderWidth": 1,
       "color": {
-        "background": "#fbd0f5",
+        "background": "lightblue",
         "border": "black",
         "highlight": {
           "background": "white",
@@ -43674,16 +43703,26 @@ class NetworkWrapper {
       }
     },
     "scheduled_actions": {
-      "shape": "box",
+      "borderWidth": 1,
       "color": {
         "background": "pink",
-        "border": "red"
+        "border": "red",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "box",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
       }
     },
     "states": {
       "borderWidth": 1,
       "color": {
-        "background": "#c9f9a9",
+        "background": "white",
         "border": "black",
         "highlight": {
           "background": "white",
@@ -43737,39 +43776,22 @@ class NetworkWrapper {
   },
   "misc": {
     "enable_physics": true,
-    "width": 300,
-    "height": 342,
+    "width": 800,
+    "height": 600,
     "explore": false
   },
   "saving": {
     "relative_path": true,
-    "filename": "layouts/commu.json",
+    "filename": "layouts/NAME.json",
     "save_button": false,
     "load_button": false
   },
-  "positions": {
-    "0": {
-      "x": 4,
-      "y": -87
-    },
-    "1": {
-      "x": 5,
-      "y": 27
-    },
-    "2": {
-      "x": -94,
-      "y": -28
-    },
-    "3": {
-      "x": 101,
-      "y": 105
-    }
-  },
+  "positions": {},
   "physics": true,
   "autoResize": true
 };
-    var container_local = document.getElementById("ZUTUVzYAMf");
-    var nw_ZUTUVzYAMf = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
+    var container_local = document.getElementById("ZLPyuBDIXe");
+    var nw_ZLPyuBDIXe = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
 
     </script>
   </body>

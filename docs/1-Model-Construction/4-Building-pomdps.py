@@ -102,7 +102,9 @@ taken_actions = {}
 for id, state in coin_pomdp.states.items():
     taken_actions[id] = state.available_actions()[0]
 scheduler2 = stormvogel.result.Scheduler(coin_pomdp, taken_actions)
-values = [50, 50, 50, 100.0, 0.0]
+values = {0: 50, 1: 50, 2: 50, 3: 100.0, 4: 0.0}
 result2 = stormvogel.result.Result(coin_pomdp, values, scheduler2)
 
 vis4 = show(coin_pomdp, result=result2)
+
+# %%
