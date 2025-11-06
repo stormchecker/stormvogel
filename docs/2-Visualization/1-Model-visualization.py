@@ -24,6 +24,7 @@
 # Remember the car model from the introduction? You will notice that it does not have the same colors as it had in the introduction notebook. The reason for this is that in the introduction, we specified a different **Layout**.
 
 # %%
+from stormvogel import *
 vis = show(examples.create_car_mdp())
 #vis = show(examples.create_car_mdp(), show_editor=True) # with layout editor
 
