@@ -43499,15 +43499,15 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
 // exports.Element = SVGCanvasElement;
 </script>
     <style type="text/css">
-      #BxprDMDYnZ {
-        width: 800px;
-        height: 600px;
+      #sUYbmXlAPA {
+        width: 655px;
+        height: 375px;
         border: 1px solid lightgray;
       }
     </style>
   </head>
   <body>
-    <div id="BxprDMDYnZ"></div>
+    <div id="sUYbmXlAPA"></div>
     <script type="text/javascript">
         //js
 class NetworkWrapper {
@@ -43617,10 +43617,10 @@ class NetworkWrapper {
     </script>
     <script type="text/javascript">
         //js
-    var nodes_local = new vis.DataSet([{ id: 0, label: `init,green light,still`, group: "states" },
-{ id: 1, label: `red light,still`, group: "states" },
-{ id: 2, label: `green light,moving`, group: "states" },
-{ id: 3, label: `red light,moving`, group: "states" },
+    var nodes_local = new vis.DataSet([{ id: 0, label: `init,green light,still`, group: "green_light" },
+{ id: 1, label: `red light,still`, group: "red_light" },
+{ id: 2, label: `green light,moving`, group: "green_light" },
+{ id: 3, label: `red light,moving`, group: "red_light" },
 { id: 4, label: `accident`, group: "states" },
 { id: 10000000000, label: `accelerate`, group: "actions" },
 { id: 10000000001, label: `wait`, group: "actions" },
@@ -43671,6 +43671,8 @@ class NetworkWrapper {
   },
   "edit_groups": {
     "groups": [
+      "green_light",
+      "red_light",
       "states",
       "actions"
     ]
@@ -43690,20 +43692,48 @@ class NetworkWrapper {
       "mass": 1,
       "font": {
         "color": "black",
-        "size": 14
+        "size": 20
       }
     },
     "scheduled_actions": {
       "shape": "box",
       "color": {
         "background": "pink",
-        "border": "red"
-      }
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "borderWidth": 1,
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
+      },
+      "schedColor": false
     },
     "states": {
       "borderWidth": 1,
       "color": {
-        "background": "orange",
+        "background": "#000000",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "#ffffff",
+        "size": 20
+      }
+    },
+    "red_light": {
+      "borderWidth": 1,
+      "color": {
+        "background": "#ec9393",
         "border": "black",
         "highlight": {
           "background": "white",
@@ -43714,7 +43744,41 @@ class NetworkWrapper {
       "mass": 1,
       "font": {
         "color": "black",
-        "size": 14
+        "size": 20
+      }
+    },
+    "green_light": {
+      "borderWidth": 1,
+      "color": {
+        "background": "#bcfe58",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 20
+      }
+    },
+    "init": {
+      "borderWidth": 1,
+      "color": {
+        "background": "#bcfe58",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 20
       }
     }
   },
@@ -43740,7 +43804,7 @@ class NetworkWrapper {
   "results": {
     "show_results": true,
     "result_symbol": "\u2606",
-    "result_colors": true,
+    "result_colors": false,
     "min_result_color": "#ffffff",
     "max_result_color": "#ff0000"
   },
@@ -43750,29 +43814,86 @@ class NetworkWrapper {
     "reward_symbol": "\u20ac",
     "show_zero_rewards": true,
     "show_observations": true,
-    "observation_symbol": "\u0298"
+    "observation_symbol": "\u0298",
+    "show_results": true,
+    "result_symbol": "\u2606"
   },
   "layout": {
     "randomSeed": 5
   },
   "misc": {
     "enable_physics": true,
-    "width": 800,
-    "height": 600,
+    "width": 655,
+    "height": 375,
     "explore": false
   },
   "saving": {
     "relative_path": true,
-    "filename": "layouts/NAME.json",
+    "filename": "layouts/car.json",
     "save_button": false,
     "load_button": false
   },
-  "positions": {},
+  "positions": {
+    "0": {
+      "x": 194,
+      "y": -96
+    },
+    "1": {
+      "x": -51,
+      "y": -142
+    },
+    "2": {
+      "x": 186,
+      "y": 153
+    },
+    "3": {
+      "x": -108,
+      "y": 98
+    },
+    "4": {
+      "x": -367,
+      "y": 177
+    },
+    "10000000000": {
+      "x": 144,
+      "y": 35
+    },
+    "10000000001": {
+      "x": 68,
+      "y": -99
+    },
+    "10000000002": {
+      "x": -158,
+      "y": -50
+    },
+    "10000000003": {
+      "x": 87,
+      "y": -212
+    },
+    "10000000004": {
+      "x": 275,
+      "y": 33
+    },
+    "10000000005": {
+      "x": 33,
+      "y": 176
+    },
+    "10000000006": {
+      "x": -25,
+      "y": -3
+    },
+    "10000000007": {
+      "x": -238,
+      "y": 163
+    }
+  },
   "physics": true,
-  "autoResize": true
+  "autoResize": true,
+  "width": 655,
+  "height": 375
 };
-    var container_local = document.getElementById("BxprDMDYnZ");
-    var nw_BxprDMDYnZ = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
+    var container_local = document.getElementById("sUYbmXlAPA");
+    var nw_sUYbmXlAPA = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
 
     </script>
   </body>

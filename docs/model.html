@@ -43499,15 +43499,15 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
 // exports.Element = SVGCanvasElement;
 </script>
     <style type="text/css">
-      #BxprDMDYnZ {
-        width: 800px;
-        height: 600px;
+      #KrCcLkBzul {
+        width: 203px;
+        height: 213px;
         border: 1px solid lightgray;
       }
     </style>
   </head>
   <body>
-    <div id="BxprDMDYnZ"></div>
+    <div id="KrCcLkBzul"></div>
     <script type="text/javascript">
         //js
 class NetworkWrapper {
@@ -43617,37 +43617,9 @@ class NetworkWrapper {
     </script>
     <script type="text/javascript">
         //js
-    var nodes_local = new vis.DataSet([{ id: 0, label: `init,green light,still`, group: "states" },
-{ id: 1, label: `red light,still`, group: "states" },
-{ id: 2, label: `green light,moving`, group: "states" },
-{ id: 3, label: `red light,moving`, group: "states" },
-{ id: 4, label: `accident`, group: "states" },
-{ id: 10000000000, label: `accelerate`, group: "actions" },
-{ id: 10000000001, label: `wait`, group: "actions" },
-{ id: 10000000002, label: `accelerate`, group: "actions" },
-{ id: 10000000003, label: `wait`, group: "actions" },
-{ id: 10000000004, label: `brake`, group: "actions" },
-{ id: 10000000005, label: `wait`, group: "actions" },
-{ id: 10000000006, label: `brake`, group: "actions" },
-{ id: 10000000007, label: `wait`, group: "actions" },
+    var nodes_local = new vis.DataSet([{ id: 0, label: `🐦`, group: "states" },
 ]);
-    var edges_local = new vis.DataSet([{ from: 0, to: 10000000000 },
-{ from: 0, to: 10000000001 },
-{ from: 1, to: 10000000002 },
-{ from: 1, to: 10000000003 },
-{ from: 2, to: 10000000004 },
-{ from: 2, to: 10000000005 },
-{ from: 3, to: 10000000006 },
-{ from: 3, to: 10000000007 },
-{ from: 4, to: 4, label: "1" },
-{ from: 10000000000, to: 2, label: "1" },
-{ from: 10000000001, to: 1, label: "1" },
-{ from: 10000000002, to: 3, label: "1" },
-{ from: 10000000003, to: 0, label: "1" },
-{ from: 10000000004, to: 0, label: "1" },
-{ from: 10000000005, to: 3, label: "1" },
-{ from: 10000000006, to: 1, label: "1" },
-{ from: 10000000007, to: 4, label: "1" },
+    var edges_local = new vis.DataSet([{ from: 0, to: 0, label: "1" },
 ]);
     var options_local = {
   "__fake_macros": {
@@ -43697,14 +43669,25 @@ class NetworkWrapper {
       "shape": "box",
       "color": {
         "background": "pink",
-        "border": "red"
-      }
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "borderWidth": 1,
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
+      },
+      "schedColor": false
     },
     "states": {
-      "borderWidth": 1,
+      "borderWidth": 7,
       "color": {
-        "background": "orange",
-        "border": "black",
+        "background": "#d1d1d1",
+        "border": "#5b98fb",
         "highlight": {
           "background": "white",
           "border": "red"
@@ -43713,8 +43696,8 @@ class NetworkWrapper {
       "shape": "ellipse",
       "mass": 1,
       "font": {
-        "color": "black",
-        "size": 14
+        "color": "#000000",
+        "size": 74
       }
     }
   },
@@ -43740,7 +43723,7 @@ class NetworkWrapper {
   "results": {
     "show_results": true,
     "result_symbol": "\u2606",
-    "result_colors": true,
+    "result_colors": false,
     "min_result_color": "#ffffff",
     "max_result_color": "#ff0000"
   },
@@ -43750,29 +43733,42 @@ class NetworkWrapper {
     "reward_symbol": "\u20ac",
     "show_zero_rewards": true,
     "show_observations": true,
-    "observation_symbol": "\u0298"
+    "observation_symbol": "\u0298",
+    "show_results": true,
+    "result_symbol": "\u2606"
   },
   "layout": {
     "randomSeed": 5
   },
   "misc": {
     "enable_physics": true,
-    "width": 800,
-    "height": 600,
+    "width": 203,
+    "height": 213,
     "explore": false
   },
   "saving": {
     "relative_path": true,
-    "filename": "layouts/NAME.json",
+    "filename": "layouts/sv.json",
     "save_button": false,
     "load_button": false
   },
-  "positions": {},
+  "positions": {
+    "0": {
+      "x": -163,
+      "y": 433
+    },
+    "1": {
+      "x": -12,
+      "y": -70
+    }
+  },
   "physics": true,
-  "autoResize": true
+  "autoResize": true,
+  "width": 203,
+  "height": 213
 };
-    var container_local = document.getElementById("BxprDMDYnZ");
-    var nw_BxprDMDYnZ = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
+    var container_local = document.getElementById("KrCcLkBzul");
+    var nw_KrCcLkBzul = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
 
     </script>
   </body>

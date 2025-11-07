@@ -40,8 +40,7 @@ def naive_value_iteration(
                 )
                 action_values[action] = branch_value
             # We take the action with the highest value.
-            highest_value = max(action_values.values())
-            new_values[sid] = highest_value
+            new_values[sid] = max(action_values.values())
         values_matrix.append(new_values)  # type: ignore
         terminate = (
             sum([abs(x - y) for (x, y) in zip(new_values, old_values)]) < epsilon  # type: ignore

@@ -26,7 +26,7 @@ def sample_gym(
         convert_obs (Callable[[any], any]): Converts the observations to a hashable type. You can also apply rounding here.
 
     Returns:
-        A 4-tuple consiting of four defaultdicts and one integer.
+        A 6-tuple consiting of four defaultdicts and one integer.
         * initial_states (defaultdict[state, int]): The initial state in gym may be non-deterministic. This maps the initial states to the amount of times they were observed as the initial state.
         * states (defaultdict[state, int]): Maps states to the amount of times they were observed.
         * transition_counts (defaultdict[(state,action), defaultdict[state, int]]): Counts how many times the transition between this state-action pair and state was observed.

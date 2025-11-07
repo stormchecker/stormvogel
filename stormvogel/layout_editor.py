@@ -1,4 +1,10 @@
-"""Layout editor."""
+"""Interactive layout editor for Stormvogel layouts using ipywidgets.
+
+Implemented using the DictEditor from dict_editor.py, some clarifications:
+- Layout stores and manages loading/saving of the layout file, and the schema file.
+- DictEditor creates an editor from a schema and a dict to be edited.
+- LayoutEditor creates a DictEditor using the schema stored in layouts/schema.json.
+    It also processes what should happen when the user edits something in the layout editor or presses the save/load/reload buttons."""
 
 import stormvogel.communication_server
 import stormvogel.dict_editor
@@ -21,6 +27,7 @@ class LayoutEditor(stormvogel.displayable.Displayable):
         debug_output: widgets.Output = widgets.Output(),
     ) -> None:
         """Create an interactive layout editor, according to the schema. Display it using the show() method.
+
         Args:
             layout (Layout): The layout to be edited.
             visualization (Visualization, optional): A visualization that uses said layout. Defaults to None. Used to update the layout.
@@ -129,13 +136,17 @@ class LayoutEditor(stormvogel.displayable.Displayable):
             self.process_load_button()
         if reload:
             self.process_reload_button()
-        # The preceeding methods should never call self.show() or self.try_show_vis() since it's already called here.
-        if load or reload:
+        # The preceeding methods should never call self.vis.show() or self.vis.recreate() since it's already called here.
+        if (
+            load or reload
+        ):  # If we loaded or reloaded, we need to recreate the visualization.
             if self.vis is not None:
                 self.vis.recreate()  # This also updates the edit groups as a side effect, so it should be called first.
                 self.vis.show()
             self.show()
-        elif self.vis is not None:
+        elif (
+            self.vis is not None
+        ):  # Otherwise, just update the layout within the visualization (color changes, for example).
             self.vis.update()
 
     def show(self) -> None:

@@ -1,5 +1,6 @@
 """Generate an interactive editor from a specified schema using ipywidgets.
-This is used to create the layout editing menu."""
+This is used to create the layout editing menu.
+Exmample usage can be found in property_builder.py."""
 
 import stormvogel.displayable
 import stormvogel.rdict

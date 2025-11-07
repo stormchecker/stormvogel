@@ -19,44 +19,6 @@ if TYPE_CHECKING:
     from . import simulator
 
 
-def und(x: str) -> str:
-    """Replace spaces by underscores."""
-    return x.replace(" ", "_")
-
-
-def random_word(k: int) -> str:
-    """Random word of length k"""
-    import random
-    import string
-
-    return "".join(random.choices(string.ascii_letters, k=k))
-
-
-def random_color() -> str:
-    """Return a random HEX color."""
-    import random
-
-    return "#" + "".join([random.choice("0123456789ABCDEF") for _ in range(6)])
-
-
-def blend_colors(c1: str, c2: str, factor: float) -> str:
-    """Blend two colors in HEX format. #RRGGBB.
-    Args:
-        color1 (str): Color 1 in HEX format #RRGGBB
-        color2 (str): Color 2 in HEX format #RRGGBB
-        factor (float): The fraction of the resulting color that should come from color1."""
-    r1 = int("0x" + c1[1:3], 0)
-    g1 = int("0x" + c1[3:5], 0)
-    b1 = int("0x" + c1[5:7], 0)
-    r2 = int("0x" + c2[1:3], 0)
-    g2 = int("0x" + c2[3:5], 0)
-    b2 = int("0x" + c2[5:7], 0)
-    r_res = int(factor * r1 + (1 - factor) * r2)
-    g_res = int(factor * g1 + (1 - factor) * g2)
-    b_res = int(factor * b1 + (1 - factor) * b2)
-    return "#" + "".join("%02x" % i for i in [r_res, g_res, b_res])
-
-
 class VisualizationBase:
     """Base class for visualizing a Stormvogel MDP model.
 
@@ -112,6 +74,44 @@ class VisualizationBase:
             self.layout.remove_active_group("scheduled_actions")
         self.recreate()
 
+    @staticmethod
+    def _und(x: str) -> str:
+        """Replace spaces by underscores."""
+        return x.replace(" ", "_")
+
+    @staticmethod
+    def _random_word(k: int) -> str:
+        """Random word of length k"""
+        import random
+        import string
+
+        return "".join(random.choices(string.ascii_letters, k=k))
+
+    @staticmethod
+    def _random_color() -> str:
+        """Return a random HEX color."""
+        import random
+
+        return "#" + "".join([random.choice("0123456789ABCDEF") for _ in range(6)])
+
+    @staticmethod
+    def _blend_colors(c1: str, c2: str, factor: float) -> str:
+        """Blend two colors in HEX format. #RRGGBB.
+        Args:
+            color1 (str): Color 1 in HEX format #RRGGBB
+            color2 (str): Color 2 in HEX format #RRGGBB
+            factor (float): The fraction of the resulting color that should come from color1."""
+        r1 = int("0x" + c1[1:3], 0)
+        g1 = int("0x" + c1[3:5], 0)
+        b1 = int("0x" + c1[5:7], 0)
+        r2 = int("0x" + c2[1:3], 0)
+        g2 = int("0x" + c2[3:5], 0)
+        b2 = int("0x" + c2[5:7], 0)
+        r_res = int(factor * r1 + (1 - factor) * r2)
+        g_res = int(factor * g1 + (1 - factor) * g2)
+        b_res = int(factor * b1 + (1 - factor) * b2)
+        return "#" + "".join("%02x" % i for i in [r_res, g_res, b_res])
+
     def recreate(self):
         """Recreate the ModelGraph and set the edit groups."""
         from .graph import ModelGraph
@@ -122,7 +122,7 @@ class VisualizationBase:
             action_properties=self._create_action_properties,
             transition_properties=self._create_transition_properties,
         )
-        underscored_labels = set(map(und, self.model.get_labels()))
+        underscored_labels = set(map(self._und, self.model.get_labels()))
         possible_groups = underscored_labels.union(
             {"states", "actions", "scheduled_actions"}
         )
@@ -169,15 +169,15 @@ class VisualizationBase:
             )
 
     def _group_state(self, s: stormvogel.model.State, default: str) -> str:
-        """Return the group of this state.
-        That is, the label of s that has the highest priority, as specified by the user under edit_groups"""
-        und_labels = set(map(lambda x: und(x), s.labels))
+        """The user can edit a number of subsets of the states individually, we call these groups.
+        This function determines the group of this state. That is, the label of s that has the highest priority, as specified by the user under edit_groups."""
+        und_labels = set(map(lambda x: self._und(x), s.labels))
         res = list(
             filter(
                 lambda x: x in und_labels, self.layout.layout["edit_groups"]["groups"]
             )
         )
-        return und(res[0]) if res != [] else default
+        return self._und(res[0]) if res != [] else default
 
     def _group_action(self, s_id: int, a: stormvogel.model.Action, default: str) -> str:
         """Return the group of this action. Only relevant for scheduling"""
@@ -193,7 +193,7 @@ class VisualizationBase:
     ) -> str:
         """Create a string that contains either the state exit reward (if actions are not supported)
         or the reward of taking this action from this state. (if actions ARE supported)
-        Starts with newline"""
+        Starts with newline."""
         if not self.layout.layout["state_properties"]["show_rewards"]:
             return ""
         EMPTY_RES = "\n" + self.layout.layout["state_properties"]["reward_symbol"]
@@ -215,10 +215,10 @@ class VisualizationBase:
             return ""
         return res
 
-    def _create_state_properties(self, state: stormvogel.model.State):
+    def _create_state_properties(self, state: stormvogel.model.State) -> dict:
         """Generates visualization properties for a given state in the model.
 
-        This method assembles the visual representation of a state, including
+        That is, the visual representation of a state, including
         its label, group assignment, color (based on model checking results),
         and other textual annotations like rewards and observations. These
         properties are used when constructing the `ModelGraph` for visualization.
@@ -261,7 +261,7 @@ class VisualizationBase:
                 color1 = self.layout.layout["results"]["max_result_color"]
                 color2 = self.layout.layout["results"]["min_result_color"]
                 factor = result / max_result if max_result != 0 else 0
-                color = blend_colors(color1, color2, float(factor))
+                color = self._blend_colors(color1, color2, float(factor))
         properties = {
             "label": id_label_part
             + ",".join(state.labels)
@@ -342,7 +342,6 @@ class JSVisualization(VisualizationBase):
         do_init_server: bool = True,
         max_states: int = 1000,
         max_physics_states: int = 500,
-        spam: widgets.Output | None = None,  # type: ignore[name-defined]
     ) -> None:
         """Create and show a visualization of a Model using a visjs Network
         Args:
@@ -363,7 +362,6 @@ class JSVisualization(VisualizationBase):
             max_physics_states (int): If the model has more states, then physics are disabled.
         """
         import ipywidgets as widgets  # local, heavy
-        import IPython.display as ipd  # local, heavy
         import os
 
         super().__init__(model, layout, result, scheduler)
@@ -381,15 +379,9 @@ class JSVisualization(VisualizationBase):
             self.debug_output: widgets.Output = widgets.Output()
         else:
             self.debug_output = debug_output
-        if spam is None:
-            self.spam = widgets.Output()
-        else:
-            self.spam = spam
-        with self.output:
-            ipd.display(self.spam)
 
         # vis stuff
-        self.name: str = name or random_word(10)
+        self.name: str = name or self._random_word(10)
         self.use_iframe: bool = use_iframe
         self.max_states: int = max_states
         self.max_physics_states: int = max_physics_states
@@ -403,6 +395,7 @@ class JSVisualization(VisualizationBase):
         else:
             self.network_wrapper = f"nw_{self.name}"
         self.new_nodes_hidden: bool = False
+        # If the user wants to initialize the server, and we are not building the documentation.
         if do_init_server and os.environ.get("DOCUMENTATION", "0").lower() != "1":
             import stormvogel.communication_server  # ensure submodule is loaded
 
@@ -589,7 +582,7 @@ class JSVisualization(VisualizationBase):
         self.initial_state_id = initial_node_id
         self.layout.set_value(["misc", "explore"], True)
 
-    def get_positions(self) -> dict:
+    def get_positions(self) -> dict[int, dict[str, int]]:
         """Get the current positions of the nodes on the canvas. Returns empty dict if unsuccessful.
         Example result: {0: {"x": 5, "y": 10}}"""
         import json
@@ -774,7 +767,7 @@ class JSVisualization(VisualizationBase):
             colors (optional): A list of colors for the decompositions. Random colors are picked by default."""
         for n, v in enumerate(decomp):
             if colors is None:
-                color = random_color()
+                color = self._random_color()
             else:
                 color = colors[n]
             self.highlight_state_set(v[0], color)
@@ -945,7 +938,9 @@ class MplVisualization(VisualizationBase):
         if self.scheduler is not None:
             self.highlight_scheduler(self.scheduler)
 
-    def highlight_state(self, state: stormvogel.model.State | int, color: str = "red"):
+    def highlight_state(
+        self, state: stormvogel.model.State | int, color: str = "red"
+    ) -> None:
         """Highlights a state node in the visualization by setting its color.
 
         Args:
@@ -966,7 +961,7 @@ class MplVisualization(VisualizationBase):
         state: stormvogel.model.State | int,
         action: stormvogel.model.Action,
         color: str = "red",
-    ):
+    ) -> None:
         """Highlights an action node associated with a state by setting its color.
 
         Args:
@@ -984,7 +979,7 @@ class MplVisualization(VisualizationBase):
         action_node = self.G.state_action_id_map[state_node, action]
         self._highlights[action_node] = color
 
-    def highlight_edge(self, from_: int, to_: int, color: str = "red"):
+    def highlight_edge(self, from_: int, to_: int, color: str = "red") -> None:
         """Highlights an edge between two nodes by setting its color.
 
         Args:
@@ -994,12 +989,12 @@ class MplVisualization(VisualizationBase):
         """
         self._edge_highlights[from_, to_] = color
 
-    def clear_highlighting(self):
+    def clear_highlighting(self) -> None:
         """Clear all nodes that are marked for highlighting in the visualization"""
         self._highlights.clear()
         self._edge_highlights.clear()
 
-    def highlight_scheduler(self, scheduler: stormvogel.result.Scheduler):
+    def highlight_scheduler(self, scheduler: stormvogel.result.Scheduler) -> None:
         """Highlights states, actions, and edges according to the given scheduler.
 
         Applies a specific highlight color defined by the layout to all states and
@@ -1030,7 +1025,7 @@ class MplVisualization(VisualizationBase):
         node_size: int | dict[int, int] = 300,
         node_kwargs: dict[str, Any] | None = None,
         edge_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> tuple[Any, Any]:
         """Draws the model graph onto a given Matplotlib Axes.
 
         This method renders nodes and edges of the model graph on the
@@ -1108,7 +1103,7 @@ class MplVisualization(VisualizationBase):
             edge_colors[edge] = color
 
         pos = {
-            node: np.array((pos["x"], pos["y"]))
+            int(node): np.array((pos["x"], pos["y"]))
             for node, pos in self.layout.layout["positions"].items()
         }
         if len(pos) != len(self.G.nodes):
@@ -1188,7 +1183,7 @@ class MplVisualization(VisualizationBase):
         def hover(event):
             cont, ind = nodes.contains(event)
             if self.hover_node is not None:
-                self.hover_node(nodes, edges, event, ax)
+                self.hover_node(nodes, edges, event, ax)  # type: ignore
             else:
                 if cont:
                     update_title(ind)
@@ -1200,9 +1195,7 @@ class MplVisualization(VisualizationBase):
             fig.canvas.mpl_connect("motion_notify_event", hover)
         return fig
 
-    def show(
-        self,
-    ):
+    def show(self) -> None:
         import matplotlib.pyplot as plt
 
         self.update()

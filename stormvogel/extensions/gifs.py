@@ -1,3 +1,5 @@
+"""Create gifs from stormvogel models."""
+
 import stormvogel.simulator as simulator
 import stormvogel.model
 from typing import Callable
@@ -41,7 +43,7 @@ def render_model_gif(
         state = path.get_step(i)
         if not isinstance(state, stormvogel.model.State):
             state = state[1]
-        frames.append(state_to_image(state))  # type: ignore
+        frames.append(state_to_image(state))
 
     os.makedirs("gifs", exist_ok=True)
     # Save frames as a GIF

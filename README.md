@@ -19,6 +19,8 @@ Check out the [the stormvogel documentation](https://stormchecker.github.io/stor
 
 1. Run `pip install stormvogel`.
 2. To also install stormpy, run `pip install stormpy`.
+3. Run `jupyter lab`
+4. Now a browser window should open that runs jupyter lab with stormvogel installed.
 
 ### Docker (release version)
 

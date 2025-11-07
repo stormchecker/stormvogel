@@ -33,7 +33,7 @@ class ModelGraph(DiGraph):
         self._next_action_id = ACTION_ID_OFFSET
 
     @property
-    def state_action_id_map(self):
+    def state_action_id_map(self) -> dict[tuple[int, Action], int]:
         """
         dict[tuple[int, Action], int]: A mapping from (state ID, Action) pairs to internal action node IDs.
 
@@ -113,12 +113,14 @@ class ModelGraph(DiGraph):
             state = state.id
         if isinstance(next_state, State):
             next_state = next_state.id
+
         action_id = self._state_action_id_map.get((state, action), None)
         assert state in self.nodes, "State {state} not in graph."
         assert (
             action == EmptyAction or action_id is not None
         ), "Action node for action {action} in state {state} not in graph."
         assert next_state in self.nodes, "Next state {next_state} not in graph."
+
         if action == EmptyAction:
             self.add_edge(state, next_state, probability=probability, **attr)
         else:

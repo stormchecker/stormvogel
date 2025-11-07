@@ -48,11 +48,13 @@ vis.highlight_decomposition(decomp)
 # Let us calculate the prob01 max states and min states for our model.
 
 # %%
-from stormvogel.extensions import to_bit_vector as bv
+def to_bit_vector(state_set: set[int], model: Any):
+    assert stormpy is not None
+    return stormpy.BitVector(model.transition_matrix.nr_columns, list(state_set))
 
 sp_mdp = stormpy_utils.mapping.stormvogel_to_stormpy(mdp)
-max_res = stormpy.compute_prob01max_states(sp_mdp, bv({0, 1}, sp_mdp), bv({2}, sp_mdp))
-min_res = stormpy.compute_prob01min_states(sp_mdp, bv({0, 1}, sp_mdp), bv({2}, sp_mdp))
+max_res = stormpy.compute_prob01max_states(sp_mdp, to_bit_vector({0, 1}, sp_mdp), to_bit_vector({2}, sp_mdp))
+min_res = stormpy.compute_prob01min_states(sp_mdp, to_bit_vector({0, 1}, sp_mdp), to_bit_vector({2}, sp_mdp))
 print(0, mdp[0].labels)
 print(1, mdp[1].labels)
 # Note that for a DTMC, we can use `compute_prob01_states`.

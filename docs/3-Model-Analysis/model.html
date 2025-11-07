@@ -43499,15 +43499,15 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
 // exports.Element = SVGCanvasElement;
 </script>
     <style type="text/css">
-      #YwaVWEIeNm {
-        width: 800px;
-        height: 600px;
+      #JaAsctMEil {
+        width: 461px;
+        height: 358px;
         border: 1px solid lightgray;
       }
     </style>
   </head>
   <body>
-    <div id="YwaVWEIeNm"></div>
+    <div id="JaAsctMEil"></div>
     <script type="text/javascript">
         //js
 class NetworkWrapper {
@@ -43522,6 +43522,7 @@ class NetworkWrapper {
     };
     this.network = new vis.Network(container, this.data, options);
     var this_ = this; // Events will not work if you use 'this' directly :))))) No idea why.
+    this_.network.setData(this_.data);
 
     // Set user-triggered events.
     this.network.on( 'click', function(properties) {
@@ -43616,21 +43617,31 @@ class NetworkWrapper {
     </script>
     <script type="text/javascript">
         //js
-    var nodes_local = new vis.DataSet([{ id: 0, label: `init`, group: "states" },
-{ id: 1, label: `hungry :(`, group: "states" },
-{ id: 2, label: `starving :((`, group: "states" },
-{ id: 10000000000, label: `rawr
+    var nodes_local = new vis.DataSet([{ id: 0, label: `init
+☆ 23`, group: "states" },
+{ id: 1, label: `pass test
+€	R: 20
+☆ 20`, group: "states" },
+{ id: 2, label: `fail test
+€	R: 0
+☆ 0`, group: "states" },
+{ id: 3, label: `end
+€	R: 0
+☆ 0`, group: "states" },
+{ id: 10000000000, label: `study
 €	R: 0`, group: "actions" },
-{ id: 10000000001, label: `rawr`, group: "actions" },
-{ id: 10000000002, label: `rawr
-€	R: 0`, group: "actions" },
+{ id: 10000000001, label: `don't study
+€	R: 15`, group: "scheduled_actions" },
 ]);
     var edges_local = new vis.DataSet([{ from: 0, to: 10000000000 },
-{ from: 1, to: 10000000001 },
-{ from: 2, to: 10000000002 },
-{ from: 10000000000, to: 1, label: "1/10" },
-{ from: 10000000001, to: 2, label: "1/10" },
-{ from: 10000000002, to: 2, label: "9/10" },
+{ from: 0, to: 10000000001, color: "red" },
+{ from: 1, to: 3, label: "1" },
+{ from: 2, to: 3, label: "1" },
+{ from: 3, to: 3, label: "1" },
+{ from: 10000000000, to: 1, label: "9/10" },
+{ from: 10000000000, to: 2, label: "1/10" },
+{ from: 10000000001, to: 1, label: "2/5", color: "red" },
+{ from: 10000000001, to: 2, label: "3/5", color: "red" },
 ]);
     var options_local = {
   "__fake_macros": {
@@ -43655,14 +43666,15 @@ class NetworkWrapper {
   "edit_groups": {
     "groups": [
       "states",
-      "actions"
+      "actions",
+      "scheduled_actions"
     ]
   },
   "groups": {
     "actions": {
       "borderWidth": 1,
       "color": {
-        "background": "lightblue",
+        "background": "#fbd0f5",
         "border": "black",
         "highlight": {
           "background": "white",
@@ -43677,16 +43689,26 @@ class NetworkWrapper {
       }
     },
     "scheduled_actions": {
-      "shape": "box",
+      "borderWidth": 1,
       "color": {
         "background": "pink",
-        "border": "red"
+        "border": "red",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "box",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
       }
     },
     "states": {
       "borderWidth": 1,
       "color": {
-        "background": "white",
+        "background": "#c9f9a9",
         "border": "black",
         "highlight": {
           "background": "white",
@@ -43733,29 +43755,64 @@ class NetworkWrapper {
     "reward_symbol": "\u20ac",
     "show_zero_rewards": true,
     "show_observations": true,
-    "observation_symbol": "\u0298"
+    "observation_symbol": "\u0298",
+    "show_results": true,
+    "result_symbol": "\u2606"
   },
   "layout": {
     "randomSeed": 5
   },
   "misc": {
     "enable_physics": true,
-    "width": 800,
-    "height": 600,
+    "width": 461,
+    "height": 358,
     "explore": false
   },
   "saving": {
     "relative_path": true,
-    "filename": "layouts/NAME.json",
+    "filename": "layouts/pinkgreen.json",
     "save_button": false,
     "load_button": false
   },
-  "positions": {},
+  "positions": {
+    "0": {
+      "x": -200,
+      "y": -25
+    },
+    "1": {
+      "x": 3,
+      "y": -112
+    },
+    "2": {
+      "x": -17,
+      "y": 119
+    },
+    "3": {
+      "x": 92,
+      "y": 27
+    },
+    "4": {
+      "x": 8,
+      "y": -1
+    },
+    "5": {
+      "x": 140,
+      "y": -58
+    },
+    "10000000000": {
+      "x": -124,
+      "y": -138
+    },
+    "10000000001": {
+      "x": -154,
+      "y": 103
+    }
+  },
   "physics": true,
   "autoResize": true
 };
-    var container_local = document.getElementById("YwaVWEIeNm");
-    var nw_YwaVWEIeNm = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
+    var container_local = document.getElementById("JaAsctMEil");
+    var nw_JaAsctMEil = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
 
     </script>
   </body>

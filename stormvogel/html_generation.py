@@ -1,25 +1,29 @@
-"""Javascript code generation functions, used in network.py. Depends on having vis-network.min.js in the stormvogel foder."""
+"""Javascript/HTML code generation functions, used by the JSVisualization. Depends on having vis-network-9.1.9-patched.js, and svgcanvas.js in the stormvogel folder."""
 
 from stormvogel.layout import PACKAGE_ROOT_DIR
-
-
-def generate_init_js(nodes_js: str, edges_js: str, options_js: str, name: str) -> str:
-    return f"""//js
-    var nodes_local = new vis.DataSet([{nodes_js}]);
-    var edges_local = new vis.DataSet([{edges_js}]);
-    var options_local = {options_js};
-    var container_local = document.getElementById("{name}");
-    var nw_{name} = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
-    """
 
 
 # An html template on which a Network is based.
 def generate_html(
     nodes_js: str, edges_js: str, options_js: str, name: str, width: int, height: int
-):
+) -> str:
     """Generate HTML that renders the network.
-    You should be able to locate the NetworkWrapper object as nw_{name},
-    and nw_{name} has a field that is the visjs network itself."""
+
+    Args:
+        nodes_js (str): JS code that generates the nodes DataSet.
+        edges_js (str): JS code that generates the edges DataSet.
+        options_js (str): JS code that generates the options object.
+        name (str): The name of the network. Used to create a unique variable name.
+        width (int): Width of the network div in pixels.
+        height (int): Height of the network div in pixels.
+
+    We generate two scripts:
+        1. One that defines the NetworkWrapper class.
+        2. One that initializes a NetworkWrapper object with the specified nodes, edges, and options.
+           This NetworkWrapper object is  stored as a global variable nw_{name}.
+           nw_{name}.network is the visjs network.
+    """
+
     with open(PACKAGE_ROOT_DIR + "/vis-network-9.1.9-patched.js") as f:
         visjs_library = f.read()
     with open(PACKAGE_ROOT_DIR + "/svgcanvas.js") as f:
@@ -53,9 +57,25 @@ def generate_html(
 """
 
 
-def generate_network_wrapper_js():
-    # Javascript code for finding the container and initializing the network
-    # Having a separate NewtorkWrapper object allows us to have multiple networks in one notebook without them interfering.
+def generate_init_js(nodes_js: str, edges_js: str, options_js: str, name: str) -> str:
+    """Generate JS code that initializes a NetworkWrapper object, and stores it in nw_{name}.
+
+    Args:
+        nodes_js (str): JS code that generates the nodes DataSet.
+        edges_js (str): JS code that generates the edges DataSet.
+        options_js (str): JS code that generates the options object.
+        name (str): The name of the network. Used to create a unique variable name."""
+    return f"""//js
+    var nodes_local = new vis.DataSet([{nodes_js}]);
+    var edges_local = new vis.DataSet([{edges_js}]);
+    var options_local = {options_js};
+    var container_local = document.getElementById("{name}");
+    var nw_{name} = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
+    """
+
+
+def generate_network_wrapper_js() -> str:
+    """Generate JS code that defines the NetworkWrapper class."""
     return """//js
 class NetworkWrapper {
   constructor(nodes, edges, options, container) {

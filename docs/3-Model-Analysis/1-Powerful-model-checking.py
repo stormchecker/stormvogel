@@ -14,7 +14,7 @@
 
 # %% [markdown]
 # # Model checking (using Storm)
-# In this notebook, we will show how to do model checking in stormvogel. Behind the scenes, we use stormpy for this.<br>
+# In this notebook, we will show how to do model checking in stormvogel. This is efficient because it uses Storm as a backend.<br>
 # We first use the simple study model. The idea is that if you do not study, then you save some time, hence you will gain 15 reward. If you pass the test you get 100 reward because you want to graduate eventually. If you study, then the chance of passing the test becomes higher. Now should you study?
 
 # %%
