@@ -1,4 +1,4 @@
-"""Two useful functions for handling dicts recursively using paths."""
+"""Functionality for handling nested dictionaries easily."""
 
 import copy
 from functools import reduce
@@ -6,7 +6,9 @@ from typing import Any
 
 
 def rget(d: dict, path: list) -> Any:
-    """Recursively get dict value. Throws KeyError if (nested) key not present"""
+    """Recursively get dict value. Throws KeyError if (nested) key not present.
+
+    Example: rget(d, ['a', 'b', 'c']) is equivalent to d['a']['b']['c']"""
     return reduce(lambda c, k: c.__getitem__(k), path, d)
 
 
@@ -14,10 +16,13 @@ def rset(d: dict, path: list[str], value: Any, create_new_keys: bool = False) ->
     """Recursively set dict value.
 
     Args:
-        d (dict):
+        d (dict): dictionary to modify.
         path (list[str]): A list of keys that lead to the value you want to set. The first key is the first key in the path, the second key is the second key in the path, etc.
         value (Any): Target value.
-        create_new_keys (bool): If a key that is on the path does not exist yet, create it. Defaults to False"""
+        create_new_keys (bool): If a key that is on the path does not exist yet, create it. Defaults to False.
+
+    Example: rset(d, ['a', 'b', 'c'], 5) is equivalent to d['a']['b']['c'] = 5
+    """
     if len(path) == 0:
         return d
 

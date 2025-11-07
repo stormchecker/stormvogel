@@ -51,7 +51,9 @@ def show(
             If this is set to False, then exporting network node positions and svg/pdf/latex is impossible.
         max_states (int): If the model has more states, then the network is not displayed.
         max_physics_states (int): If the model has more states, then physics are disabled.
-    Returns: Visualization object.
+
+    Returns:
+        JSVisualization or MlpVisualzition object.
     """
     import ipywidgets as widgets
     import IPython.display as ipd
@@ -113,8 +115,11 @@ def show(
         print(f"Unkown engine: {engine}. Choose 'js' or 'mlp'.")
 
 
-def show_bird():
+def show_bird() -> JSVisualization:
+    """Show a simple model with a bird state."""
     m = stormvogel.model.new_dtmc(create_initial_state=False)
     m.new_state("🐦")
     m.add_self_loops()
-    return show(m, show_editor=False, do_init_server=False, layout=SV())
+    vis = show(m, show_editor=False, do_init_server=False, layout=SV())
+    assert isinstance(vis, JSVisualization)
+    return vis
