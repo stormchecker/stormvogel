@@ -1,3 +1,5 @@
+"""Convert gymnasium grid environments to stormvogel models, and render them as gifs."""
+
 from stormvogel import bird
 from typing import Callable
 import stormvogel.result

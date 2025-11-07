@@ -1,4 +1,5 @@
 from typing import Tuple
+from bidict import bidict
 
 try:
     import stormpy
@@ -7,7 +8,6 @@ except ImportError:
 
 import stormvogel.model
 import stormvogel.stormpy_utils.mapping as mapping
-from stormvogel.extensions.helpers import choice_mapping
 
 
 def map_state_labels(m, res):
@@ -101,4 +101,16 @@ def stormvogel_get_maximal_end_components(
             states.add(s_id)
             actions = actions | set(map(lambda x: f.inverse[x], choices))
         res.append((frozenset(states), frozenset(actions)))
+    return res
+
+
+def choice_mapping(sv_model, sp_model):
+    """Return a bijective mapping between the stormvogel state-action pairs and the stormvogel model.
+    WARNING: This function will be depricated later. It might also be faulty, I don't know :))"""
+    res = bidict({})
+    choice_id = 0
+    for _, s in sv_model:
+        for a in s.available_actions():
+            res[s.id, a] = choice_id
+            choice_id += 1
     return res
