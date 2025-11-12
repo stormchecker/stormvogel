@@ -77,7 +77,7 @@ def test_simulate():
             )
         ]
     )
-    branch = stormvogel.model.Branch(
+    branch = stormvogel.model.Branches(
         [
             (
                 1,
@@ -88,7 +88,7 @@ def test_simulate():
         ]
     )
     action1 = other_mdp.new_action("open0")
-    transition = stormvogel.model.Choice({action1: branch})
+    transition = stormvogel.model.Choices({action1: branch})
     other_mdp.get_state_by_id(1).set_choice(transition)
     other_mdp.get_state_by_id(2).add_choice(
         [
@@ -145,7 +145,7 @@ def test_simulate():
             )
         ]
     )
-    branch = stormvogel.model.Branch(
+    branch = stormvogel.model.Branches(
         [
             (
                 1,
@@ -156,7 +156,7 @@ def test_simulate():
         ]
     )
     action1 = other_mdp.new_action("open0")
-    transition = stormvogel.model.Choice({action1: branch})
+    transition = stormvogel.model.Choices({action1: branch})
     other_mdp.get_state_by_id(1).set_choice(transition)
     other_mdp.get_state_by_id(2).set_choice(
         [
@@ -185,9 +185,9 @@ def test_simulate():
     hunt = lion.new_action("hunt >:D")
 
     satisfied.set_choice(
-        stormvogel.model.Choice(
+        stormvogel.model.Choices(
             {
-                hunt: stormvogel.model.Branch(
+                hunt: stormvogel.model.Branches(
                     [(0.5, satisfied), (0.3, full), (0.2, hungry)]
                 ),
             }
@@ -195,9 +195,9 @@ def test_simulate():
     )
 
     hungry.set_choice(
-        stormvogel.model.Choice(
+        stormvogel.model.Choices(
             {
-                hunt: stormvogel.model.Branch(
+                hunt: stormvogel.model.Branches(
                     [(0.2, full), (0.5, satisfied), (0.2, starving)]
                 ),
             }
@@ -205,9 +205,9 @@ def test_simulate():
     )
 
     full.set_choice(
-        stormvogel.model.Choice(
+        stormvogel.model.Choices(
             {
-                hunt: stormvogel.model.Branch(
+                hunt: stormvogel.model.Branches(
                     [
                         (0.5, full),
                         (0.5, satisfied),
@@ -218,9 +218,9 @@ def test_simulate():
     )
 
     starving.set_choice(
-        stormvogel.model.Choice(
+        stormvogel.model.Choices(
             {
-                hunt: stormvogel.model.Branch(0.2, hungry),
+                hunt: stormvogel.model.Branches(0.2, hungry),
             }
         )
     )

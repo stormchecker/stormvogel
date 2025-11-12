@@ -94,8 +94,10 @@ def get_target_state(env):
 
 def to_gymnasium_scheduler(
     model: stormvogel.model.Model,
-    scheduler: stormvogel.result.Scheduler
-    | Callable[[stormvogel.model.State], stormvogel.model.Action],
+    scheduler: (
+        stormvogel.result.Scheduler
+        | Callable[[stormvogel.model.State], stormvogel.model.Action]
+    ),
     action_label_map: dict[int, str] = GRID_ACTION_LABEL_MAP,
 ) -> Callable[[int], int]:
     """Convert a stormvogel scheduler to a gymnasium scheduler (for a model that was converted using gymnasium_grid_to_stormvogel).

@@ -31,9 +31,11 @@ type Action = list[str]
 def valid_input(
     delta: Callable[[Any, Action], Any] | Callable[[Any], Any],
     init: Any,
-    rewards: Callable[[Any, Action], dict[str, stormvogel.model.Value]]
-    | Callable[[Any], dict[str, stormvogel.model.Value]]
-    | None = None,
+    rewards: (
+        Callable[[Any, Action], dict[str, stormvogel.model.Value]]
+        | Callable[[Any], dict[str, stormvogel.model.Value]]
+        | None
+    ) = None,
     labels: Callable[[Any], list[str] | str | None] | None = None,
     available_actions: Callable[[Any], list[Action]] | None = None,
     observations: Callable[[Any], int] | None = None,
@@ -127,9 +129,11 @@ def valid_input(
 def build_bird(
     delta: Callable[[Any, Action], Any] | Callable[[Any], Any],
     init: Any,
-    rewards: Callable[[Any, Action], dict[str, stormvogel.model.Value]]
-    | Callable[[Any], dict[str, stormvogel.model.Value]]
-    | None = None,
+    rewards: (
+        Callable[[Any, Action], dict[str, stormvogel.model.Value]]
+        | Callable[[Any], dict[str, stormvogel.model.Value]]
+        | None
+    ) = None,
     labels: Callable[[Any], list[str] | str | None] | None = None,
     available_actions: Callable[[Any], list[Action]] | None = None,
     observations: Callable[[Any], int] | None = None,
@@ -232,7 +236,7 @@ def build_bird(
                 branch = add_new_choices(tuples, state)
 
                 if branch != []:
-                    choice[stormvogel_action] = stormvogel.model.Branch(branch)
+                    choice[stormvogel_action] = stormvogel.model.Branches(branch)
         else:
             delta = cast(Callable[[Any], Any], delta)
             tuples = delta(state)

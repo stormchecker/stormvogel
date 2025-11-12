@@ -124,13 +124,13 @@ def build_property_string(model: stormvogel.model.Model):
         op1 = v["operand1"].replace(" ", "")
         if v["operator"] == "U":
             op2 = v["operand2"].replace(" ", "")
-            return f'[{op1} U{v["time_bound"]} {op2}]'
+            return f"[{op1} U{v['time_bound']} {op2}]"
         elif v["operator"] == "LRA":
-            return f'[{v["operator"]}]'
+            return f"[{v['operator']}]"
         elif v["operator"] == "C":
-            return f'[{v["operator"]}{v["time_bound"]}]'
+            return f"[{v['operator']}{v['time_bound']}]"
         else:
-            return f'[{v["operator"]}{v["time_bound"]} {op1}]'
+            return f"[{v['operator']}{v['time_bound']} {op1}]"
 
     def values_to_first_part_property(v: dict, reward_model="") -> str:
         """Convert the dictionary of values to a property string for the first part."""

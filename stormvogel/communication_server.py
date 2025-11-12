@@ -47,7 +47,8 @@ class CommunicationServer:
     """Run a web server in the background to receive Javascript communications.
     It works by having a list of events, each with a unique id.
     The Javascript code sends a POST request to the server with the id and the data.
-    The server then looks up the event with that id and calls the function associated with it."""
+    The server then looks up the event with that id and calls the function associated with it.
+    """
 
     def __init__(self, server_port: int = 8080) -> None:
         """Initialize the communication server.
@@ -198,7 +199,8 @@ def __warn_no_free_port():
 def is_port_free(port: int) -> bool:
     """Return true iff the specified port is free on localhost_address.
     Thanks to StackOverflow user Rugnar
-    https://stackoverflow.com/questions/2470971/fast-way-to-test-if-a-port-is-in-use-using-python"""
+    https://stackoverflow.com/questions/2470971/fast-way-to-test-if-a-port-is-in-use-using-python
+    """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex((localhost_address, port)) != 0
 

@@ -19,6 +19,7 @@
 
 # %%
 from stormvogel import *
+
 stormvogel_model = examples.create_car_mdp()
 vis = show(stormvogel_model, layout=stormvogel.layout.Layout("layouts/car.json"))
 

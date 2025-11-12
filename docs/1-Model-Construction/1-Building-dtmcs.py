@@ -43,14 +43,16 @@ from stormvogel import *
 # Create an initial state. States can be of any type. In this case we use integers.
 init = 0
 
-TRANSITIONS = \
-{0: [(1/2, 1), (1/2, 2)],
- 1: [(1/2, 3), (1/2, 4)],
- 2: [(1/2, 5), (1/2, 6)],
- 3: [(1/2, 1), (1/2, 7)],
- 4: [(1/2, 8), (1/2, 9)],
- 5: [(1/2, 10), (1/2, 11)],
- 6: [(1/2, 2), (1/2, 12)]}
+TRANSITIONS = {
+    0: [(1 / 2, 1), (1 / 2, 2)],
+    1: [(1 / 2, 3), (1 / 2, 4)],
+    2: [(1 / 2, 5), (1 / 2, 6)],
+    3: [(1 / 2, 1), (1 / 2, 7)],
+    4: [(1 / 2, 8), (1 / 2, 9)],
+    5: [(1 / 2, 10), (1 / 2, 11)],
+    6: [(1 / 2, 2), (1 / 2, 12)],
+}
+
 
 # In the bird API, states are given implicitly. Any object can be a state and via the transition relation, we define reachable states.
 # This user-defined delta function encodes the transition relation. It takes as an argument a single state, and returns a
@@ -60,17 +62,16 @@ def delta(s):
         return TRANSITIONS[s]
     return [(1, s)]
 
+
 # Labels is a function that tells the bird API what the label should be for a state.
 def labels(s):
     if s <= 6:
         return [str(s)]
-    return ["r", str(s-6)]
+    return ["r", str(s - 6)]
+
 
 bird_die = bird.build_bird(
-    delta=delta,
-    init=init,
-    labels=labels,
-    modeltype=ModelType.DTMC
+    delta=delta, init=init, labels=labels, modeltype=ModelType.DTMC
 )
 vis = show(bird_die, layout=Layout("layouts/die.json"))
 
@@ -89,17 +90,18 @@ die_model = stormvogel.model.new_dtmc(create_initial_state=True)
 init = die_model.get_initial_state()
 
 # Create all the states (need 12 more to have 13 in total).
-for sid in range(1,13):
+for sid in range(1, 13):
     die_model.new_state(labels(sid))
 
 # Create all the transitions
-for k,v in TRANSITIONS.items():
-    state = die_model.get_state_by_id(k) # Get the state with id k
+for k, v in TRANSITIONS.items():
+    state = die_model.get_state_by_id(k)  # Get the state with id k
     if k <= 6:
         state.set_choice(
-            [(p,die_model.get_state_by_id(sid)) for p,sid in TRANSITIONS[k]])
+            [(p, die_model.get_state_by_id(sid)) for p, sid in TRANSITIONS[k]]
+        )
 
-die_model.add_self_loops() # Of course, we could also add the self-loops explicitly like in the previous example.
+die_model.add_self_loops()  # Of course, we could also add the self-loops explicitly like in the previous example.
 vis2 = show(die_model, layout=Layout("layouts/die.json"))
 
 
@@ -109,6 +111,7 @@ vis2 = show(die_model, layout=Layout("layouts/die.json"))
 
 # %% [markdown]
 # ### Bird API
+
 
 # %%
 def delta(s):
@@ -122,6 +125,7 @@ def delta(s):
         case "three":
             return [(1, "three")]
 
+
 def labels(s):
     match s:
         case "one":
@@ -133,11 +137,9 @@ def labels(s):
         case _:
             return []
 
+
 bird_commu = bird.build_bird(
-    delta=delta,
-    init="zero",
-    labels=labels,
-    modeltype=ModelType.DTMC
+    delta=delta, init="zero", labels=labels, modeltype=ModelType.DTMC
 )
 vis3 = show(bird_commu, layout=Layout("layouts/commu.json"))
 
@@ -147,25 +149,23 @@ vis3 = show(bird_commu, layout=Layout("layouts/commu.json"))
 # %%
 commu_model = stormvogel.model.new_dtmc(create_initial_state=True)
 
-TRANSITIONS =\
-{0: [(1, 1)],
- 1: [(0.01, 1), (0.01, 2), (0.98, 3)],
- 2: [(1, 0)],
- 3: [(1, 3)]}
+TRANSITIONS = {
+    0: [(1, 1)],
+    1: [(0.01, 1), (0.01, 2), (0.98, 3)],
+    2: [(1, 0)],
+    3: [(1, 3)],
+}
 
-LABELS =\
-{0: [],
- 1: ["try"],
- 2: ["fail"],
- 3: ["success"]}
+LABELS = {0: [], 1: ["try"], 2: ["fail"], 3: ["success"]}
 
-for sid in range(1,4):
+for sid in range(1, 4):
     commu_model.new_state(LABELS[sid])
 
-for sid in range(0,4):
+for sid in range(0, 4):
     state = commu_model.get_state_by_id(sid)
     state.set_choice(
-        [(p,commu_model.get_state_by_id(sid_)) for p,sid_ in TRANSITIONS[sid]])
+        [(p, commu_model.get_state_by_id(sid_)) for p, sid_ in TRANSITIONS[sid]]
+    )
 
 vis4 = show(commu_model, layout=Layout("layouts/commu.json"))
 

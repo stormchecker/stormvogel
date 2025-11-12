@@ -23,6 +23,7 @@
 # %%
 from stormvogel import *
 
+
 def naive_value_iteration(
     model: Model, epsilon: float, target_state: State
 ) -> list[list[float]]:
@@ -53,15 +54,18 @@ def naive_value_iteration(
             actions = choice.choice.keys()
             action_values = {}
             for action, branch in choice.choice.items():
-                branch_value = sum([prob * old_values[state.id] for (prob, state) in branch.branch])
+                branch_value = sum(
+                    [prob * old_values[state.id] for (prob, state) in branch.branch]
+                )
                 action_values[action] = branch_value
             # We take the action with the highest value.
             highest_value = max(action_values.values())
             new_values[sid] = highest_value
         values_matrix.append(new_values)
-        terminate = sum([abs(x-y) for (x, y) in zip(new_values, old_values)]) < epsilon
+        terminate = (
+            sum([abs(x - y) for (x, y) in zip(new_values, old_values)]) < epsilon
+        )
     return values_matrix
-
 
 
 # %% [markdown]
@@ -84,7 +88,9 @@ extensions.display_value_iteration_result(res, 10, labels)
 # Note that naive_value_iteration is also available under `stormvogel.extensions`, in case you would like to use it later. However, this implementation is very inefficient so we recommend using the value iteration algorithms from stormpy if you want good performance.
 
 # %%
-res2 = extensions.naive_value_iteration(lion, 0.003, lion.get_states_with_label("full")[0])
+res2 = extensions.naive_value_iteration(
+    lion, 0.003, lion.get_states_with_label("full")[0]
+)
 res == res2
 
 
@@ -93,6 +99,7 @@ res == res2
 # An algorithm that is similar to naive value iteration. This time, there is no target state. The algorithm simply applies every probabilistic transition (hence it only works for DTMCs)
 #
 # This example simulates a die using coin flips.
+
 
 # %%
 def dtmc_evolution(model: stormvogel.model.Model, steps: int) -> list[list[float]]:

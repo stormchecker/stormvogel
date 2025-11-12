@@ -62,16 +62,16 @@ def test_bird_mdp():
     state0 = regular_model.new_state(labels=["0"])
     other_left = regular_model.new_action(frozenset({"left"}))
     other_right = regular_model.new_action(frozenset({"right"}))
-    branch12 = model.Branch([(0.5, state1), (0.5, state2)])
-    branch10 = model.Branch([(0.5, state1), (0.5, state0)])
-    branch01 = model.Branch([(0.5, state0), (0.5, state1)])
-    branch21 = model.Branch([(0.5, state2), (0.5, state1)])
+    branch12 = model.Branches([(0.5, state1), (0.5, state2)])
+    branch10 = model.Branches([(0.5, state1), (0.5, state0)])
+    branch01 = model.Branches([(0.5, state0), (0.5, state1)])
+    branch21 = model.Branches([(0.5, state2), (0.5, state1)])
 
     regular_model.add_choice(
-        state1, model.Choice({other_left: branch12, other_right: branch10})
+        state1, model.Choices({other_left: branch12, other_right: branch10})
     )
-    regular_model.add_choice(state2, model.Choice({other_right: branch21}))
-    regular_model.add_choice(state0, model.Choice({other_left: branch01}))
+    regular_model.add_choice(state2, model.Choices({other_right: branch21}))
+    regular_model.add_choice(state0, model.Choices({other_left: branch01}))
 
     rewardmodel = regular_model.new_reward_model("r1")
     for i in range(2 * N):
@@ -145,19 +145,19 @@ def test_bird_mdp_int():
     state0 = regular_model.new_state(labels=["0"])
     other_left = regular_model.new_action(frozenset({"left"}))
     other_right = regular_model.new_action(frozenset({"right"}))
-    branch12 = model.Branch([(0.5, state1), (0.5, state2)])
-    branch10 = model.Branch([(0.5, state1), (0.5, state0)])
-    branch01 = model.Branch([(0.5, state0), (0.5, state1)])
-    branch21 = model.Branch([(0.5, state2), (0.5, state1)])
+    branch12 = model.Branches([(0.5, state1), (0.5, state2)])
+    branch10 = model.Branches([(0.5, state1), (0.5, state0)])
+    branch01 = model.Branches([(0.5, state0), (0.5, state1)])
+    branch21 = model.Branches([(0.5, state2), (0.5, state1)])
 
     regular_model.add_choice(
         state1,
-        model.Choice(
+        model.Choices(
             {other_right: branch10, other_left: branch12}
-        ),  # state1, model.Choice({left: branch12, right: branch10})
+        ),  # state1, model.Choices({left: branch12, right: branch10})
     )
-    regular_model.add_choice(state2, model.Choice({other_right: branch21}))
-    regular_model.add_choice(state0, model.Choice({other_left: branch01}))
+    regular_model.add_choice(state2, model.Choices({other_right: branch21}))
+    regular_model.add_choice(state0, model.Choices({other_left: branch01}))
 
     rewardmodel = regular_model.new_reward_model("r1")
     for i in range(2 * N):
@@ -496,16 +496,16 @@ def test_bird_pomdp():
     state0 = regular_model.new_state(labels=["0"])
     other_left = regular_model.new_action(frozenset({"left"}))
     other_right = regular_model.new_action(frozenset({"right"}))
-    branch12 = model.Branch([(0.5, state1), (0.5, state2)])
-    branch10 = model.Branch([(0.5, state1), (0.5, state0)])
-    branch01 = model.Branch([(0.5, state0), (0.5, state1)])
-    branch21 = model.Branch([(0.5, state2), (0.5, state1)])
+    branch12 = model.Branches([(0.5, state1), (0.5, state2)])
+    branch10 = model.Branches([(0.5, state1), (0.5, state0)])
+    branch01 = model.Branches([(0.5, state0), (0.5, state1)])
+    branch21 = model.Branches([(0.5, state2), (0.5, state1)])
 
     regular_model.add_choice(
-        state1, model.Choice({other_left: branch12, other_right: branch10})
+        state1, model.Choices({other_left: branch12, other_right: branch10})
     )
-    regular_model.add_choice(state2, model.Choice({other_right: branch21}))
-    regular_model.add_choice(state0, model.Choice({other_left: branch01}))
+    regular_model.add_choice(state2, model.Choices({other_right: branch21}))
+    regular_model.add_choice(state0, model.Choices({other_left: branch01}))
 
     rewardmodel = regular_model.new_reward_model("r1")
     for i in range(2 * N):

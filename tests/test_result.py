@@ -952,9 +952,9 @@ def test_induced_dtmc():
     state2 = mdp.new_state()
     action0 = mdp.new_action("0")
     action1 = mdp.new_action("1")
-    branch0 = stormvogel.model.Branch([(1 / 2, state1), (1 / 2, state2)])
-    branch1 = stormvogel.model.Branch([(1 / 4, state1), (3 / 4, state2)])
-    transition = stormvogel.model.Choice({action0: branch0, action1: branch1})
+    branch0 = stormvogel.model.Branches([(1 / 2, state1), (1 / 2, state2)])
+    branch1 = stormvogel.model.Branches([(1 / 4, state1), (3 / 4, state2)])
+    transition = stormvogel.model.Choices({action0: branch0, action1: branch1})
     mdp.set_choice(mdp.get_initial_state(), transition)
     mdp.add_self_loops()
 
@@ -977,13 +977,13 @@ def test_induced_dtmc():
     other_dtmc = stormvogel.model.new_dtmc()
     state1 = other_dtmc.new_state()
     state2 = other_dtmc.new_state()
-    branch0 = stormvogel.model.Branch(
+    branch0 = stormvogel.model.Branches(
         cast(
             list[tuple[stormvogel.model.Value, stormvogel.model.State]],
             [(1 / 2, state1), (1 / 2, state2)],
         )
     )
-    transition = stormvogel.model.Choice({stormvogel.model.EmptyAction: branch0})
+    transition = stormvogel.model.Choices({stormvogel.model.EmptyAction: branch0})
     other_dtmc.set_choice(other_dtmc.get_initial_state(), transition)
     other_dtmc.add_self_loops()
 
