@@ -146,7 +146,6 @@ vis3 = show(bird_commu, layout=Layout("layouts/commu.json"))
 
 # %%
 commu_model = stormvogel.model.new_dtmc(create_initial_state=True)
-init = die_model.get_initial_state()
 
 TRANSITIONS =\
 {0: [(1, 1)],
@@ -166,7 +165,7 @@ for sid in range(1,4):
 for sid in range(0,4):
     state = commu_model.get_state_by_id(sid)
     state.set_choice(
-        [(p,die_model.get_state_by_id(sid_)) for p,sid_ in TRANSITIONS[sid]])
+        [(p,commu_model.get_state_by_id(sid_)) for p,sid_ in TRANSITIONS[sid]])
 
 vis4 = show(commu_model, layout=Layout("layouts/commu.json"))
 
