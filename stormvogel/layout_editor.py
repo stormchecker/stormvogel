@@ -4,7 +4,8 @@ Implemented using the DictEditor from dict_editor.py, some clarifications:
 - Layout stores and manages loading/saving of the layout file, and the schema file.
 - DictEditor creates an editor from a schema and a dict to be edited.
 - LayoutEditor creates a DictEditor using the schema stored in layouts/schema.json.
-    It also processes what should happen when the user edits something in the layout editor or presses the save/load/reload buttons."""
+    It also processes what should happen when the user edits something in the layout editor or presses the save/load/reload buttons.
+"""
 
 import stormvogel.communication_server
 import stormvogel.dict_editor
@@ -170,5 +171,7 @@ class LayoutEditor(stormvogel.displayable.Displayable):
         self.loaded = True
 
     def __warn_failed_positions_save(self):
-        print(f"""Could not save the node positions of this graph in {self.layout.layout["saving"]["filename"]}
-Sorry for the inconvenience. See 'Implementation details' in docs.""")
+        print(
+            f"""Could not save the node positions of this graph in {self.layout.layout["saving"]["filename"]}
+Sorry for the inconvenience. See 'Implementation details' in docs."""
+        )

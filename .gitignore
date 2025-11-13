@@ -177,3 +177,6 @@ start.sh
 
 # Script for running nbconvert on all notebooks
 nbconvert.sh
+
+
+.idea/

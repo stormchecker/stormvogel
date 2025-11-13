@@ -615,15 +615,15 @@ def stormvogel_to_stormpy(
         variables.append(var)
 
     # we check the type to handle the model correctly
-    if model.get_type() == stormvogel.model.ModelType.DTMC:
+    if model.type == stormvogel.model.ModelType.DTMC:
         return map_dtmc(model)
-    elif model.get_type() == stormvogel.model.ModelType.MDP:
+    elif model.type == stormvogel.model.ModelType.MDP:
         return map_mdp(model)
-    elif model.get_type() == stormvogel.model.ModelType.CTMC:
+    elif model.type == stormvogel.model.ModelType.CTMC:
         return map_ctmc(model)
-    elif model.get_type() == stormvogel.model.ModelType.POMDP:
+    elif model.type == stormvogel.model.ModelType.POMDP:
         return map_pomdp(model)
-    elif model.get_type() == stormvogel.model.ModelType.MA:
+    elif model.type == stormvogel.model.ModelType.MA:
         return map_ma(model)
     else:
         raise NotImplementedError(
@@ -735,11 +735,13 @@ def stormpy_to_stormvogel(
 
     def add_states(
         model: stormvogel.model.Model,
-        sparsemodel: stormpy.storage.SparseDtmc
-        | stormpy.storage.SparseMdp
-        | stormpy.storage.SparseCtmc
-        | stormpy.storage.SparsePomdp
-        | stormpy.storage.SparseMA,
+        sparsemodel: (
+            stormpy.storage.SparseDtmc
+            | stormpy.storage.SparseMdp
+            | stormpy.storage.SparseCtmc
+            | stormpy.storage.SparsePomdp
+            | stormpy.storage.SparseMA
+        ),
     ):
         """
         helper function to add the states from the sparsemodel to the model
@@ -754,11 +756,13 @@ def stormpy_to_stormvogel(
 
     def new_reward_model(
         model: stormvogel.model.Model,
-        sparsemodel: stormpy.storage.SparseDtmc
-        | stormpy.storage.SparseMdp
-        | stormpy.storage.SparseCtmc
-        | stormpy.storage.SparsePomdp
-        | stormpy.storage.SparseMA,
+        sparsemodel: (
+            stormpy.storage.SparseDtmc
+            | stormpy.storage.SparseMdp
+            | stormpy.storage.SparseCtmc
+            | stormpy.storage.SparsePomdp
+            | stormpy.storage.SparseMA
+        ),
     ):
         """
         adds the rewards from the sparsemodel to either the states or the state action pairs of the model
@@ -776,11 +780,13 @@ def stormpy_to_stormvogel(
 
     def add_valuations(
         model: stormvogel.model.Model,
-        sparsemodel: stormpy.storage.SparseDtmc
-        | stormpy.storage.SparseMdp
-        | stormpy.storage.SparseCtmc
-        | stormpy.storage.SparsePomdp
-        | stormpy.storage.SparseMA,
+        sparsemodel: (
+            stormpy.storage.SparseDtmc
+            | stormpy.storage.SparseMdp
+            | stormpy.storage.SparseCtmc
+            | stormpy.storage.SparsePomdp
+            | stormpy.storage.SparseMA
+        ),
     ):
         """
         adds the valuations from the sparsemodel to the states of the model
@@ -872,7 +878,7 @@ def stormpy_to_stormvogel(
                     )
                     for x in row
                 ]
-                choice[action] = stormvogel.model.Branch(
+                choice[action] = stormvogel.model.Branches(
                     cast(
                         list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                         branch,
@@ -974,7 +980,7 @@ def stormpy_to_stormvogel(
                     )
                     for x in row
                 ]
-                choice[action] = stormvogel.model.Branch(
+                choice[action] = stormvogel.model.Branches(
                     cast(
                         list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                         branch,
@@ -1034,7 +1040,7 @@ def stormpy_to_stormvogel(
                     )
                     for x in row
                 ]
-                choice[action] = stormvogel.model.Branch(
+                choice[action] = stormvogel.model.Branches(
                     cast(
                         list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                         branch,

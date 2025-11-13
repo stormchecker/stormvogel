@@ -25,12 +25,14 @@ from stormvogel import *
 
 init = "init"
 
+
 def available_actions(s: bird.State):
     if s == "init":
         return [["one"], ["two"]]
     elif s == "mec1" or s == "mec2":
         return [["one"], ["two"]]
     return [[]]
+
 
 def delta(s: bird.State, a: bird.Action):
     if s == "init" and "one" in a:
@@ -41,7 +43,8 @@ def delta(s: bird.State, a: bird.Action):
         return [(1, "mec1")]
     elif s == "init" and "two" in a:
         return [(1, "mec1")]
-    return [(1,s)]
+    return [(1, s)]
+
 
 labels = lambda s: s
 
@@ -50,12 +53,14 @@ mdp = bird.build_bird(
     init=init,
     available_actions=available_actions,
     labels=labels,
-    modeltype=ModelType.MDP,)
+    modeltype=ModelType.MDP,
+)
 vis = show(mdp, layout=Layout("layouts/mec.json"))
 
 
 # %% [markdown]
 # First, let's show the maximal end components of this model.
+
 
 # %%
 def stormvogel_get_maximal_end_components(sv_model):
@@ -72,6 +77,7 @@ def stormvogel_get_maximal_end_components(sv_model):
         res.append((frozenset(states), frozenset(actions)))
     return res
 
+
 decomp = stormvogel_get_maximal_end_components(mdp)
 print(decomp)
 
@@ -83,6 +89,7 @@ vis.highlight_decomposition(decomp)
 
 # %%
 import stormpy
+
 
 def map_state_labels(m, res):
     """Based on the result of EC elimination, create a new state labeling that can be used for a new model that captures the result.
@@ -101,6 +108,7 @@ def map_state_labels(m, res):
             sl.add_label_to_state(l, s_new)
     return sl
 
+
 def map_choice_labels(m_old, m_new, res):
     """Based on the result of EC elimination, create a new choice labeling that can be used for a new model that captures the result.
     Args:
@@ -116,7 +124,7 @@ def map_choice_labels(m_old, m_new, res):
         s_new = res.old_to_new_state_mapping[s_old]
         old_no_choices = m_old.get_nr_available_actions(s_old)
         new_no_choices = m_new.get_nr_available_actions(s_new)
-        if (old_no_choices == new_no_choices):
+        if old_no_choices == new_no_choices:
             for action_no in range(old_no_choices):
                 old_index = m_old.get_choice_index(s_old, action_no)
                 labels = m_old.choice_labeling.get_labels_of_choice(old_index)
@@ -125,6 +133,7 @@ def map_choice_labels(m_old, m_new, res):
                     cl.add_label(l)
                     cl.add_label_to_choice(l, new_index)
     return cl
+
 
 def simple_ec_elimination(m):
     """Perform EC elimination on a stormpy model while preserving labels.
@@ -137,14 +146,16 @@ def simple_ec_elimination(m):
     subsystem = stormpy.BitVector(m.nr_states, True)
     possible_ec_rows = stormpy.BitVector(m.nr_choices, True)
     res = stormpy.eliminate_ECs(
-        matrix = m.transition_matrix,
-        subsystem = subsystem,
-        possible_ecs = possible_ec_rows,
-        add_sink_row_states = subsystem,
-        add_self_loop_at_sink_states=True
+        matrix=m.transition_matrix,
+        subsystem=subsystem,
+        possible_ecs=possible_ec_rows,
+        add_sink_row_states=subsystem,
+        add_self_loop_at_sink_states=True,
     )
     new_labels = map_state_labels(m, res)
-    components = stormpy.SparseModelComponents(transition_matrix=res.matrix, state_labeling=new_labels)
+    components = stormpy.SparseModelComponents(
+        transition_matrix=res.matrix, state_labeling=new_labels
+    )
     m_new = stormpy.storage.SparseMdp(components)
     components.choice_labeling = map_choice_labels(m, m_new, res)
     m_updated = stormpy.storage.SparseMdp(components)

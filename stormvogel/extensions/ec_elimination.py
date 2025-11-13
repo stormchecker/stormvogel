@@ -88,7 +88,8 @@ def stormvogel_get_maximal_end_components(
     sv_model: stormvogel.model.Model,
 ) -> list[Tuple[set[int], set[stormvogel.model.Action]]]:
     """Get the maximal end components of this model.
-    They are returned as a list of tuples where the first element is a set of state ids, and the second a set of actions."""
+    They are returned as a list of tuples where the first element is a set of state ids, and the second a set of actions.
+    """
     assert stormpy is not None
     sp_model = mapping.stormvogel_to_stormpy(sv_model)
     f = choice_mapping(sv_model, sp_model)
@@ -106,7 +107,8 @@ def stormvogel_get_maximal_end_components(
 
 def choice_mapping(sv_model, sp_model):
     """Return a bijective mapping between the stormvogel state-action pairs and the stormvogel model.
-    WARNING: This function will be depricated later. It might also be faulty, I don't know :))"""
+    WARNING: This function will be depricated later. It might also be faulty, I don't know :))
+    """
     res = bidict({})
     choice_id = 0
     for _, s in sv_model:

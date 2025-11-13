@@ -40,11 +40,14 @@
 
 # %%
 import stormvogel
+
 stormvogel.communication_server.min_port = 3000
 stormvogel.communication_server.max_port = 3020
 # Stormvogel looks in range 3000-3020 for an available port
-stormvogel.communication_server.localhost_address = "::1/128" # IPv6 loopback address
-stormvogel.communication_server.use_server = False # Stormvogel no longer tries to start the server.
+stormvogel.communication_server.localhost_address = "::1/128"  # IPv6 loopback address
+stormvogel.communication_server.use_server = (
+    False  # Stormvogel no longer tries to start the server.
+)
 
 # %% [markdown]
 # # Visualization

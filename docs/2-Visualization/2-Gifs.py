@@ -32,9 +32,9 @@ for i in range(7):
 # %%
 def state_to_image(s: State):
     if s.is_initial():
-        return examples.generate_dice_image(0) # Question mark.
+        return examples.generate_dice_image(0)  # Question mark.
     else:
-        return examples.generate_dice_image(s.valuations["rolled"]) # Die image
+        return examples.generate_dice_image(s.valuations["rolled"])  # Die image
 
 
 # %%
@@ -48,5 +48,6 @@ vis = show(mdp, layout=Layout("layouts/die.json"))
 # Try reloading this cell, it may give a different dice roll.
 
 import IPython.display as ipd
+
 filename = extensions.render_model_gif(mdp, state_to_image, filename="die")
 extensions.embed_gif(filename)
