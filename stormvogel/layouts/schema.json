@@ -99,6 +99,10 @@
   },
   "numbers": {
     "__collapse": true,
+    "visible": {
+      "__description": "Show numbers",
+      "__widget": "Checkbox"
+    },
     "fractions": {
       "__description": "Fractions",
       "__widget": "Checkbox"
