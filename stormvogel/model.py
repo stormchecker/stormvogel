@@ -345,6 +345,10 @@ class Action:
 
     label: str | None
 
+    def __post_init__(self):
+        if self.label == "":
+            object.__setattr__(self, "label", None)
+
     def __lt__(self, other):
         if not isinstance(other, Action):
             return NotImplemented
