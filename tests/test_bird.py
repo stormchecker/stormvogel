@@ -389,6 +389,66 @@ def test_bird_mdp_empty_action():
     assert bird_model == regular_model
 
 
+def test_bird_mdp_empty_action_2():
+    # we test if we can also provide empty actions
+    def available_actions(s):
+        return [""]
+
+    def delta(current_state, action):
+        match current_state:
+            case "hungry":
+                return ["eating"]
+            case "eating":
+                return ["hungry"]
+
+    bird_model = bird.build_bird(
+        delta,
+        init="hungry",
+        available_actions=available_actions,
+        modeltype=model.ModelType.MDP,
+    )
+
+    regular_model = model.new_mdp()
+    regular_model.set_choice(
+        regular_model.get_initial_state(), [(1, regular_model.new_state())]
+    )
+    regular_model.set_choice(
+        regular_model.get_state_by_id(1), [(1, regular_model.get_initial_state())]
+    )
+
+    assert bird_model == regular_model
+
+
+def test_bird_mdp_empty_action_3():
+    # we test if we can also provide empty actions
+    def available_actions(s):
+        return [""]
+
+    def delta(current_state, action):
+        match current_state:
+            case "hungry":
+                return "eating"
+            case "eating":
+                return "hungry"
+
+    bird_model = bird.build_bird(
+        delta,
+        init="hungry",
+        available_actions=available_actions,
+        modeltype=model.ModelType.MDP,
+    )
+
+    regular_model = model.new_mdp()
+    regular_model.set_choice(
+        regular_model.get_initial_state(), [(1, regular_model.new_state())]
+    )
+    regular_model.set_choice(
+        regular_model.get_state_by_id(1), [(1, regular_model.get_initial_state())]
+    )
+
+    assert bird_model == regular_model
+
+
 def test_bird_endless():
     # we test if we get the correct error when the model gets too large
     init = bird.State(x="")

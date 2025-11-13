@@ -237,9 +237,8 @@ def build_bird(
                 tuples = delta(state, action)
 
                 if not isinstance(tuples, list) and tuples is not None:
-                    raise ValueError(
-                        f"On input pair {state} {action}, the delta function does not return a list. Make sure to change the format to [(<value>,<state>),...]"
-                    )
+                    # If the delta does not return a list, we assume it's a single transition with probability 1
+                    tuples = [(1, tuples)]
 
                 branch = add_new_choices(tuples, state)
 
