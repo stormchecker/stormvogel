@@ -54,7 +54,10 @@
 
 # %% jupyter={"is_executing": true}
 from stormvogel import *
-vis = show(examples.create_car_mdp(), layout=stormvogel.layout.Layout("layouts/car.json"))
+
+vis = show(
+    examples.create_car_mdp(), layout=stormvogel.layout.Layout("layouts/car.json")
+)
 
 # %% [markdown]
 # ### Probabilistic Model Checking

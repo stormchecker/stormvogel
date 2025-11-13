@@ -25,8 +25,9 @@
 
 # %%
 from stormvogel import *
+
 vis = show(examples.create_car_mdp())
-#vis = show(examples.create_car_mdp(), show_editor=True) # with layout editor
+# vis = show(examples.create_car_mdp(), show_editor=True) # with layout editor
 
 # %% [markdown]
 # ### Basic editing
@@ -53,13 +54,13 @@ vis = show(examples.create_car_mdp())
 # **Note:** There are additional model visualization features for schedulers and results, but they will be explained in their respective notebooks.
 
 # %%
-#vis = show(examples.create_car_mdp(), show_editor=True, layout=Layout("layouts/car.json"))
+# vis = show(examples.create_car_mdp(), show_editor=True, layout=Layout("layouts/car.json"))
 # This enables the layout in "layouts/car.json", and turns on the layout editor.
 
 # Export the visualization in different formats:
-#vis.export("html", "vis_html")
-#vis.export("svg", "vis_svg")
-#vis.export("pdf", "vis_pdf")
+# vis.export("html", "vis_html")
+# vis.export("svg", "vis_svg")
+# vis.export("pdf", "vis_pdf")
 
 # %% [markdown]
 # ### Advanced editing
@@ -85,9 +86,9 @@ vis = show(examples.create_car_mdp(), layout=my_layout)
 # Here is a small example of javascript injection that destroys the network.
 
 # %%
-#import IPython.display as ipd
-#ipd.display(ipd.Javascript(
-#f"""{vis.network_wrapper}.network.destroy()"""))
+# import IPython.display as ipd
+# ipd.display(ipd.Javascript(
+# f"""{vis.network_wrapper}.network.destroy()"""))
 
 # %% [markdown]
 # ## Positioning algorithms
@@ -97,12 +98,19 @@ vis = show(examples.create_car_mdp(), layout=my_layout)
 from stormvogel import *
 import networkx as nx
 
+
 def positioning(G):
-    #return nx.bfs_layout(G, start=0) # Good for DAGs, we have to specify start=0
-    #return nx.kamada_kawai_layout(G) # Good overal
+    # return nx.bfs_layout(G, start=0) # Good for DAGs, we have to specify start=0
+    # return nx.kamada_kawai_layout(G) # Good overal
     return nx.circular_layout(G)
 
-vis = show(examples.create_car_mdp(), pos_function=positioning, pos_function_scaling=300, layout=Layout("layouts/car.json"))
+
+vis = show(
+    examples.create_car_mdp(),
+    pos_function=positioning,
+    pos_function_scaling=300,
+    layout=Layout("layouts/car.json"),
+)
 
 # %% [markdown]
 # ## Matplotlib visualization
