@@ -166,7 +166,7 @@ def DEFAULT():
 
 def EXPLORE():
     default = DEFAULT()
-    default.layout.layout["misc"]["explore"] = True
+    default.layout["misc"]["explore"] = True
     return default
 
 
@@ -174,3 +174,9 @@ def SV():
     return Layout(
         os.path.join(PACKAGE_ROOT_DIR, "layouts/sv.json"), path_relative=False
     )
+
+
+def LTS():
+    default = DEFAULT()
+    default.layout["numbers"]["visible"] = False
+    return default
