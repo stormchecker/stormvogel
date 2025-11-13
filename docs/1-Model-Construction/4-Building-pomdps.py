@@ -33,10 +33,12 @@ from stormvogel import *
 
 init = ("flip",)
 
+
 def available_actions(s):
     if "heads" in s or "tails" in s:
         return [("guess", "heads"), ("guess", "tails")]
     return [[]]
+
 
 def delta(s, a):
     if s == init:
@@ -49,12 +51,15 @@ def delta(s, a):
     else:
         return [(1, s)]
 
+
 labels = lambda s: list(s)
+
 
 def rewards(s, a):
     if "correct" in s:
         return {"R": 100}
-    return {"R":0}
+    return {"R": 0}
+
 
 coin_mdp = bird.build_bird(
     delta=delta,
@@ -62,7 +67,7 @@ coin_mdp = bird.build_bird(
     available_actions=available_actions,
     labels=labels,
     modeltype=ModelType.MDP,
-    rewards=rewards
+    rewards=rewards,
 )
 vis = show(coin_mdp)
 
@@ -70,16 +75,18 @@ vis = show(coin_mdp)
 # Since this MDP is fully observable, the agent can actually see what state the world is in. In other words, the agent *knows* whether the coin is head or tails. If we ask stormpy to calculate the policy that maximizes the reward, we see that the agent can always 'guess' correctly because of this information. The chosen actions are highlighted in red. (More on model checking later.)
 
 # %%
-result = model_checking(coin_mdp, 'Rmax=? [S]')
+result = model_checking(coin_mdp, "Rmax=? [S]")
 vis3 = show(coin_mdp, result=result)
 
 
 # %% [markdown]
 # To model the fact that our agent does not know the state correctly, we will need to use a POMDP! (Note that we re-use a lot of code from before)
 
+
 # %%
 def observations(s):
     return 0
+
 
 coin_pomdp = bird.build_bird(
     delta=delta,
@@ -88,7 +95,7 @@ coin_pomdp = bird.build_bird(
     labels=labels,
     modeltype=ModelType.POMDP,
     rewards=rewards,
-    observations=observations
+    observations=observations,
 )
 
 vis3 = show(coin_pomdp)
@@ -98,6 +105,7 @@ vis3 = show(coin_pomdp)
 
 # %%
 import stormvogel.result
+
 taken_actions = {}
 for id, state in coin_pomdp.states.items():
     taken_actions[id] = state.available_actions()[0]

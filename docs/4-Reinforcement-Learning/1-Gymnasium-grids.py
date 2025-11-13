@@ -25,9 +25,10 @@
 import gymnasium as gym
 from stormvogel.extensions.gym_grid import *
 from stormvogel import *
-import IPython.display as ipd
 
-env = gym.make("FrozenLake-v1", render_mode="rgb_array", is_slippery=False)  # Set `is_slippery=True` for stochastic behavior
+env = gym.make(
+    "FrozenLake-v1", render_mode="rgb_array", is_slippery=False
+)  # Set `is_slippery=True` for stochastic behavior
 filename = gymnasium_render_model_gif(env, filename="ice1")
 extensions.embed_gif(filename)
 
@@ -43,7 +44,7 @@ vis = show(sv_model, layout=Layout("layouts/frozenlake.json"))
 # Now, let's do some model checking to calculate a strategy to solve the puzzle. We will tell the model checker to maximize the probability of getting to the target state (the present).
 
 # %%
-res = model_checking(sv_model, f'Pmax=? [F "target"]')
+res = model_checking(sv_model, 'Pmax=? [F "target"]')
 vis2 = show(sv_model, result=res, layout=Layout("layouts/frozenlake.json"))
 
 # %% [markdown]
@@ -58,6 +59,7 @@ vis2.highlight_path(path, color="orange")
 
 # %%
 from stormvogel.extensions.gym_grid import *
+
 gs = to_gymnasium_scheduler(sv_model, res.scheduler, GRID_ACTION_LABEL_MAP)
 filename = gymnasium_render_model_gif(env, gs, filename="ice2")
 extensions.embed_gif(filename)
@@ -68,12 +70,13 @@ extensions.embed_gif(filename)
 # %%
 from stormvogel.model import Action
 
+
 def my_scheduler(s: stormvogel.model.State):
     # "←" "↓" "→" "↑"
     if s.is_initial():
         return Action("→")
     env_id = int(s.labels[0])
-    x,y = to_coordinate(env_id,env)
+    x, y = to_coordinate(env_id, env)
     if x < 2 and y == 0:
         return Action("→")
     elif x == 2 and y < 2:
@@ -82,6 +85,7 @@ def my_scheduler(s: stormvogel.model.State):
         return Action("←")
     else:
         return Action("↑")
+
 
 gs = to_gymnasium_scheduler(sv_model, my_scheduler, GRID_ACTION_LABEL_MAP)
 filename = gymnasium_render_model_gif(env, gs, filename="ice3")
@@ -103,7 +107,8 @@ vis = show(sv_model, layout=Layout("layouts/cliffwalking.json"))
 
 # %%
 from stormvogel.stormpy_utils.model_checking import model_checking
-res = model_checking(sv_model, f'Pmax=? [F "target"]')
+
+res = model_checking(sv_model, 'Pmax=? [F "target"]')
 gs = to_gymnasium_scheduler(sv_model, res.scheduler, GRID_ACTION_LABEL_MAP)
 filename = gymnasium_render_model_gif(env, gs, filename="cliff")
 extensions.embed_gif(filename)
@@ -115,14 +120,17 @@ extensions.embed_gif(filename)
 # %%
 import gymnasium as gym
 from stormvogel.extensions.gym_grid import *
-env = gym.make("Taxi-v3", render_mode="rgb_array")  # Set `is_slippery=True` for stochastic behavior
+
+env = gym.make(
+    "Taxi-v3", render_mode="rgb_array"
+)  # Set `is_slippery=True` for stochastic behavior
 sv_model = gymnasium_grid_to_stormvogel(env)
 # This model is so big that it is better not to display it.
 sv_model.summary()
 
 # %%
 target = get_target_state(env)
-res = model_checking(sv_model, f'Rmax=? [S]')
+res = model_checking(sv_model, "Rmax=? [S]")
 gs = to_gymnasium_scheduler(sv_model, res.scheduler, GRID_ACTION_LABEL_MAP)
 filename = gymnasium_render_model_gif(env, gs, filename="taxi")
 extensions.embed_gif(filename)
