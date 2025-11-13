@@ -53,10 +53,7 @@ TRANSITIONS = {
     6: [(1 / 2, 2), (1 / 2, 12)],
 }
 
-<<<<<<< HEAD
-=======
 
->>>>>>> sjunges/fixesandformats
 # In the bird API, states are given implicitly. Any object can be a state and via the transition relation, we define reachable states.
 # This user-defined delta function encodes the transition relation. It takes as an argument a single state, and returns a
 # list of 2-tuples that encode the distribution over the successor states. More precisely, the first argument is a probability and the second elment is a state (a distribution).

@@ -10,8 +10,8 @@ def test_bird_mdp():
     p = 0.5
     initial_state = bird.State(x=math.floor(N / 2))
 
-    left = ["left"]
-    right = ["right"]
+    left = "left"
+    right = "right"
 
     def available_actions(s: bird.State) -> list[bird.Action]:
         if s.x == N:
@@ -60,8 +60,8 @@ def test_bird_mdp():
     state1 = regular_model.new_state(labels=["init", "1"])
     state2 = regular_model.new_state(labels=["2"])
     state0 = regular_model.new_state(labels=["0"])
-    other_left = regular_model.new_action(frozenset({"left"}))
-    other_right = regular_model.new_action(frozenset({"right"}))
+    other_left = regular_model.new_action("left")
+    other_right = regular_model.new_action("right")
     branch12 = model.Branches([(0.5, state1), (0.5, state2)])
     branch10 = model.Branches([(0.5, state1), (0.5, state0)])
     branch01 = model.Branches([(0.5, state0), (0.5, state1)])
@@ -93,8 +93,8 @@ def test_bird_mdp_int():
     p = 0.5
     initial_state = math.floor(N / 2)
 
-    left = ["left"]
-    right = ["right"]
+    left = "left"
+    right = "right"
 
     def available_actions(s):
         if s == N:
@@ -143,8 +143,8 @@ def test_bird_mdp_int():
     state1 = regular_model.new_state(labels=["init", "1"])
     state2 = regular_model.new_state(labels=["2"])
     state0 = regular_model.new_state(labels=["0"])
-    other_left = regular_model.new_action(frozenset({"left"}))
-    other_right = regular_model.new_action(frozenset({"right"}))
+    other_left = regular_model.new_action("left")
+    other_right = regular_model.new_action("right")
     branch12 = model.Branches([(0.5, state1), (0.5, state2)])
     branch10 = model.Branches([(0.5, state1), (0.5, state0)])
     branch01 = model.Branches([(0.5, state0), (0.5, state1)])
@@ -362,7 +362,7 @@ def test_bird_dtmc_arbitrary():
 def test_bird_mdp_empty_action():
     # we test if we can also provide empty actions
     def available_actions(s):
-        return [[]]
+        return [""]
 
     def delta(current_state, action):
         match current_state:
@@ -395,14 +395,14 @@ def test_bird_endless():
 
     def available_actions(s: bird.State):
         if s == init:  # If we are in the initial state, we have a choice.
-            return [["study"], ["don't study"]]
+            return ["study", "don't study"]
         else:  # Otherwise, we don't have any choice, we are just a Markov chain.
-            return [[]]
+            return [""]
 
     def delta(s: bird.State, a: bird.Action):
-        if "study" in a:
+        if a == "study":
             return [(1, bird.State(x=["studied"]))]
-        elif "don't study" in a:
+        elif a == "don't study":
             return [(1, bird.State(x=["didn't study"]))]
         elif "studied" in s.x:
             return [
@@ -439,8 +439,8 @@ def test_bird_pomdp():
     p = 0.5
     initial_state = bird.State(x=math.floor(N / 2))
 
-    left = ["left"]
-    right = ["right"]
+    left = "left"
+    right = "right"
 
     def available_actions(s: bird.State):
         if s.x == N:
@@ -494,8 +494,8 @@ def test_bird_pomdp():
     state1 = regular_model.new_state(labels=["init", "1"])
     state2 = regular_model.new_state(labels=["2"])
     state0 = regular_model.new_state(labels=["0"])
-    other_left = regular_model.new_action(frozenset({"left"}))
-    other_right = regular_model.new_action(frozenset({"right"}))
+    other_left = regular_model.new_action("left")
+    other_right = regular_model.new_action("right")
     branch12 = model.Branches([(0.5, state1), (0.5, state2)])
     branch10 = model.Branches([(0.5, state1), (0.5, state0)])
     branch01 = model.Branches([(0.5, state0), (0.5, state1)])

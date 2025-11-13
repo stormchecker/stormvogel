@@ -152,8 +152,8 @@ def test_pmdp_conversion():
     goal = pmdp.new_state(labels=["goal"])
     sink = pmdp.new_state(labels=["sink"])
 
-    action_a = pmdp.new_action(frozenset({"a"}))
-    action_b = pmdp.new_action(frozenset({"b"}))
+    action_a = pmdp.new_action("a")
+    action_b = pmdp.new_action("b")
     branch0 = stormvogel.model.Branches(
         [
             (p1, goal),

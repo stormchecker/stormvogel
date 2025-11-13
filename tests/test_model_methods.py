@@ -11,9 +11,9 @@ def test_available_actions():
     mdp = stormvogel.examples.monty_hall.create_monty_hall_mdp()
 
     action = [
-        stormvogel.model.Action(labels=frozenset({"open0"})),
-        stormvogel.model.Action(labels=frozenset({"open1"})),
-        stormvogel.model.Action(labels=frozenset({"open2"})),
+        stormvogel.model.Action(label="open0"),
+        stormvogel.model.Action(label="open1"),
+        stormvogel.model.Action(label="open2"),
     ]
     assert mdp.get_state_by_id(1).available_actions() == action
 
@@ -83,7 +83,7 @@ def test_choice_from_shorthand():
     # Then we test it for a model with actions
     mdp = stormvogel.model.new_mdp()
     state = mdp.new_state()
-    action = mdp.new_action(frozenset({"action"}))
+    action = mdp.new_action("action")
     transition_shorthand = [(action, state)]
     branch = stormvogel.model.Branches(
         cast(list[tuple[stormvogel.model.Value, stormvogel.model.State]], [(1, state)])
@@ -138,11 +138,14 @@ def test_choice_from_shorthand():
         )
 
     # we test it for nontrivial action transitions
+
+
+def test_choice_from_shorthand_dict_state():
     mdp = stormvogel.model.new_mdp()
     state1 = mdp.new_state()
     state2 = mdp.new_state()
-    action0 = mdp.new_action(frozenset({"0"}))
-    action1 = mdp.new_action(frozenset({"1"}))
+    action0 = mdp.new_action("0")
+    action1 = mdp.new_action("1")
     transition_shorthand = {
         action0: [(1 / 2, state1), (1 / 2, state2)],
         action1: [(1 / 2, state1), (1 / 2, state2)],
@@ -173,8 +176,8 @@ def test_choice_from_shorthand():
     mdp = stormvogel.model.new_mdp()
     state1 = mdp.new_state()
     state2 = mdp.new_state()
-    action0 = mdp.new_action(frozenset({"0"}))
-    action1 = mdp.new_action(frozenset({"1"}))
+    action0 = mdp.new_action("0")
+    action1 = mdp.new_action("1")
     transition_shorthand = {
         action0: [(1 / 2, 1), (1 / 2, 2)],
         action1: [(1 / 2, 1), (1 / 2, 2)],

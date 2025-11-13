@@ -36,15 +36,15 @@ init = ("flip",)
 
 def available_actions(s):
     if "heads" in s or "tails" in s:
-        return [("guess", "heads"), ("guess", "tails")]
-    return [[]]
+        return ["guess_heads", "guess_tails"]
+    return [""]
 
 
 def delta(s, a):
     if s == init:
         return [(0.5, ("heads",)), (0.5, ("tails",))]
-    elif "guess" in a:
-        if "heads" in s and "heads" in a or "tails" in s and "tails" in a:
+    elif a.startswith("guess"):
+        if "heads" in s and a == "guess_heads" or "tails" in s and a == "guess_tails":
             return [(1, ("correct", "done"))]
         else:
             return [(1, ("wrong", "done"))]

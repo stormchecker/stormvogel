@@ -94,7 +94,7 @@ class Path:
                     and isinstance(t[0], stormvogel.model.Action)
                     and isinstance(t[1], stormvogel.model.State)
                 )
-                path += f" --(action: {t[0].labels})--> state: {t[1].id}"
+                path += f" --(action: {t[0].label})--> state: {t[1].id}"
         else:
             for state in self.path:
                 path += f" --> state: {state.id}"
@@ -395,7 +395,7 @@ def simulate(
                 # we add the action to the partial model (if new)
                 assert partial_model.actions is not None
                 if action not in partial_model.actions:
-                    partial_model.new_action(action.labels)
+                    partial_model.new_action(action.label)
 
                 # we get the new discovery
                 state_id, reward, labels = step(

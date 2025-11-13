@@ -227,7 +227,8 @@ class State:
 
     def nr_choices(self) -> int:
         """The number of choices in this state."""
-        return len(self.get_choices()) if self.has_choices() else 1
+        choices = self.get_choices()
+        return len(choices) if choices is not None else 1
 
     @deprecated(version="0.10.0", reason="Use get_choices() instead")
     def get_choice(self) -> "Choices | None":
@@ -249,10 +250,11 @@ class State:
 
     def available_actions(self) -> list["Action"]:
         """returns the list of all available actions in this state"""
-        if self.model.supports_actions() and self.has_choices():
-            return self.get_choices().actions()
-        else:
-            return [EmptyAction]
+        if self.model.supports_actions():
+            choices = self.get_choices()
+            if choices is not None:
+                return choices.actions()
+        return [EmptyAction]
 
     def get_outgoing_transitions(
         self, action: "Action | None" = None
@@ -338,48 +340,22 @@ class Action:
         Two actions with the same labels are considered equal.
 
     Args:
-        labels: The labels of this action. Corresponds to Storm labels.
+        label: The label of this action. Corresponds to Storm label.
     """
 
-    labels: frozenset[str]
-
-    def __init__(self, labels: str | frozenset[str] | None):
-        if isinstance(labels, str):
-            labels = frozenset({labels})
-        elif labels is None:
-            labels = frozenset()
-
-        # we use object.__setattr__ because of the immutability of the class
-        object.__setattr__(self, "labels", labels)
+    label: str | None
 
     def __lt__(self, other):
         if not isinstance(other, Action):
             return NotImplemented
-        return str(self.labels) < str(other.labels)
+        return str(self.label) < str(other.label)
 
     def __str__(self):
-        return f"Action with labels {self.labels}"
-
-    @property
-    def nr_labels(self):
-        return len(self.labels)
-
-    def get_unique_label(self) -> str | None:
-        """
-        Returns the unique label of this action, or None for the EmptyAction.
-        Fails if the action has more than one label.
-        """
-        if self.nr_labels == 0:
-            return None
-        if self.nr_labels == 1:
-            # Unpack
-            (x,) = self.labels
-            return x
-        raise RuntimeError("Action has more than one label, which is not unique.")
+        return f"Action with label {self.label}"
 
 
 # The empty action. Used for DTMCs and empty action transitions in mdps.
-EmptyAction = Action(frozenset())
+EmptyAction = Action(None)
 
 
 @dataclass(order=True)
@@ -1098,22 +1074,22 @@ class Model:
         """Get the branch at state s. Only intended for emtpy choices, otherwise a RuntimeError is thrown."""
         return self.get_branches(state_or_id)
 
-    def get_action_with_labels(self, labels: frozenset[str]) -> Action | None:
-        """Get the action with provided list of labels"""
+    def get_action_with_label(self, label: str | None) -> Action | None:
+        """Get the action with provided label"""
         assert self.actions is not None
         for action in self.actions:
-            if action.labels == labels:
+            if action.label == label:
                 return action
         return None
 
-    def new_action(self, labels: frozenset[str] | str | None = None) -> Action:
+    def new_action(self, label: str | None = None) -> Action:
         """Creates a new action and returns it."""
         if not self.supports_actions():
             raise RuntimeError(
                 "Called new_action on a model that does not support actions"
             )
         assert self.actions is not None
-        action = Action(labels)
+        action = Action(label)
         self.actions.add(action)
         return action
 
@@ -1237,17 +1213,17 @@ class Model:
             )
         return self.actions[name]
 
-    def action(self, labels: frozenset[str] | str | None) -> Action:
+    def action(self, label: str | None) -> Action:
         """New action or get action if it exists."""
         if not self.supports_actions():
             raise RuntimeError(
                 "Called method action on a model that does not support actions"
             )
         assert self.actions is not None
-        action = Action(labels)
+        action = Action(label)
 
         if action not in self.actions:
-            self.new_action(labels)
+            self.new_action(label)
         return action
 
     def new_state(
@@ -1445,7 +1421,7 @@ class Model:
                         dot += f'{state_id} -> {target.id} [ label = "{prob}" ];\n'
                 else:
                     # Draw actions, then probabilities
-                    dot += f'{state_id} -> {state_id} [ label = "{action.labels}" ];\n'
+                    dot += f'{state_id} -> {state_id} [ label = "{action.label}" ];\n'
                     for prob, target in branch:
                         dot += f'{state_id} -> {target.id} [ label = "{prob}" ];\n'
 

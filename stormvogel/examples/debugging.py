@@ -5,17 +5,17 @@ from stormvogel.model import ModelType
 def create_debugging_mdp():
     def available_actions(s: str):
         if s == ("init", "A"):
-            return [["mec"], ["probs"]]
-        return [[]]
+            return ["mec", "probs"]
+        return [""]
 
     def delta(s: str, a: bird.Action):
-        if "mec" in a:
+        if a == "mec":
             return [(1, ("X", "mec"))]
         elif s == ("X", "mec"):
             return [(1, ("Y", "mec"))]
         elif s == ("Y", "mec"):
             return [(1, ("X", "mec"))]
-        elif "probs" in a:
+        elif a == "probs":
             return [(1, ("A", "E"))]
         elif s == ("A", "E"):
             return [(0.5, ("C", "D")), (0.5, ("B", "D"))]

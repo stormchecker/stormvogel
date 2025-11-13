@@ -25,7 +25,7 @@ class State:
         return False
 
 
-type Action = list[str]
+type Action = str
 
 
 def valid_input(
@@ -223,9 +223,17 @@ def build_bird(
                 )
 
             for action in actionslist:
-                stormvogel_action = model.action(frozenset(action))
+                # Actions must be strings
+                if not isinstance(action, str):
+                    raise ValueError(
+                        f"On input {state}, the available actions function returns an action that is not a string: {action}"
+                    )
 
-                delta = cast(Callable[[Any, action], Any], delta)
+                # Convert empty strings to None for the empty action
+                action_label = None if action == "" else action
+                stormvogel_action = model.action(action_label)
+
+                delta = cast(Callable[[Any, str], Any], delta)
                 tuples = delta(state, action)
 
                 if not isinstance(tuples, list) and tuples is not None:
@@ -302,7 +310,9 @@ def build_bird(
 
                     assert s is not None
                     for index, reward in enumerate(rewarddict.items()):
-                        a = model.get_action_with_labels(frozenset(action))
+                        # Convert empty strings to None for the empty action
+                        action_label = None if action == "" else action
+                        a = model.get_action_with_label(action_label)
                         assert a is not None
                         model.rewards[index].set_state_action_reward(
                             s,

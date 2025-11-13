@@ -646,8 +646,9 @@ def test_convert_model_checker_results_mdp():
             398,
             399,
         ] == [
-            int(list(action.labels)[0])
+            int(action.label)
             for action in stormvogel_result.scheduler.taken_actions.values()
+            if action.label is not None
         ]
 
 

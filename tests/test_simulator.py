@@ -263,9 +263,9 @@ def test_simulate_path():
 
     # we make the path that the simulate path function should create
 
-    action0 = pomdp.get_action_with_labels(frozenset({"open2"}))
+    action0 = pomdp.get_action_with_label("open2")
     assert action0 is not None
-    action1 = pomdp.get_action_with_labels(frozenset({"switch"}))
+    action1 = pomdp.get_action_with_label("switch")
     assert action1 is not None
 
     other_path = simulator.Path(
@@ -295,9 +295,9 @@ def test_simulate_path():
     pomdp = stormvogel.examples.monty_hall_pomdp.create_monty_hall_pomdp()
     path = simulator.simulate_path(pomdp, steps=4, seed=1, scheduler=scheduler)
 
-    action0 = pomdp.get_action_with_labels(frozenset({"open0"}))
+    action0 = pomdp.get_action_with_label("open0")
     assert action0 is not None
-    action1 = pomdp.get_action_with_labels(frozenset({"stay"}))
+    action1 = pomdp.get_action_with_label("stay")
     assert action1 is not None
 
     # we make the path that the simulate path function should create

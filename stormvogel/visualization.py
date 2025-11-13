@@ -295,7 +295,7 @@ class VisualizationBase:
         """
         reward = self._format_rewards(self.model.get_state_by_id(state.id), action)
 
-        properties = {"label": ",".join(action.labels) + reward, "model_action": action}
+        properties = {"label": (action.label or "") + reward, "model_action": action}
         return properties
 
     def _create_transition_properties(self, state, action, next_state) -> dict:
