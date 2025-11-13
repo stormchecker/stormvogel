@@ -56,7 +56,7 @@ invx.add_term((1,),-1)
 invx.add_term((0,),1)
 
 #we build the knuth yao dice using the bird model builder
-def delta(s: bird.State):
+def delta(s: bird.State) -> list[tuple[float | parametric.Polynomial, bird.State]] | None:
     match s.s:
         case 0:
             return [(x, bird.State(s=1)), (invx, bird.State(s=2))]
@@ -124,7 +124,7 @@ interval = model.Interval(2/7,6/7)
 inv_interval = model.Interval(1/7,5/7)
 
 #we build the knuth yao dice using the bird model builder
-def delta(s: bird.State):
+def delta(s: bird.State) -> list[tuple[float | model.Interval, bird.State]] | None:
     match s.s:
         case 0:
             return [(interval, bird.State(s=1)), (inv_interval, bird.State(s=2))]

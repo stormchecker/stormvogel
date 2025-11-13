@@ -28,17 +28,19 @@ class State:
 type Action = list[str]
 
 
-def valid_input(
+def valid_input[ValueType: stormvogel.model.Value](
     delta: Callable[[Any, Action], Any] | Callable[[Any], Any],
     init: Any,
-    rewards: Callable[[Any, Action], dict[str, stormvogel.model.Value]]
-    | Callable[[Any], dict[str, stormvogel.model.Value]]
+    rewards: Callable[[Any, Action], dict[str, ValueType]]
+    | Callable[[Any], dict[str, ValueType]]
     | None = None,
     labels: Callable[[Any], list[str] | str | None] | None = None,
     available_actions: Callable[[Any], list[Action]] | None = None,
-    observations: Callable[[Any], int] | None = None,
+    observations: Callable[[Any], int | list[tuple[int, ValueType]]] | None = None,
     rates: Callable[[Any], float] | None = None,
     valuations: Callable[[Any], dict[str, float | int | bool]] | None = None,
+    observation_valuations: Callable[[int], dict[str, float | int | bool]]
+    | None = None,
     modeltype: stormvogel.model.ModelType = stormvogel.model.ModelType.MDP,
 ):
     """
@@ -59,8 +61,13 @@ def valid_input(
         )
 
     # and we check if we have an observations function in case our model is a POMDP
-    if modeltype == stormvogel.model.ModelType.POMDP and observations is None:
-        raise ValueError("You have to provide an observations function for pomdps")
+    if (
+        modeltype in (stormvogel.model.ModelType.POMDP, stormvogel.model.ModelType.HMM)
+        and observations is None
+    ):
+        raise ValueError(
+            "You have to provide an observations function for POMDPs or HMMs"
+        )
 
     # we check if the provided functions have the right number of parameters
     if supports_actions:
@@ -123,21 +130,32 @@ def valid_input(
                 f"The valuations function must take exactly one argument (state), but it takes {num_params} arguments"
             )
 
+    if observation_valuations is not None:
+        sig = inspect.signature(observation_valuations)
+        num_params = len(sig.parameters)
+        if num_params != 1:
+            raise ValueError(
+                f"The observation_valuations function must take exactly one argument (observation id), but it takes {num_params} arguments"
+            )
 
-def build_bird(
-    delta: Callable[[Any, Action], Any] | Callable[[Any], Any],
+
+def build_bird[ValueType: stormvogel.model.Value](
+    delta: Callable[[Any, Action], list[tuple[ValueType, Any]]]
+    | Callable[[Any], list[tuple[ValueType, Any]]],
     init: Any,
-    rewards: Callable[[Any, Action], dict[str, stormvogel.model.Value]]
-    | Callable[[Any], dict[str, stormvogel.model.Value]]
+    rewards: Callable[[Any, Action], dict[str, ValueType]]
+    | Callable[[Any], dict[str, ValueType]]
     | None = None,
     labels: Callable[[Any], list[str] | str | None] | None = None,
     available_actions: Callable[[Any], list[Action]] | None = None,
-    observations: Callable[[Any], int] | None = None,
+    observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
     rates: Callable[[Any], float] | None = None,
     valuations: Callable[[Any], dict[str, float | int | bool]] | None = None,
+    observation_valuations: Callable[[int], dict[str, float | int | bool]]
+    | None = None,
     modeltype: stormvogel.model.ModelType = stormvogel.model.ModelType.MDP,
     max_size: int = 10000,
-) -> stormvogel.model.Model:
+) -> stormvogel.model.Model[ValueType]:
     """
     function that converts a delta function, an available_actions function an initial state and a model type
     to a stormvogel model
@@ -187,6 +205,7 @@ def build_bird(
         observations,
         rates,
         valuations,
+        observation_valuations,
         modeltype,
     )
 
@@ -265,9 +284,7 @@ def build_bird(
         if model.supports_actions():
             # we first create the right number of reward models
             assert available_actions is not None
-            rewards = cast(
-                Callable[[Any, Action], dict[str, stormvogel.model.Value]], rewards
-            )
+            rewards = cast(Callable[[Any, Action], dict[str, ValueType]], rewards)
             for reward in rewards(init, available_actions(init)[0]).items():
                 model.new_reward_model(reward[0])
 
@@ -307,7 +324,7 @@ def build_bird(
                         )
         else:
             # we first create the right number of reward models
-            rewards = cast(Callable[[Any], dict[str, stormvogel.model.Value]], rewards)
+            rewards = cast(Callable[[Any], dict[str, ValueType]], rewards)
             for reward in rewards(init).items():
                 model.new_reward_model(reward[0])
 
@@ -340,18 +357,57 @@ def build_bird(
     if observations is not None:
         for state, s in state_lookup.items():
             # we check for the observations when it does not return an integer
-            o = observations(state)
-            if o is None:
+            given_obs = observations(state)
+            if given_obs is None:
                 raise ValueError(
                     f"On input {state}, the observations function does not have a return value"
                 )
 
-            if not isinstance(o, int):
+            if isinstance(given_obs, int):
+                obs = model.observation(observation_id=given_obs)
+                s.set_observation(obs)
+            elif isinstance(given_obs, list):
+                obs_distribution = [
+                    (prob, model.observation(observation_id=o)) for prob, o in given_obs
+                ]
+                s.set_observation(obs_distribution)
+            else:
                 raise ValueError(
-                    f"On input {state}, the observations function does not return an integer"
+                    f"On input {state}, the observations function does not return an integer or a distribution dictionary"
                 )
 
-            s.set_observation(o)
+        if observation_valuations is not None and model.observations is not None:
+            observation_valuation_keys = observation_valuations(
+                model.observations[0].observation
+            ).keys()
+            for obs in model.observations:
+                valuation_dict = observation_valuations(obs.observation)
+                if valuation_dict is None:
+                    raise ValueError(
+                        f"On input observation id {obs.id}, the observation_valuations function does not have a return value"
+                    )
+
+                if not isinstance(valuation_dict, dict):
+                    raise ValueError(
+                        f"On input observation id {obs.id}, the observation_valuations function does not return a dictionary. Make sure to change the format to [<variable>: <value>,...]"
+                    )
+
+                if valuation_dict.keys() != observation_valuation_keys:
+                    raise RuntimeError(
+                        "Make sure that you have a value for each variable in each observation valuation"
+                    )
+
+                for val in valuation_dict.values():
+                    if not (
+                        isinstance(val, int)
+                        or isinstance(val, bool)
+                        or isinstance(val, float)
+                    ):
+                        raise ValueError(
+                            f"On input observation id {obs.id}, the dictionary that the observation_valuations function returns contains a value {val} which is not of type int, float or bool"
+                        )
+
+                obs.valuations = valuation_dict
 
     # we add the exit rates
     if rates is not None:
@@ -367,33 +423,33 @@ def build_bird(
     if valuations is not None:
         initial_state_valuations = valuations(init)
         for state, s in state_lookup.items():
-            valuation_list = valuations(state)
-            if valuation_list is None:
+            valuation_dict = valuations(state)
+            if valuation_dict is None:
                 raise ValueError(
                     f"On input {state}, the valuations function does not have a return value"
                 )
 
-            if not isinstance(valuation_list, dict):
+            if not isinstance(valuation_dict, dict):
                 raise ValueError(
                     f"On input {state}, the valuations function does not return a dictionary. Make sure to change the format to [<variable>: <value>,...]"
                 )
 
-            if valuation_list.keys() != initial_state_valuations.keys():
+            if valuation_dict.keys() != initial_state_valuations.keys():
                 raise RuntimeError(
                     "Make sure that you have a value for each variable in each state"
                 )
 
-            for val in valuation_list.values():
+            for val in valuation_dict.values():
                 if not (
                     isinstance(val, int)
                     or isinstance(val, bool)
                     or isinstance(val, float)
                 ):
                     raise ValueError(
-                        f"On input {state}, the dictionary that the valuations function returns contains a value {val} which is not of type int, float or"
+                        f"On input {state}, the dictionary that the valuations function returns contains a value {val} which is not of type int, float or bool"
                     )
 
-            s.valuations = valuation_list
+            s.valuations = valuation_dict
 
     # we add the labels
     if labels is not None:

@@ -100,7 +100,8 @@ class VisualizationBase:
         Args:
             color1 (str): Color 1 in HEX format #RRGGBB
             color2 (str): Color 2 in HEX format #RRGGBB
-            factor (float): The fraction of the resulting color that should come from color1."""
+            factor (float): The fraction of the resulting color that should come from color1.
+        """
         r1 = int("0x" + c1[1:3], 0)
         g1 = int("0x" + c1[3:5], 0)
         b1 = int("0x" + c1[5:7], 0)
@@ -160,17 +161,30 @@ class VisualizationBase:
             or not self.layout.layout["state_properties"]["show_observations"]
         ):
             return ""
+        elif isinstance(s.observation, list):
+            string = ""
+            for prob, obs in s.observation:
+                string += (
+                    "\n"
+                    + self.layout.layout["state_properties"]["observation_symbol"]
+                    + " "
+                    + str(obs.format())
+                    + ": "
+                    + self._format_number(prob)
+                )
+            return string
         else:
             return (
                 "\n"
                 + self.layout.layout["state_properties"]["observation_symbol"]
                 + " "
-                + str(s.observation.observation)
+                + str(s.observation.format())
             )
 
     def _group_state(self, s: stormvogel.model.State, default: str) -> str:
         """The user can edit a number of subsets of the states individually, we call these groups.
-        This function determines the group of this state. That is, the label of s that has the highest priority, as specified by the user under edit_groups."""
+        This function determines the group of this state. That is, the label of s that has the highest priority, as specified by the user under edit_groups.
+        """
         und_labels = set(map(lambda x: self._und(x), s.labels))
         res = list(
             filter(
@@ -764,7 +778,8 @@ class JSVisualization(VisualizationBase):
         """Highlight a set of tuples of (states and actions) in the model by changing their color.
         Args:
             decomp: A list of tuples (states, actions)
-            colors (optional): A list of colors for the decompositions. Random colors are picked by default."""
+            colors (optional): A list of colors for the decompositions. Random colors are picked by default.
+        """
         for n, v in enumerate(decomp):
             if colors is None:
                 color = self._random_color()
@@ -925,8 +940,9 @@ class MplVisualization(VisualizationBase):
         scheduler: stormvogel.result.Scheduler | None = None,
         title: str | None = None,
         interactive: bool = False,
-        hover_node: Callable[[PathCollection, PathCollection, MouseEvent, Axes], None]
-        | None = None,
+        hover_node: (
+            Callable[[PathCollection, PathCollection, MouseEvent, Axes], None] | None
+        ) = None,
     ):
         super().__init__(model, layout, result, scheduler)
         self.title = title or ""

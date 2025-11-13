@@ -404,6 +404,13 @@ def stormvogel_to_stormpy(
         """
         assert stormpy is not None
 
+        # Check if the model contains stochastic observation, since we need to do a transformation in that case
+        for state in model.states.values():
+            if isinstance(state.observation, list):
+                raise NotImplementedError(
+                    "Stormpy does not support stochastic observations in POMDPs. Please convert the stochastic observations to deterministic ones before converting the model."
+                )
+
         # we determine the number of choices and the labels
         count = 0
         labels = set()

@@ -107,4 +107,43 @@ result2 = stormvogel.result.Result(coin_pomdp, values, scheduler2)
 
 vis4 = show(coin_pomdp, result=result2)
 
+# %% [markdown]
+# We can also create stochastic observations. For example, we could say that the agent sees the correct observation with probability 0.8, and the wrong one with probability 0.2.
+# To make the observations more readable we can give them a valuation.
+
 # %%
+def observations_stochastic(s):
+    if "heads" in s:
+        return [(0.8, 0), (0.2, 1)]
+    elif "tails" in s:
+        return [(0.2, 0), (0.8, 1)]
+    else:
+        return [(1.0, 2)]
+
+def observation_valuations(o):
+    if o == 0:
+        return {"heads": True, "tails": False, "done": False}
+    elif o == 1:
+        return {"heads": False, "tails": True, "done": False}
+    else:
+        return {"done": True, "heads": False, "tails": False}
+
+coin_pomdp_stochastic = bird.build_bird(
+    delta=delta,
+    init=init,
+    available_actions=available_actions,
+    labels=labels,
+    modeltype=ModelType.POMDP,
+    rewards=rewards,
+    observations=observations_stochastic,
+    observation_valuations=observation_valuations
+)
+
+vis5 = show(coin_pomdp_stochastic)
+
+# %% [markdown]
+# This model cannot be given to stormpy for model checking as is, we first need to determinize the observations.
+
+# %%
+coin_pomdp_stochastic.make_observations_deterministic()
+vis6 = show(coin_pomdp_stochastic)
