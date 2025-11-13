@@ -31,7 +31,7 @@
 # This little MDP is supposed to help you decide whether you should stuy or not.
 
 # %% [markdown]
-# ### PGC API
+# ### Bird API
 # For MDPs, you specify the availaible actions in `available_actions`. An action here is simply a list of labels. You specify the transition of a state-action pair in `delta`.
 
 # %%
@@ -113,7 +113,7 @@ vis2 = show(mdp, layout=Layout("layouts/pinkgreen.json"))
 # An MDP model that consists of a 3x3 grid. The direction to walk is chosen by an action.
 
 # %% [markdown]
-# ### PGC API
+# ### Bird API
 
 # %%
 N = 3

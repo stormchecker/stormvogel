@@ -20,7 +20,11 @@
 # * a successor distribution $P(s)$ for every state $s$, i.e., transitions between states $s$ and $s'$, each annotated with a probability.
 # * state labels $L(s)$.
 #
-# In this notebook, we demonstrate how to construct two simple DTMCs from various sources. We show how to construct a model using the `bird` API and the `model` API. Do note that stormvogel supports seemless conversion to and from stormpy. This means that you can also use any way of buidling models that is supported by stormpy. This includes [PRISM](https://www.prismmodelchecker.org/), [JANI](https://www.stormchecker.org/files/BDHHJT17.pdf) and [stormpy's own APIs](https://moves-rwth.github.io/stormpy/). For these, we refer to their respective documentations.
+# In this notebook, we demonstrate how to construct two simple DTMCs from different sources.
+# In particular, we show how to construct a model using our `bird` API and the `model` API.
+# Beyond these APIs,  stormvogel supports seamless conversion to and from stormpy. This means that you can also use any way of building models that is supported by stormpy.
+# This includes the [PRISM](https://www.prismmodelchecker.org/) language and the [JANI](https://www.stormchecker.org/files/BDHHJT17.pdf) modelling language, as well as [stormpy's own APIs](https://moves-rwth.github.io/stormpy/).
+# For these, we refer to their respective documentations.
 #
 # **Note:** unfortunately, the visualisation of the DTMC is not always correct when it is rendered out of view. To re-center, you can simply double-click inside the window.
 
@@ -30,7 +34,8 @@
 
 # %% [markdown]
 # ### Bird API
-# The Bird API is probably the most intuitive way to create a model. The user defines a `delta` function which maps a state to a distribution of successor states. Its design was inspired by the PRISM format.
+# The Bird API is probably the most intuitive way to create a model.
+# The user defines a `delta` function which maps a state to a distribution of successor states.
 
 # %%
 from stormvogel import *
@@ -47,8 +52,9 @@ TRANSITIONS = \
  5: [(1/2, 10), (1/2, 11)],
  6: [(1/2, 2), (1/2, 12)]}
 
-# This user-defined delta function takes as an argument a single state, and returns a
-# list of 2-tuples where the first argument is a probability and the second elment is a state (a distribution).
+# In the bird API, states are given implicitly. Any object can be a state and via the transition relation, we define reachable states.
+# This user-defined delta function encodes the transition relation. It takes as an argument a single state, and returns a
+# list of 2-tuples that encode the distribution over the successor states. More precisely, the first argument is a probability and the second elment is a state (a distribution).
 def delta(s):
     if s <= 6:
         return TRANSITIONS[s]
@@ -70,7 +76,9 @@ vis = show(bird_die, layout=Layout("layouts/die.json"))
 
 # %% [markdown]
 # ### model API
-# This same model can also be constructed using the model API. This API requires adding each state and transition explicitly. This is a lot closer to how the models are represented in stormvogel. The bird API actually uses the model API internally. We generally recommend just using the bird API, but if you need more control, the model API can also be useful.
+# This same model can also be constructed using the model API.
+# This API requires adding states and transition explicitly to the model object and therefore is closer to how the models are represented in stormvogel.
+# We generally recommend just using the bird API, but if you need more control, the model API can also be useful.
 
 # %%
 # If we use the model API, we need to create all states and transitions explicitly.
@@ -100,7 +108,7 @@ vis2 = show(die_model, layout=Layout("layouts/die.json"))
 # This example is based on slides by Dave Parker and Ralf Wimmer. It models a very simple communication protocol. This time we use the string type for states.
 
 # %% [markdown]
-# ### PGC API
+# ### Bird API
 
 # %%
 def delta(s):
@@ -138,7 +146,6 @@ vis3 = show(bird_commu, layout=Layout("layouts/commu.json"))
 
 # %%
 commu_model = stormvogel.model.new_dtmc(create_initial_state=True)
-init = die_model.get_initial_state()
 
 TRANSITIONS =\
 {0: [(1, 1)],
@@ -158,7 +165,7 @@ for sid in range(1,4):
 for sid in range(0,4):
     state = commu_model.get_state_by_id(sid)
     state.set_choice(
-        [(p,die_model.get_state_by_id(sid_)) for p,sid_ in TRANSITIONS[sid]])
+        [(p,commu_model.get_state_by_id(sid_)) for p,sid_ in TRANSITIONS[sid]])
 
 vis4 = show(commu_model, layout=Layout("layouts/commu.json"))
 
