@@ -1,3 +1,6 @@
+from stormvogel import model, bird
+
+
 def create_knuth_yao_imc():
     # We create our interval values
     interval = model.Interval(2 / 7, 6 / 7)
@@ -20,12 +23,12 @@ def create_knuth_yao_imc():
             case 4:
                 return [
                     (interval, bird.State(s=7, d=2)),
-                    (invx, bird.State(s=7, d=3)),
+                    (inv_interval, bird.State(s=7, d=3)),
                 ]
             case 5:
                 return [
                     (interval, bird.State(s=7, d=4)),
-                    (invx, bird.State(s=7, d=5)),
+                    (inv_interval, bird.State(s=7, d=5)),
                 ]
             case 6:
                 return [
@@ -45,6 +48,8 @@ def create_knuth_yao_imc():
         labels=labels,
         modeltype=model.ModelType.DTMC,
     )
+
+    return knuth_yao_imc
 
 
 if __name__ == "__main__":
