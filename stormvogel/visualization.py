@@ -131,6 +131,8 @@ class VisualizationBase:
 
     def _format_number(self, n: stormvogel.model.Value) -> str:
         """Call number_to_string in model.py while accounting for the settings specified in the layout object."""
+        if self.layout.layout["numbers"]["visible"] is False:
+            return ""
         return stormvogel.model.value_to_string(
             n,
             self.layout.layout["numbers"]["fractions"],

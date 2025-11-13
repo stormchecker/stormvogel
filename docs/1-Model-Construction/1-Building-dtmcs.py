@@ -112,6 +112,7 @@ vis2 = show(die_model, layout=Layout("layouts/die.json"))
 # %% [markdown]
 # ### Bird API
 
+
 # %%
 def delta(s):
     match s:

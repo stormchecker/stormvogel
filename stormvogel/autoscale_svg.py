@@ -20,7 +20,9 @@ def autoscale_svg(raw_svg: str, target_width: float) -> str:
     root = etree.fromstring(clean_svg)
 
     # Extract paths and calculate the bounding box using svgpathtools
-    paths, attributes, svg_attr = svg2paths2(io.StringIO(clean_svg))
+    output_tuple = svg2paths2(io.StringIO(clean_svg))
+    assert len(output_tuple) == 3
+    paths, attributes, svg_attr = output_tuple
 
     # Calculate the bounding box of all paths
     xmin, xmax, ymin, ymax = 0, 0, 0, 0
