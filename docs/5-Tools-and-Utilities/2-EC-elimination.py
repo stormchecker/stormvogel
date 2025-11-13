@@ -28,20 +28,20 @@ init = "init"
 
 def available_actions(s: bird.State):
     if s == "init":
-        return [["one"], ["two"]]
+        return ["one", "two"]
     elif s == "mec1" or s == "mec2":
-        return [["one"], ["two"]]
-    return [[]]
+        return ["one", "two"]
+    return [""]
 
 
 def delta(s: bird.State, a: bird.Action):
-    if s == "init" and "one" in a:
+    if s == "init" and a == "one":
         return [(0.5, "mec1"), (0.5, "mec2")]
     elif s == "mec1":
         return [(1, "mec2")]
     elif s == "mec2":
         return [(1, "mec1")]
-    elif s == "init" and "two" in a:
+    elif s == "init" and a == "two":
         return [(1, "mec1")]
     return [(1, s)]
 

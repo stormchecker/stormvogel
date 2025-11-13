@@ -18,10 +18,10 @@ def gymnasium_grid_to_stormvogel(
     TRANSITIONS = env.unwrapped.P
     NO_ACTIONS = env.action_space.n
     INV_MAP = {v: k for k, v in action_label_map.items()}
-    ALL_ACTIONS = [[x] for x in action_label_map.values()]
+    ALL_ACTIONS = list(action_label_map.values())
 
     def action_numer_map(a: bird.Action):
-        return INV_MAP[a[0]]
+        return INV_MAP[a]
 
     if "taxi" in env.spec.id.lower():
         # For Taxi, we need a special initial state that goes to every state. This is to account for the randomized starting position.
@@ -33,7 +33,7 @@ def gymnasium_grid_to_stormvogel(
 
     def available_actions(s: bird.State):
         if s.n == -1:
-            return [[]]
+            return [""]
         return ALL_ACTIONS[:NO_ACTIONS]
 
     def delta(s: bird.State, a: bird.Action):
@@ -94,8 +94,10 @@ def get_target_state(env):
 
 def to_gymnasium_scheduler(
     model: stormvogel.model.Model,
-    scheduler: stormvogel.result.Scheduler
-    | Callable[[stormvogel.model.State], stormvogel.model.Action],
+    scheduler: (
+        stormvogel.result.Scheduler
+        | Callable[[stormvogel.model.State], stormvogel.model.Action]
+    ),
     action_label_map: dict[int, str] = GRID_ACTION_LABEL_MAP,
 ) -> Callable[[int], int]:
     """Convert a stormvogel scheduler to a gymnasium scheduler (for a model that was converted using gymnasium_grid_to_stormvogel).
@@ -113,7 +115,13 @@ def to_gymnasium_scheduler(
             choice = scheduler.get_action_at_state(model_state)
         elif callable(scheduler):
             choice = scheduler(model_state)  # type: ignore
-        return inv_map[list(choice.labels)[0]]
+        # Handle empty action (None label) - this shouldn't happen in grid environments
+        # but we need to handle it for type safety
+        if choice.label is None:
+            raise ValueError(
+                "Empty action not supported in gymnasium grid environments"
+            )
+        return inv_map[choice.label]
 
     return gymnasium_scheduler
 

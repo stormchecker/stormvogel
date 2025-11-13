@@ -37,7 +37,7 @@ class Scheduler:
 
     def generate_induced_dtmc(self) -> stormvogel.model.Model | None:
         """This function resolves the nondeterminacy of the mdp and returns the scheduler induced dtmc"""
-        if self.model.get_type() == stormvogel.model.ModelType.MDP:
+        if self.model.type == stormvogel.model.ModelType.MDP:
             induced_dtmc = stormvogel.model.new_dtmc(create_initial_state=False)
 
             # we initialize the reward models

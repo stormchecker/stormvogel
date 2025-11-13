@@ -32,7 +32,7 @@
 
 # %% [markdown]
 # ### Bird API
-# For MDPs, you specify the availaible actions in `available_actions`. An action here is simply a list of labels. You specify the transition of a state-action pair in `delta`.
+# For MDPs, you specify the availaible actions in `available_actions`. An action here is simply a string. You specify the transition of a state-action pair in `delta`.
 
 # %%
 from stormvogel import *
@@ -40,15 +40,15 @@ from stormvogel import *
 
 def available_actions(s):
     if s == "init":  # Either study or not
-        return [["study"], ["don't study"]]
+        return ["study", "don't study"]
     else:  # Otherwise, we have no choice (DTMC-like behavior)
-        return [[]]
+        return [""]
 
 
 def delta(s, a):
-    if "study" in a:
+    if a == "study":
         return [(9 / 10, "pass test"), (1 / 10, "fail test")]
-    elif "don't study" in a:
+    elif a == "don't study":
         return [(2 / 5, "pass test"), (3 / 5, "fail test")]
     else:
         return [(1, "end")]
@@ -62,7 +62,7 @@ def labels(s):
 def rewards(s: bird.State, a: bird.Action):
     if s == "pass test":
         return {"R": 100}
-    elif s == "init" and "don't study" in a:
+    elif s == "init" and a == "don't study":
         return {"R": 15}
     else:
         return {"R": 0}

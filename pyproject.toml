@@ -32,6 +32,7 @@ svgpathtools = "^1.6.1"
 lxml = "^5.3.2"
 nbdime = "^4.0.2"
 networkx = "^3.4.2"
+deprecated = "^1.2.18"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.2.2"

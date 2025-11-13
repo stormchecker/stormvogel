@@ -11,9 +11,9 @@ def test_available_actions():
     mdp = stormvogel.examples.monty_hall.create_monty_hall_mdp()
 
     action = [
-        stormvogel.model.Action(labels=frozenset({"open0"})),
-        stormvogel.model.Action(labels=frozenset({"open1"})),
-        stormvogel.model.Action(labels=frozenset({"open2"})),
+        stormvogel.model.Action(label="open0"),
+        stormvogel.model.Action(label="open1"),
+        stormvogel.model.Action(label="open2"),
     ]
     assert mdp.get_state_by_id(1).available_actions() == action
 
@@ -60,14 +60,14 @@ def test_choice_from_shorthand():
     dtmc = stormvogel.model.new_dtmc()
     state = dtmc.new_state()
     transition_shorthand = [(1 / 2, state)]
-    branch = stormvogel.model.Branch(
+    branch = stormvogel.model.Branches(
         cast(
             list[tuple[stormvogel.model.Value, stormvogel.model.State]],
             transition_shorthand,
         )
     )
     action = stormvogel.model.EmptyAction
-    transition = stormvogel.model.Choice({action: branch})
+    transition = stormvogel.model.Choices({action: branch})
 
     assert (
         stormvogel.model.choice_from_shorthand(
@@ -83,12 +83,12 @@ def test_choice_from_shorthand():
     # Then we test it for a model with actions
     mdp = stormvogel.model.new_mdp()
     state = mdp.new_state()
-    action = mdp.new_action(frozenset({"action"}))
+    action = mdp.new_action("action")
     transition_shorthand = [(action, state)]
-    branch = stormvogel.model.Branch(
+    branch = stormvogel.model.Branches(
         cast(list[tuple[stormvogel.model.Value, stormvogel.model.State]], [(1, state)])
     )
-    transition = stormvogel.model.Choice({action: branch})
+    transition = stormvogel.model.Choices({action: branch})
 
     assert (
         stormvogel.model.choice_from_shorthand(
@@ -104,14 +104,14 @@ def test_choice_from_shorthand():
     # We test if it works with ids instead
     dtmc = stormvogel.model.new_dtmc()
     transition_shorthand = [(1 / 2, dtmc.get_state_by_id(0))]
-    branch = stormvogel.model.Branch(
+    branch = stormvogel.model.Branches(
         cast(
             list[tuple[stormvogel.model.Value, stormvogel.model.State]],
             transition_shorthand,
         )
     )
     action = stormvogel.model.EmptyAction
-    transition = stormvogel.model.Choice({action: branch})
+    transition = stormvogel.model.Choices({action: branch})
 
     assert (
         stormvogel.model.choice_from_shorthand(
@@ -138,22 +138,25 @@ def test_choice_from_shorthand():
         )
 
     # we test it for nontrivial action transitions
+
+
+def test_choice_from_shorthand_dict_state():
     mdp = stormvogel.model.new_mdp()
     state1 = mdp.new_state()
     state2 = mdp.new_state()
-    action0 = mdp.new_action(frozenset({"0"}))
-    action1 = mdp.new_action(frozenset({"1"}))
+    action0 = mdp.new_action("0")
+    action1 = mdp.new_action("1")
     transition_shorthand = {
         action0: [(1 / 2, state1), (1 / 2, state2)],
         action1: [(1 / 2, state1), (1 / 2, state2)],
     }
-    branch = stormvogel.model.Branch(
+    branch = stormvogel.model.Branches(
         cast(
             list[tuple[stormvogel.model.Value, stormvogel.model.State]],
             [(1 / 2, state1), (1 / 2, state2)],
         )
     )
-    transition = stormvogel.model.Choice({action0: branch, action1: branch})
+    transition = stormvogel.model.Choices({action0: branch, action1: branch})
 
     assert (
         stormvogel.model.choice_from_shorthand(
@@ -173,19 +176,19 @@ def test_choice_from_shorthand():
     mdp = stormvogel.model.new_mdp()
     state1 = mdp.new_state()
     state2 = mdp.new_state()
-    action0 = mdp.new_action(frozenset({"0"}))
-    action1 = mdp.new_action(frozenset({"1"}))
+    action0 = mdp.new_action("0")
+    action1 = mdp.new_action("1")
     transition_shorthand = {
         action0: [(1 / 2, 1), (1 / 2, 2)],
         action1: [(1 / 2, 1), (1 / 2, 2)],
     }
-    branch = stormvogel.model.Branch(
+    branch = stormvogel.model.Branches(
         cast(
             list[tuple[stormvogel.model.Value, stormvogel.model.State]],
             [(1 / 2, state1), (1 / 2, state2)],
         )
     )
-    transition = stormvogel.model.Choice({action0: branch, action1: branch})
+    transition = stormvogel.model.Choices({action0: branch, action1: branch})
 
     assert (
         stormvogel.model.choice_from_shorthand(
@@ -204,14 +207,14 @@ def test_choice_from_shorthand():
     # We test if it works with ids instead
     dtmc = stormvogel.model.new_dtmc()
     transition_shorthand = [(1 / 2, dtmc.get_state_by_id(0))]
-    branch = stormvogel.model.Branch(
+    branch = stormvogel.model.Branches(
         cast(
             list[tuple[stormvogel.model.Value, stormvogel.model.State]],
             transition_shorthand,
         )
     )
     action = stormvogel.model.EmptyAction
-    transition = stormvogel.model.Choice({action: branch})
+    transition = stormvogel.model.Choices({action: branch})
 
     assert (
         stormvogel.model.choice_from_shorthand(
@@ -318,19 +321,19 @@ def test_remove_state():
     state2 = mdp.new_state()
     action0 = mdp.new_action("0")
     action1 = mdp.new_action("1")
-    branch0 = stormvogel.model.Branch(
+    branch0 = stormvogel.model.Branches(
         cast(
             list[tuple[stormvogel.model.Value, stormvogel.model.State]],
             [(1 / 2, state1), (1 / 2, state2)],
         )
     )
-    branch1 = stormvogel.model.Branch(
+    branch1 = stormvogel.model.Branches(
         cast(
             list[tuple[stormvogel.model.Value, stormvogel.model.State]],
             [(1 / 4, state1), (3 / 4, state2)],
         )
     )
-    transition = stormvogel.model.Choice({action0: branch0, action1: branch1})
+    transition = stormvogel.model.Choices({action0: branch0, action1: branch1})
     mdp.set_choice(mdp.get_initial_state(), transition)
 
     # we remove a state
@@ -368,7 +371,7 @@ def test_reassign_ids_removed_states():
     # we make the dtmc with the state already removed and ids already reassigned
     other_dtmc = stormvogel.model.new_dtmc(create_initial_state=False)
     for i in range(6):
-        other_dtmc.new_state(labels=[f"rolled{i+1}"], valuations={"rolled": i + 1})
+        other_dtmc.new_state(labels=[f"rolled{i + 1}"], valuations={"rolled": i + 1})
     other_dtmc.add_self_loops()
 
     assert dtmc == other_dtmc
@@ -459,10 +462,10 @@ def test_add_choice():
     # Empty action case, add the branches together.
     mdp5 = stormvogel.model.new_mdp()
     state5 = mdp5.new_state()
-    mdp5.set_choice(mdp5.get_initial_state(), [((0.4), state5)])
+    mdp5.set_choice(mdp5.get_initial_state(), [(0.4, state5)])
     mdp5.add_choice(mdp5.get_initial_state(), [(0.6, state5)])
-    assert mdp5.get_branch(mdp5.get_initial_state()).branch == [
-        ((0.4), state5),
+    assert mdp5.get_branches(mdp5.get_initial_state()).branch == [
+        (0.4, state5),
         (0.6, state5),
     ]
 
@@ -475,7 +478,7 @@ def test_add_choice():
     mdp6.add_choice(mdp6.get_initial_state(), [(action6b, state6)])
     # print(mdp6.get_choice(mdp6.get_initial_state()).choice)
     # print([(action6a, state6), (action6b, state6)])
-    assert len(mdp6.get_choice(mdp6.get_initial_state()).choice) == 2
+    assert len(mdp6.get_choices(mdp6.get_initial_state()).choice) == 2
 
 
 def test_get_sub_model():
@@ -490,7 +493,7 @@ def test_get_sub_model():
     init.valuations = {"rolled": 0}
     init.set_choice(
         [
-            (1 / 6, new_dtmc.new_state(f"rolled{i+1}", {"rolled": i + 1}))
+            (1 / 6, new_dtmc.new_state(f"rolled{i + 1}", {"rolled": i + 1}))
             for i in range(2)
         ]
     )
@@ -504,7 +507,7 @@ def test_get_state_action_id():
     state = mdp.get_state_by_id(2)
     action = state.available_actions()[1]
 
-    assert mdp.get_state_action_id(state, action) == 5
+    assert mdp.get_choice_id(state, action) == 5
 
 
 def test_get_state_action_reward():
@@ -567,7 +570,10 @@ def test_valuation_methods():
     init = dtmc.get_initial_state()
     init.set_choice(
         [
-            (1 / 6, dtmc.new_state(labels=f"rolled{i+1}", valuations={"rolled": i + 1}))
+            (
+                1 / 6,
+                dtmc.new_state(labels=f"rolled{i + 1}", valuations={"rolled": i + 1}),
+            )
             for i in range(6)
         ]
     )

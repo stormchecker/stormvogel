@@ -53,7 +53,8 @@ def merge_dict(dict1: dict, dict2: dict) -> dict:
     If dict1 has a DICTIONARY and dict2 has a VALUE with the same key, then dict1 gets priority.
 
     Taken from StackOverflow user Anatoliy R on July 2 2024.
-    https://stackoverflow.com/questions/43797333/how-to-merge-two-nested-dict-in-python"""
+    https://stackoverflow.com/questions/43797333/how-to-merge-two-nested-dict-in-python
+    """
     for key, val in dict1.items():
         if isinstance(val, dict):
             if key in dict2 and type(dict2[key] == dict):

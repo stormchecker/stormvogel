@@ -1,6 +1,7 @@
 """Layout stores and manages loading/saving of the layout file, and the schema file.
 This schema file may be used by the LayoutEditor to create an editor for this Layout.
-The Layout object also provides methods to manipulate the layout and the schema, such as setting node positions from a NetworkX layout."""
+The Layout object also provides methods to manipulate the layout and the schema, such as setting node positions from a NetworkX layout.
+"""
 
 from typing import Any, Self
 
@@ -135,7 +136,8 @@ class Layout:
 
     def copy_settings(self) -> None:
         """Copy some settings from one place in the layout to another place in the layout.
-        They differ because visjs requires for them to be arranged a certain way which is not nice for an editor."""
+        They differ because visjs requires for them to be arranged a certain way which is not nice for an editor.
+        """
         self.layout["physics"] = self.layout["misc"]["enable_physics"]
 
     def set_nx_pos(self, pos: dict[int, npt.NDArray], scale: float = 500) -> Self:

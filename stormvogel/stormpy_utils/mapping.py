@@ -163,8 +163,8 @@ def stormvogel_to_stormpy(
                     not action[0] == stormvogel.model.EmptyAction
                     and choice_labeling is not None
                 ):
-                    for label in action[0].labels:
-                        choice_labeling.add_label_to_choice(str(label), row_index)
+                    if action[0].label is not None:
+                        choice_labeling.add_label_to_choice(action[0].label, row_index)
                 row_index += 1
 
         return builder.build()
@@ -289,9 +289,8 @@ def stormvogel_to_stormpy(
         for _, state in model:
             for action in state.available_actions():
                 count += 1
-                if action != stormvogel.model.EmptyAction:
-                    for label in action.labels:
-                        labels.add(label)
+                if action != stormvogel.model.EmptyAction and action.label is not None:
+                    labels.add(action.label)
 
         # we add the labels to the choice labeling object
         choice_labeling = stormpy.storage.ChoiceLabeling(count)
@@ -410,9 +409,11 @@ def stormvogel_to_stormpy(
         for state in model.states.values():
             for action in state.available_actions():
                 count += 1
-                if not action == stormvogel.model.EmptyAction:
-                    for label in action.labels:
-                        labels.add(label)
+                if (
+                    not action == stormvogel.model.EmptyAction
+                    and action.label is not None
+                ):
+                    labels.add(action.label)
 
         # we add the labels to the choice labeling object
         choice_labeling = stormpy.storage.ChoiceLabeling(count)
@@ -504,9 +505,11 @@ def stormvogel_to_stormpy(
         for state in model.states.values():
             for action in state.available_actions():
                 count += 1
-                if not action == stormvogel.model.EmptyAction:
-                    for label in action.labels:
-                        labels.add(label)
+                if (
+                    not action == stormvogel.model.EmptyAction
+                    and action.label is not None
+                ):
+                    labels.add(action.label)
 
         # we add the labels to the choice labeling object
         choice_labeling = stormpy.storage.ChoiceLabeling(count)
@@ -615,15 +618,15 @@ def stormvogel_to_stormpy(
         variables.append(var)
 
     # we check the type to handle the model correctly
-    if model.get_type() == stormvogel.model.ModelType.DTMC:
+    if model.type == stormvogel.model.ModelType.DTMC:
         return map_dtmc(model)
-    elif model.get_type() == stormvogel.model.ModelType.MDP:
+    elif model.type == stormvogel.model.ModelType.MDP:
         return map_mdp(model)
-    elif model.get_type() == stormvogel.model.ModelType.CTMC:
+    elif model.type == stormvogel.model.ModelType.CTMC:
         return map_ctmc(model)
-    elif model.get_type() == stormvogel.model.ModelType.POMDP:
+    elif model.type == stormvogel.model.ModelType.POMDP:
         return map_pomdp(model)
-    elif model.get_type() == stormvogel.model.ModelType.MA:
+    elif model.type == stormvogel.model.ModelType.MA:
         return map_ma(model)
     else:
         raise NotImplementedError(
@@ -735,11 +738,13 @@ def stormpy_to_stormvogel(
 
     def add_states(
         model: stormvogel.model.Model,
-        sparsemodel: stormpy.storage.SparseDtmc
-        | stormpy.storage.SparseMdp
-        | stormpy.storage.SparseCtmc
-        | stormpy.storage.SparsePomdp
-        | stormpy.storage.SparseMA,
+        sparsemodel: (
+            stormpy.storage.SparseDtmc
+            | stormpy.storage.SparseMdp
+            | stormpy.storage.SparseCtmc
+            | stormpy.storage.SparsePomdp
+            | stormpy.storage.SparseMA
+        ),
     ):
         """
         helper function to add the states from the sparsemodel to the model
@@ -754,11 +759,13 @@ def stormpy_to_stormvogel(
 
     def new_reward_model(
         model: stormvogel.model.Model,
-        sparsemodel: stormpy.storage.SparseDtmc
-        | stormpy.storage.SparseMdp
-        | stormpy.storage.SparseCtmc
-        | stormpy.storage.SparsePomdp
-        | stormpy.storage.SparseMA,
+        sparsemodel: (
+            stormpy.storage.SparseDtmc
+            | stormpy.storage.SparseMdp
+            | stormpy.storage.SparseCtmc
+            | stormpy.storage.SparsePomdp
+            | stormpy.storage.SparseMA
+        ),
     ):
         """
         adds the rewards from the sparsemodel to either the states or the state action pairs of the model
@@ -776,11 +783,13 @@ def stormpy_to_stormvogel(
 
     def add_valuations(
         model: stormvogel.model.Model,
-        sparsemodel: stormpy.storage.SparseDtmc
-        | stormpy.storage.SparseMdp
-        | stormpy.storage.SparseCtmc
-        | stormpy.storage.SparsePomdp
-        | stormpy.storage.SparseMA,
+        sparsemodel: (
+            stormpy.storage.SparseDtmc
+            | stormpy.storage.SparseMdp
+            | stormpy.storage.SparseCtmc
+            | stormpy.storage.SparsePomdp
+            | stormpy.storage.SparseMA
+        ),
     ):
         """
         adds the valuations from the sparsemodel to the states of the model
@@ -858,13 +867,12 @@ def stormpy_to_stormvogel(
                 row = matrix.get_row(i)
 
                 if sparsemdp.has_choice_labeling():
-                    actionlabels = frozenset(
-                        sparsemdp.choice_labeling.get_labels_of_choice(i)
-                    )
+                    labels = sparsemdp.choice_labeling.get_labels_of_choice(i)
+                    actionlabel = ",".join(sorted(labels)) if labels else None
                 else:
-                    actionlabels = frozenset({str(i)})
+                    actionlabel = str(i)
 
-                action = model.action(actionlabels)
+                action = model.action(actionlabel)
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsemdp),
@@ -872,7 +880,7 @@ def stormpy_to_stormvogel(
                     )
                     for x in row
                 ]
-                choice[action] = stormvogel.model.Branch(
+                choice[action] = stormvogel.model.Branches(
                     cast(
                         list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                         branch,
@@ -960,13 +968,12 @@ def stormpy_to_stormvogel(
                 row = matrix.get_row(i)
 
                 if sparsepomdp.has_choice_labeling():
-                    actionlabels = frozenset(
-                        sparsepomdp.choice_labeling.get_labels_of_choice(i)
-                    )
+                    labels = sparsepomdp.choice_labeling.get_labels_of_choice(i)
+                    actionlabel = ",".join(sorted(labels)) if labels else None
                 else:
-                    actionlabels = frozenset({str(i)})
+                    actionlabel = str(i)
 
-                action = model.action(actionlabels)
+                action = model.action(actionlabel)
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsepomdp),
@@ -974,7 +981,7 @@ def stormpy_to_stormvogel(
                     )
                     for x in row
                 ]
-                choice[action] = stormvogel.model.Branch(
+                choice[action] = stormvogel.model.Branches(
                     cast(
                         list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                         branch,
@@ -1020,13 +1027,12 @@ def stormpy_to_stormvogel(
                 row = matrix.get_row(i)
 
                 if sparsema.has_choice_labeling():
-                    actionlabels = frozenset(
-                        sparsema.choice_labeling.get_labels_of_choice(i)
-                    )
+                    labels = sparsema.choice_labeling.get_labels_of_choice(i)
+                    actionlabel = ",".join(sorted(labels)) if labels else None
                 else:
-                    actionlabels = frozenset({str(i)})
+                    actionlabel = str(i)
 
-                action = model.action(actionlabels)
+                action = model.action(actionlabel)
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsema),
@@ -1034,7 +1040,7 @@ def stormpy_to_stormvogel(
                     )
                     for x in row
                 ]
-                choice[action] = stormvogel.model.Branch(
+                choice[action] = stormvogel.model.Branches(
                     cast(
                         list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                         branch,

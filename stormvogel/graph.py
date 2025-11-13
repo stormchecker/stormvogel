@@ -132,8 +132,9 @@ class ModelGraph(DiGraph):
         model: Model,
         state_properties: Callable[[State], dict[str, Any]] | None = None,
         action_properties: Callable[[State, Action], dict[str, Any]] | None = None,
-        transition_properties: Callable[[State, Action, State], dict[str, Any]]
-        | None = None,
+        transition_properties: (
+            Callable[[State, Action, State], dict[str, Any]] | None
+        ) = None,
     ) -> Self:
         """
         Constructs a directed graph representation of a Markov Decision Process (MDP) from a model instance.

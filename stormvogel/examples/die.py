@@ -14,7 +14,10 @@ def create_die_dtmc():
     # From the initial state, add the transition to 6 new states with probability 1/6th.
     init.set_choice(
         [
-            (1 / 6, dtmc.new_state(labels=f"rolled{i+1}", valuations={"rolled": i + 1}))
+            (
+                1 / 6,
+                dtmc.new_state(labels=f"rolled{i + 1}", valuations={"rolled": i + 1}),
+            )
             for i in range(6)
         ]
     )

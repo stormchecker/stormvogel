@@ -11,9 +11,11 @@ import os
 def render_model_gif(
     model: stormvogel.model.Model,
     state_to_image: Callable[[stormvogel.model.State], Image],
-    scheduler: stormvogel.result.Scheduler
-    | Callable[[stormvogel.model.State], stormvogel.model.Action]
-    | None = None,
+    scheduler: (
+        stormvogel.result.Scheduler
+        | Callable[[stormvogel.model.State], stormvogel.model.Action]
+        | None
+    ) = None,
     path: simulator.Path | None = None,
     filename: str = "my_gif",
     max_length: int = 50,

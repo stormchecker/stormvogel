@@ -95,8 +95,8 @@ def sample_to_stormvogel(
         max_size (int): The maximum number of states in the resulting model. Defaults to 10000.
     """
     NEW_INITIAL_STATE = "GYM_SAMPLE_INIT"
-    ALL_ACTIONS = [[str(x)] for x in range(no_actions)]
-    INV_MAP = {a[0]: no for no, a in enumerate(ALL_ACTIONS)}
+    ALL_ACTIONS = [str(x) for x in range(no_actions)]
+    INV_MAP = {a: no for no, a in enumerate(ALL_ACTIONS)}
 
     if len(initial_states) == 1:
         (init,) = initial_states
@@ -105,10 +105,10 @@ def sample_to_stormvogel(
 
     def available_actions(s):
         if s is NEW_INITIAL_STATE:
-            return [[]]
+            return [""]
         elif s[1]:
-            return [[]]
-        return [a for a in ALL_ACTIONS if transition_counts[(s, INV_MAP[a[0]])]]
+            return [""]
+        return [a for a in ALL_ACTIONS if transition_counts[(s, INV_MAP[a])]]
 
     def delta(s, a):
         if s is NEW_INITIAL_STATE:
@@ -116,16 +116,14 @@ def sample_to_stormvogel(
         elif s[1]:
             return [(1, s)]
         return [
-            (count / transition_samples[(s, INV_MAP[a[0]])], s_)
-            for s_, count in transition_counts[(s, INV_MAP[a[0]])].items()
+            (count / transition_samples[(s, INV_MAP[a])], s_)
+            for s_, count in transition_counts[(s, INV_MAP[a])].items()
         ]
 
     def rewards(s, a) -> dict[str, stormvogel.model.Value]:
         if s is NEW_INITIAL_STATE or s[1]:
             return {"R": 0}
-        return {
-            "R": reward_sums[s, INV_MAP[a[0]]] / transition_samples[(s, INV_MAP[a[0]])]
-        }
+        return {"R": reward_sums[s, INV_MAP[a]] / transition_samples[(s, INV_MAP[a])]}
 
     def labels(s):
         if s is NEW_INITIAL_STATE:
