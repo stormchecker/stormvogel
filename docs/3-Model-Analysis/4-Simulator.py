@@ -18,6 +18,7 @@
 
 # %%
 from stormvogel import *
+
 lion = examples.create_lion_mdp()
 vis = show(lion, layout=Layout("layouts/lion.json"))
 
@@ -37,11 +38,15 @@ vis.highlight_path(path, "red", 1, clear=True)
 # %% [markdown]
 # We could also provide a scheduling function to choose the actions ourselves. This is somewhat similar to the `bird` API.
 
+
 # %%
 def scheduler(s: State) -> Action:
     return Action("rawr")
 
-path2 = stormvogel.simulator.simulate_path(lion, steps=5, seed=1234, scheduler=scheduler)
+
+path2 = stormvogel.simulator.simulate_path(
+    lion, steps=5, seed=1234, scheduler=scheduler
+)
 
 # %%
 vis.highlight_path(path2, "red", 1, clear=True)
@@ -50,5 +55,7 @@ vis.highlight_path(path2, "red", 1, clear=True)
 # We can also use the scheduler to create a partial model. This model contains all the states that have been discovered by the the simulation.
 
 # %%
-partial_model = stormvogel.simulator.simulate(lion, steps=5, scheduler=scheduler, seed=1234)
+partial_model = stormvogel.simulator.simulate(
+    lion, steps=5, scheduler=scheduler, seed=1234
+)
 vis2 = show(partial_model)

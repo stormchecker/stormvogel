@@ -131,6 +131,8 @@ class VisualizationBase:
 
     def _format_number(self, n: stormvogel.model.Value) -> str:
         """Call number_to_string in model.py while accounting for the settings specified in the layout object."""
+        if self.layout.layout["numbers"]["visible"] is False:
+            return ""
         return stormvogel.model.value_to_string(
             n,
             self.layout.layout["numbers"]["fractions"],
@@ -307,7 +309,7 @@ class VisualizationBase:
         """
         reward = self._format_rewards(self.model.get_state_by_id(state.id), action)
 
-        properties = {"label": ",".join(action.labels) + reward, "model_action": action}
+        properties = {"label": (action.label or "") + reward, "model_action": action}
         return properties
 
     def _create_transition_properties(self, state, action, next_state) -> dict:

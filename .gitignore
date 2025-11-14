@@ -27,6 +27,8 @@ share/python-wheels/
 MANIFEST
 
 **.ipynb
+**.html
+**.gif
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -178,5 +180,5 @@ start.sh
 # Script for running nbconvert on all notebooks
 nbconvert.sh
 
+
 .idea/
-model.html

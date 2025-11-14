@@ -23,11 +23,13 @@ class Path:
 
     def __init__(
         self,
-        path: list[tuple[stormvogel.model.Action, stormvogel.model.State]]
-        | list[stormvogel.model.State],
+        path: (
+            list[tuple[stormvogel.model.Action, stormvogel.model.State]]
+            | list[stormvogel.model.State]
+        ),
         model: stormvogel.model.Model,
     ):
-        if model.get_type() != stormvogel.model.ModelType.MA:
+        if model.type != stormvogel.model.ModelType.MA:
             self.path = path
             self.model = model
         else:
@@ -92,7 +94,7 @@ class Path:
                     and isinstance(t[0], stormvogel.model.Action)
                     and isinstance(t[1], stormvogel.model.State)
                 )
-                path += f" --(action: {t[0].labels})--> state: {t[1].id}"
+                path += f" --(action: {t[0].label})--> state: {t[1].id}"
         else:
             for state in self.path:
                 path += f" --> state: {state.id}"
@@ -124,8 +126,10 @@ class Path:
 
 def get_action_at_state(
     state: stormvogel.model.State,
-    scheduler: stormvogel.result.Scheduler
-    | Callable[[stormvogel.model.State], stormvogel.model.Action],
+    scheduler: (
+        stormvogel.result.Scheduler
+        | Callable[[stormvogel.model.State], stormvogel.model.Action]
+    ),
 ) -> stormvogel.model.Action:
     """Helper function to obtain the chosen action in a state by a scheduler."""
     assert scheduler is not None
@@ -183,9 +187,11 @@ def step(
 def simulate_path(
     model: stormvogel.model.Model,
     steps: int = 1,
-    scheduler: stormvogel.result.Scheduler
-    | Callable[[stormvogel.model.State], stormvogel.model.Action]
-    | None = None,
+    scheduler: (
+        stormvogel.result.Scheduler
+        | Callable[[stormvogel.model.State], stormvogel.model.Action]
+        | None
+    ) = None,
     seed: int | None = None,
 ) -> Path:
     """
@@ -244,9 +250,11 @@ def simulate(
     model: stormvogel.model.Model,
     steps: int = 1,
     runs: int = 1,
-    scheduler: stormvogel.result.Scheduler
-    | Callable[[stormvogel.model.State], stormvogel.model.Action]
-    | None = None,
+    scheduler: (
+        stormvogel.result.Scheduler
+        | Callable[[stormvogel.model.State], stormvogel.model.Action]
+        | None
+    ) = None,
     seed: int | None = None,
 ) -> stormvogel.model.Model | None:
     """
@@ -267,9 +275,7 @@ def simulate(
 
     # we keep track of all discovered states over all runs and add them to the partial model
     # we also add the discovered rewards and actions to the partial model if present
-    partial_model = stormvogel.model.new_model(
-        model.get_type(), create_initial_state=False
-    )
+    partial_model = stormvogel.model.new_model(model.type, create_initial_state=False)
 
     # we create the initial state ourselves because we want to force the name to be 0
     init = partial_model.new_state(name="0", labels="init")
@@ -339,7 +345,7 @@ def simulate(
                 # and of the discovered transitions so that we don't add duplicates
                 if (last_state_id, state_id) not in discovered_transitions:
                     discovered_transitions.add((last_state_id, state_id))
-                    choice = model.get_choice(last_state_id)
+                    choice = model.get_choices(last_state_id)
 
                     # we calculate the transition probability
                     probability = 0
@@ -389,7 +395,7 @@ def simulate(
                 # we add the action to the partial model (if new)
                 assert partial_model.actions is not None
                 if action not in partial_model.actions:
-                    partial_model.new_action(action.labels)
+                    partial_model.new_action(action.label)
 
                 # we get the new discovery
                 state_id, reward, labels = step(

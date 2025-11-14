@@ -152,15 +152,15 @@ def test_pmdp_conversion():
     goal = pmdp.new_state(labels=["goal"])
     sink = pmdp.new_state(labels=["sink"])
 
-    action_a = pmdp.new_action(frozenset({"a"}))
-    action_b = pmdp.new_action(frozenset({"b"}))
-    branch0 = stormvogel.model.Branch(
+    action_a = pmdp.new_action("a")
+    action_b = pmdp.new_action("b")
+    branch0 = stormvogel.model.Branches(
         [
             (p1, goal),
             (p2, sink),
         ]
     )
-    branch1 = stormvogel.model.Branch(
+    branch1 = stormvogel.model.Branches(
         [
             (p1, sink),
             (p2, goal),
@@ -168,7 +168,7 @@ def test_pmdp_conversion():
     )
 
     pmdp.add_choice(
-        init, stormvogel.model.Choice({action_a: branch0, action_b: branch1})
+        init, stormvogel.model.Choices({action_a: branch0, action_b: branch1})
     )
 
     # we add self loops to all states with no outgoing choices

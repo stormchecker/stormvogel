@@ -31,37 +31,42 @@
 # This little MDP is supposed to help you decide whether you should stuy or not.
 
 # %% [markdown]
-# ### PGC API
-# For MDPs, you specify the availaible actions in `available_actions`. An action here is simply a list of labels. You specify the transition of a state-action pair in `delta`.
+# ### Bird API
+# For MDPs, you specify the availaible actions in `available_actions`. An action here is simply a string. You specify the transition of a state-action pair in `delta`.
 
 # %%
 from stormvogel import *
 
+
 def available_actions(s):
-    if s == "init": # Either study or not
-        return [["study"], ["don't study"]]
-    else: # Otherwise, we have no choice (DTMC-like behavior)
-        return [[]]
+    if s == "init":  # Either study or not
+        return ["study", "don't study"]
+    else:  # Otherwise, we have no choice (DTMC-like behavior)
+        return [""]
+
 
 def delta(s, a):
-    if "study" in a:
-        return [(9/10, "pass test"), (1/10, "fail test")]
-    elif "don't study" in a:
-        return [(2/5, "pass test"), (3/5, "fail test")]
+    if a == "study":
+        return [(9 / 10, "pass test"), (1 / 10, "fail test")]
+    elif a == "don't study":
+        return [(2 / 5, "pass test"), (3 / 5, "fail test")]
     else:
         return [(1, "end")]
+
 
 def labels(s):
     return s
 
+
 # For rewards, you have to provide a dict. This enables multiple reward models if you use a non-singleton list.
 def rewards(s: bird.State, a: bird.Action):
     if s == "pass test":
-        return {"R":100}
-    elif s == "init" and "don't study" in a:
-        return {"R":15}
+        return {"R": 100}
+    elif s == "init" and a == "don't study":
+        return {"R": 15}
     else:
-        return {"R":0}
+        return {"R": 0}
+
 
 bird_study = bird.build_bird(
     delta=delta,
@@ -69,7 +74,7 @@ bird_study = bird.build_bird(
     available_actions=available_actions,
     labels=labels,
     modeltype=ModelType.MDP,
-    rewards=rewards
+    rewards=rewards,
 )
 vis = show(bird_study, layout=Layout("layouts/pinkgreen.json"))
 
@@ -113,43 +118,42 @@ vis2 = show(mdp, layout=Layout("layouts/pinkgreen.json"))
 # An MDP model that consists of a 3x3 grid. The direction to walk is chosen by an action.
 
 # %% [markdown]
-# ### PGC API
+# ### Bird API
 
 # %%
 N = 3
 
-ACTION_SEMANTICS = {
-    "l": (-1, 0),
-    "r": (1, 0),
-    "u": (0, -1),
-    "d": (0, 1) }
+ACTION_SEMANTICS = {"l": (-1, 0), "r": (1, 0), "u": (0, -1), "d": (0, 1)}
+
 
 def available_actions(s):
     res = []
     if s[0] > 0:
         res.append("l")
-    if s[0] < N-1:
+    if s[0] < N - 1:
         res.append("r")
     if s[1] > 0:
         res.append("u")
-    if s[1] < N-1:
+    if s[1] < N - 1:
         res.append("d")
     return res
+
 
 def pairwise_plus(t1, t2):
     return (t1[0] + t2[0], t1[1] + t2[1])
 
+
 def delta(s, a):
     return [(1, pairwise_plus(s, ACTION_SEMANTICS[a]))]
+
 
 def labels(s):
     return [str(s)]
 
+
 m1 = bird.build_bird(
-    init=(0,0),
-    available_actions=available_actions,
-    labels=labels,
-    delta=delta)
+    init=(0, 0), available_actions=available_actions, labels=labels, delta=delta
+)
 vis3 = show(m1)
 
 # %% [markdown]
@@ -164,11 +168,13 @@ for x in range(N):
 
 for x in range(N):
     for y in range(N):
-        state_tile_label = str((x,y)).replace(" ", "")
+        state_tile_label = str((x, y)).replace(" ", "")
         state = grid_model.get_states_with_label(state_tile_label)[0]
-        av = available_actions((x,y))
+        av = available_actions((x, y))
         for a in av:
-            target_tile_label = str(pairwise_plus((x,y), ACTION_SEMANTICS[a])).replace(" ", "")
+            target_tile_label = str(pairwise_plus((x, y), ACTION_SEMANTICS[a])).replace(
+                " ", ""
+            )
             target_state = grid_model.get_states_with_label(target_tile_label)[0]
             state.add_choice([(grid_model.action(a), target_state)])
 vis4 = show(grid_model)

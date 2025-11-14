@@ -22,19 +22,22 @@ from stormvogel import *
 from stormvogel.visualization import JSVisualization
 from time import sleep
 
+
 def arg_max(funcs, args):
     """Takes a list of callables and arguments and return the argument that yields the highest value."""
-    executed = [f(x) for f,x in zip(funcs,args)]
+    executed = [f(x) for f, x in zip(funcs, args)]
     index = executed.index(max(executed))
     return args[index]
 
+
 def policy_iteration(
-        model: Model,
-        prop: str,
-        visualize: bool = True,
-        layout: Layout = stormvogel.layout.DEFAULT(),
-        delay:int=2,
-        clear:bool=False) -> Result:
+    model: Model,
+    prop: str,
+    visualize: bool = True,
+    layout: Layout = stormvogel.layout.DEFAULT(),
+    delay: int = 2,
+    clear: bool = False,
+) -> Result:
     """Performs policy iteration on the given mdp.
     Args:
         model (Model): MDP.
@@ -43,7 +46,7 @@ def policy_iteration(
         layout (Layout): Layout to use to show the intermediate results.
         delay (int): Seconds to wait between each iteration.
         clear (bool): Whether to clear the visualization of each previous iteration.
-        """
+    """
     old = None
     new = random_scheduler(model)
 
@@ -54,18 +57,29 @@ def policy_iteration(
         dtmc_result = model_checking(dtmc, prop=prop)
 
         if visualize:
-            vis = JSVisualization(model, layout=layout, scheduler=old, result=dtmc_result)
+            vis = JSVisualization(
+                model, layout=layout, scheduler=old, result=dtmc_result
+            )
             vis.show()
             sleep(delay)
             if clear:
                 vis.clear()
 
-        choices = {i:
-            arg_max(
-                [lambda a: sum([(p * dtmc_result.get_result_of_state(s2.id)) for p, s2 in s1.get_outgoing_transitions(a)])
-                    for _ in s1.available_actions()],
-                s1.available_actions())
-        for i,s1 in model.states.items()}
+        choices = {
+            i: arg_max(
+                [
+                    lambda a: sum(
+                        [
+                            (p * dtmc_result.get_result_of_state(s2.id))
+                            for p, s2 in s1.get_outgoing_transitions(a)
+                        ]
+                    )
+                    for _ in s1.available_actions()
+                ],
+                s1.available_actions(),
+            )
+            for i, s1 in model.states.items()
+        }
         new = Scheduler(model, choices)
     if visualize:
         print("Value iteration done:")

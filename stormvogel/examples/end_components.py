@@ -7,19 +7,19 @@ def create_end_components_mdp():
 
     def available_actions(s: bird.State):
         if "init" in s.x:
-            return [["one"], ["two"]]
+            return ["one", "two"]
         elif "mec1" in s.x or "mec2" in s.x:
-            return [["one"], ["two"]]
-        return [[]]
+            return ["one", "two"]
+        return [""]
 
     def delta(s: bird.State, a: bird.Action):
-        if "init" in s.x and "one" in a.labels:
+        if "init" in s.x and a == "one":
             return [(0.5, bird.State(x=["mec1"])), (0.5, bird.State(x=["mec2"]))]
         elif "mec1" in s.x:
             return [(1, bird.State(x=["mec2"]))]
         elif "mec2" in s.x:
             return [(1, bird.State(x=["mec1"]))]
-        elif "init" in s.x and "two" in a.labels:
+        elif "init" in s.x and a == "two":
             return [(1, bird.State(x=["mec1"]))]
         return [(1, s)]
 

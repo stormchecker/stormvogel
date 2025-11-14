@@ -23,16 +23,16 @@ from stormvogel import parametric
 # Polynomials are represented as dictionaries where the keys are the exponents and the values are coefficients. In addition, we must also supply a list of variable names. Rational functions are then represented as a pair of two polynomials (numerator and denominator).
 
 # %%
-polynomial1 = parametric.Polynomial(["x","y"])
-polynomial1.add_term((2,0),1)
-polynomial1.add_term((0,2),1)
+polynomial1 = parametric.Polynomial(["x", "y"])
+polynomial1.add_term((2, 0), 1)
+polynomial1.add_term((0, 2), 1)
 
 print(polynomial1)
 
 polynomial2 = parametric.Polynomial(["z"])
-polynomial2.add_term((0,),2)
-polynomial2.add_term((1,),1)
-polynomial2.add_term((3,),6)
+polynomial2.add_term((0,), 2)
+polynomial2.add_term((1,), 1)
+polynomial2.add_term((3,), 6)
 
 print(polynomial2)
 
@@ -47,16 +47,19 @@ print(rational_function)
 from stormvogel import model, bird
 from stormvogel.show import show
 
-#we first make polynomials 'x' and '1-x'
+# we first make polynomials 'x' and '1-x'
 x = parametric.Polynomial(["x"])
-x.add_term((1,),1)
+x.add_term((1,), 1)
 
 invx = parametric.Polynomial(["x"])
-invx.add_term((1,),-1)
-invx.add_term((0,),1)
+invx.add_term((1,), -1)
+invx.add_term((0,), 1)
 
-#we build the knuth yao dice using the bird model builder
-def delta(s: bird.State) -> list[tuple[float | parametric.Polynomial, bird.State]] | None:
+
+# we build the knuth yao dice using the bird model builder
+def delta(
+    s: bird.State,
+) -> list[tuple[float | parametric.Polynomial, bird.State]] | None:
     match s.s:
         case 0:
             return [(x, bird.State(s=1)), (invx, bird.State(s=2))]
@@ -81,9 +84,11 @@ def delta(s: bird.State) -> list[tuple[float | parametric.Polynomial, bird.State
         case 7:
             return [(1, s)]
 
+
 def labels(s: bird.State):
     if s.s == 7:
         return f"rolled{str(s.d)}"
+
 
 knuth_yao_pmc = bird.build_bird(
     delta=delta,
@@ -98,10 +103,10 @@ vis = show(knuth_yao_pmc)
 # We can now evaluate the model by assigning the variable x to any concrete value. This induces a regular dtmc with fixed probabilities.
 
 # %%
-p = 1/2
+p = 1 / 2
 
 
-eval_knuth_yao_pmc = knuth_yao_pmc.parameter_valuation({"x":p})
+eval_knuth_yao_pmc = knuth_yao_pmc.parameter_valuation({"x": p})
 vis = show(eval_knuth_yao_pmc)
 
 # %% [markdown]
@@ -109,7 +114,7 @@ vis = show(eval_knuth_yao_pmc)
 # We can also set an interval between two values x and y as transition value, meaning that we don't know the probability precisely, but we know it is between x and y. We represent intervals using a class in model.py, where we have two attributes: bottom and top. Both of these should be an element of type Number, i.e., int, float or fraction.
 
 # %%
-interval = model.Interval(1/3, 2/3)
+interval = model.Interval(1 / 3, 2 / 3)
 print(interval)
 
 # %% [markdown]
@@ -119,11 +124,12 @@ print(interval)
 from stormvogel import bird
 from stormvogel.show import show
 
-#We create our interval values
-interval = model.Interval(2/7,6/7)
-inv_interval = model.Interval(1/7,5/7)
+# We create our interval values
+interval = model.Interval(2 / 7, 6 / 7)
+inv_interval = model.Interval(1 / 7, 5 / 7)
 
-#we build the knuth yao dice using the bird model builder
+
+# we build the knuth yao dice using the bird model builder
 def delta(s: bird.State) -> list[tuple[float | model.Interval, bird.State]] | None:
     match s.s:
         case 0:
@@ -149,9 +155,11 @@ def delta(s: bird.State) -> list[tuple[float | model.Interval, bird.State]] | No
         case 7:
             return [(1, s)]
 
+
 def labels(s: bird.State):
     if s.s == 7:
         return f"rolled{str(s.d)}"
+
 
 knuth_yao_imc = bird.build_bird(
     delta=delta,

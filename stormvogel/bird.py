@@ -25,18 +25,20 @@ class State:
         return False
 
 
-type Action = list[str]
+type Action = str
 
 
 def valid_input[ValueType: stormvogel.model.Value](
     delta: Callable[[Any, Action], Any] | Callable[[Any], Any],
     init: Any,
-    rewards: Callable[[Any, Action], dict[str, ValueType]]
-    | Callable[[Any], dict[str, ValueType]]
-    | None = None,
+    rewards: (
+        Callable[[Any, Action], dict[str, ValueType]]
+        | Callable[[Any], dict[str, ValueType]]
+        | None
+    ) = None,
     labels: Callable[[Any], list[str] | str | None] | None = None,
     available_actions: Callable[[Any], list[Action]] | None = None,
-    observations: Callable[[Any], int | list[tuple[int, ValueType]]] | None = None,
+    observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
     rates: Callable[[Any], float] | None = None,
     valuations: Callable[[Any], dict[str, float | int | bool]] | None = None,
     observation_valuations: Callable[[int], dict[str, float | int | bool]]
@@ -143,9 +145,11 @@ def build_bird[ValueType: stormvogel.model.Value](
     delta: Callable[[Any, Action], list[tuple[ValueType, Any]]]
     | Callable[[Any], list[tuple[ValueType, Any]]],
     init: Any,
-    rewards: Callable[[Any, Action], dict[str, ValueType]]
-    | Callable[[Any], dict[str, ValueType]]
-    | None = None,
+    rewards: (
+        Callable[[Any, Action], dict[str, ValueType]]
+        | Callable[[Any], dict[str, ValueType]]
+        | None
+    ) = None,
     labels: Callable[[Any], list[str] | str | None] | None = None,
     available_actions: Callable[[Any], list[Action]] | None = None,
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
@@ -238,20 +242,27 @@ def build_bird[ValueType: stormvogel.model.Value](
                 )
 
             for action in actionslist:
-                stormvogel_action = model.action(frozenset(action))
+                # Actions must be strings
+                if not isinstance(action, str):
+                    raise ValueError(
+                        f"On input {state}, the available actions function returns an action that is not a string: {action}"
+                    )
 
-                delta = cast(Callable[[Any, action], Any], delta)
+                # Convert empty strings to None for the empty action
+                action_label = None if action == "" else action
+                stormvogel_action = model.action(action_label)
+
+                delta = cast(Callable[[Any, str], Any], delta)
                 tuples = delta(state, action)
 
                 if not isinstance(tuples, list) and tuples is not None:
-                    raise ValueError(
-                        f"On input pair {state} {action}, the delta function does not return a list. Make sure to change the format to [(<value>,<state>),...]"
-                    )
+                    # If the delta does not return a list, we assume it's a single transition with probability 1
+                    tuples = [(1, tuples)]
 
                 branch = add_new_choices(tuples, state)
 
                 if branch != []:
-                    choice[stormvogel_action] = stormvogel.model.Branch(branch)
+                    choice[stormvogel_action] = stormvogel.model.Branches(branch)
         else:
             delta = cast(Callable[[Any], Any], delta)
             tuples = delta(state)
@@ -315,7 +326,9 @@ def build_bird[ValueType: stormvogel.model.Value](
 
                     assert s is not None
                     for index, reward in enumerate(rewarddict.items()):
-                        a = model.get_action_with_labels(frozenset(action))
+                        # Convert empty strings to None for the empty action
+                        action_label = None if action == "" else action
+                        a = model.get_action_with_label(action_label)
                         assert a is not None
                         model.rewards[index].set_state_action_reward(
                             s,

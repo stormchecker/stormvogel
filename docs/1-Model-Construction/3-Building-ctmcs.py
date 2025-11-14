@@ -23,6 +23,7 @@
 
 # %%
 from stormvogel import *
+
 # Create a new model
 ctmc = stormvogel.model.new_ctmc()
 
@@ -52,6 +53,7 @@ from stormvogel import *
 
 init = bird.State(x="")
 
+
 def delta(s: bird.State):
     if s == init:
         return [(3, bird.State(x=["helium"]))]
@@ -64,13 +66,11 @@ def delta(s: bird.State):
     else:
         return [(0, s)]
 
+
 labels = lambda s: s.x
 
 bird_star = bird.build_bird(
-    delta=delta,
-    init=init,
-    labels=labels,
-    modeltype=ModelType.CTMC
+    delta=delta, init=init, labels=labels, modeltype=ModelType.CTMC
 )
 
 vis2 = show(bird_star, layout=Layout("layouts/star.json"))

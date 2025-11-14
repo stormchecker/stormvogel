@@ -54,6 +54,7 @@
     "width": 1
   },
   "numbers": {
+    "visible": true,
     "fractions": true,
     "digits": 5,
     "denominator_limit": 1000
