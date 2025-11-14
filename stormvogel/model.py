@@ -1242,9 +1242,9 @@ class Model[ValueType: Value]:
         self,
         labels: list[str] | str | None = None,
         valuations: dict[str, int | bool | float] | None = None,
-        observation: Observation | list[tuple[Observation, float]] | None = None,
+        observation: Observation | list[tuple[ValueType, Observation]] | None = None,
         name: str | None = None,
-    ) -> State:
+    ) -> State[ValueType]:
         """Creates a new state and returns it."""
 
         # we set the id from the counter and increase it
@@ -1280,17 +1280,48 @@ class Model[ValueType: Value]:
 
         return state
 
+    def has_only_number_values(self) -> bool:
+        """Checks whether all transition values, observation probabilities, exit rates, markovian states in this model are numbers."""
+        for choice in self.choices.values():
+            for action, branch in choice:
+                for value, _ in branch:
+                    if not isinstance(value, Number):
+                        return False
+
+        if self.exit_rates is not None:
+            for rate in self.exit_rates.values():
+                if not isinstance(rate, Number):
+                    return False
+
+        if self.supports_observations() and self.observations is not None:
+            for state in self.states.values():
+                observation = state.observation
+                if isinstance(observation, list):
+                    for value, _ in observation:
+                        if not isinstance(value, Number):
+                            return False
+
+        return True
+
     def make_observations_deterministic(self, reassign_ids: bool = False):
         """
         In case of POMDPs or HMMs, makes the observations deterministic by splitting states with
         multiple observations into multiple states with single observations.
         """
+        if not self.has_only_number_values():
+            raise RuntimeError("This method only works for models with Number values.")
+        if not self.supports_observations():
+            raise RuntimeError(
+                "This method only works for models that support observations."
+            )
+
         for state in list(self.states.values()):
             observation = state.observation
             if isinstance(observation, list):
                 new_states_distribution: list[tuple[ValueType, State]] = []
                 new_choice = state.get_choice()
 
+                # Create new states for each observation possible in this state
                 for prob, obs in observation:
                     new_state = self.new_state(
                         state.labels,
@@ -1314,10 +1345,12 @@ class Model[ValueType: Value]:
                                 ].branch.remove((value, dest_state))
                                 # then we add the new transitions
                                 for prob, new_state in new_states_distribution:
-                                    new_value = value * prob
+                                    new_value = cast(Number, value) * cast(Number, prob)
                                     self.choices[src_state_idx].choice[
                                         action
-                                    ].branch.append((new_value, new_state))
+                                    ].branch.append(
+                                        (cast(ValueType, new_value), new_state)
+                                    )
 
             self.remove_state(state, reassign_ids=reassign_ids)
 
