@@ -487,12 +487,16 @@ def stormvogel_to_stormpy(
             components.state_valuations = valuations
             observations = []
             for state in model.states.values():
-                if state.get_observation() is not None:
-                    observations.append(state.get_observation().get_observation())
-                else:
+                if state.get_observation() is None:
                     raise RuntimeError(
                         f"State {state.id} does not have an observation. Please assign an observation to each state."
                     )
+                elif isinstance(state.get_observation(), list):
+                    raise NotImplementedError(
+                        "Stormpy does not support stochastic observations in POMDPs. Please convert the stochastic observations to deterministic ones before converting the model."
+                    )
+                else:
+                    observations.append(state.get_observation().observation)
 
             components.observability_classes = observations
             components.choice_labeling = choice_labeling
@@ -1007,7 +1011,9 @@ def stormpy_to_stormvogel(
 
         # we add the observations:
         for state in model.states.values():
-            state.set_observation(sparsepomdp.get_observation(state.id))
+            state.set_observation(
+                model.observation(sparsepomdp.get_observation(state.id))
+            )
 
         return model
 

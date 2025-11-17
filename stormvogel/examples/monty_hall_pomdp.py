@@ -74,7 +74,7 @@ def create_monty_hall_pomdp():
 
     # we add the observations TODO: let it make sense
     for _, state in pomdp:
-        state.set_observation(state.id)
+        state.set_observation(pomdp.observation(state.id))
 
     return pomdp
 

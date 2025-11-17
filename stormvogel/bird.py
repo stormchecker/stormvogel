@@ -1,6 +1,6 @@
 import stormvogel.model
 from dataclasses import dataclass
-from typing import cast, Any, Callable
+from typing import cast, Any, Callable, Sequence
 import inspect
 from collections import deque
 
@@ -142,8 +142,10 @@ def valid_input[ValueType: stormvogel.model.Value](
 
 
 def build_bird[ValueType: stormvogel.model.Value](
-    delta: Callable[[Any, Action], list[tuple[ValueType, Any]]]
-    | Callable[[Any], list[tuple[ValueType, Any]]],
+    delta: Callable[
+        [Any, Action], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None
+    ]
+    | Callable[[Any], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None],
     init: Any,
     rewards: (
         Callable[[Any, Action], dict[str, ValueType]]
@@ -285,7 +287,9 @@ def build_bird[ValueType: stormvogel.model.Value](
         )
 
         # if at some point we discovered more than max_size states, we complain
-        if len(list(state_lookup)) > max_size:
+        # if len(list(state_lookup)) % 1000 == 0:
+        #     print(f"Building model is slow, discovered {len(list(state_lookup))} states...", file=sys.stderr)
+        if len(state_lookup) > max_size:
             raise RuntimeError(
                 f"The model you want te create has a very large amount of states (at least {max_size}), if you wish to proceed, set max_size to some larger number."
             )
