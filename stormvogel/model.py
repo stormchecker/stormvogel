@@ -1419,7 +1419,7 @@ class Model[ValueType: Value]:
                                         (cast(ValueType, new_value), new_state)
                                     )
 
-            self.remove_state(state, reassign_ids=reassign_ids)
+                self.remove_state(state, reassign_ids=reassign_ids)
 
     def get_states_with_label(self, label: str) -> list[State]:
         """Get all states with a given label."""

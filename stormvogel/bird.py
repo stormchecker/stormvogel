@@ -390,7 +390,7 @@ def build_bird[ValueType: stormvogel.model.Value](
                 s.set_observation(obs_distribution)
             else:
                 raise ValueError(
-                    f"On input {state}, the observations function does not return an integer or a distribution dictionary"
+                    f"On input {state}, the observations function does not return an integer or a distribution"
                 )
 
         if observation_valuations is not None and model.observations is not None:
@@ -401,12 +401,12 @@ def build_bird[ValueType: stormvogel.model.Value](
                 valuation_dict = observation_valuations(obs.observation)
                 if valuation_dict is None:
                     raise ValueError(
-                        f"On input observation id {obs.id}, the observation_valuations function does not have a return value"
+                        f"On input observation id {obs.observation}, the observation_valuations function does not have a return value"
                     )
 
                 if not isinstance(valuation_dict, dict):
                     raise ValueError(
-                        f"On input observation id {obs.id}, the observation_valuations function does not return a dictionary. Make sure to change the format to [<variable>: <value>,...]"
+                        f"On input observation id {obs.observation}, the observation_valuations function does not return a dictionary. Make sure to change the format to [<variable>: <value>,...]"
                     )
 
                 if valuation_dict.keys() != observation_valuation_keys:
@@ -421,7 +421,7 @@ def build_bird[ValueType: stormvogel.model.Value](
                         or isinstance(val, float)
                     ):
                         raise ValueError(
-                            f"On input observation id {obs.id}, the dictionary that the observation_valuations function returns contains a value {val} which is not of type int, float or bool"
+                            f"On input observation id {obs.observation}, the dictionary that the observation_valuations function returns contains a value {val} which is not of type int, float or bool"
                         )
 
                 obs.valuations = valuation_dict
