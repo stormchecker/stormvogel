@@ -1,5 +1,6 @@
 """Contains the python model representations and their APIs."""
 
+from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from fractions import Fraction
@@ -102,33 +103,67 @@ class ModelType(Enum):
     CTMC = 3
     POMDP = 4
     MA = 5
+    HMM = 6
 
 
 @dataclass
 class Observation:
-    """Represents an observation of a state (for pomdps)
+    """Represents an observation of a state (for POMDPs and HMMs)
 
     Args:
         observation: the observation of a state as an integer
     """
 
     observation: int
+    valuations: dict[str, int | float | bool] | None = None
 
-    def get_observation(self) -> int:
-        """returns the observation"""
-        return self.observation
-
-    def __eq__(self, other):
-        if not isinstance(other, Observation):
-            return False
-        return self.observation == other.observation
+    def format(self):
+        # TODO: add a good valuations format for visualizations
+        return str(self.observation)
 
     def __str__(self):
-        return f"Observation: {self.observation}"
+        return f"Obs: {self.valuations if self.valuations else ''} ({self.observation})"
+
+
+def _to_state_id(state_or_id: "State | int") -> int:
+    if isinstance(state_or_id, State):
+        return state_or_id.id
+    else:
+        return state_or_id
+
+
+@dataclass(frozen=True)
+class Action:
+    """Represents an action, e.g., in MDPs.
+        Note that this action object is completely independent of its corresponding branch.
+        Their relation is managed by Choices.
+        Two actions with the same labels are considered equal.
+
+    Args:
+        label: The label of this action. Corresponds to Storm label.
+    """
+
+    label: str | None
+
+    def __post_init__(self):
+        if self.label == "":
+            object.__setattr__(self, "label", None)
+
+    def __lt__(self, other):
+        if not isinstance(other, Action):
+            return NotImplemented
+        return str(self.label) < str(other.label)
+
+    def __str__(self):
+        return f"Action with label {self.label}"
+
+
+# The empty action. Used for DTMCs and empty action transitions in mdps.
+EmptyAction = Action(None)
 
 
 @dataclass()
-class State:
+class State[ValueType: Value]:
     """Represents a state in a Model.
 
     Args:
@@ -136,15 +171,15 @@ class State:
         valuations: The valuations of this state. Corresponds to Storm valuations/features.
         id: The id of this state.
         model: The model this state belongs to.
-        observation: the observation of this state in case the model is a pomdp.
+        observation: the observation of this state in case the model is a POMDP or HMM.
         name: the name of this state. (unique identifier in case ids change)
     """
 
     labels: list[str]
     valuations: dict[str, int | float | bool]
     id: int
-    model: "Model"
-    observation: Observation | None
+    model: "Model[ValueType]"
+    observation: Observation | list[tuple[ValueType, Observation]] | None
     name: str
 
     def __init__(
@@ -153,7 +188,7 @@ class State:
         valuations: dict[str, int | float | bool],
         id: int,
         model,
-        observation: int | None = None,
+        observation: Observation | list[tuple[ValueType, Observation]] | None = None,
         name: str | None = None,
     ):
         self.model = model
@@ -192,22 +227,24 @@ class State:
 
         self.labels.append(label)
 
-    def set_observation(self, observation: int) -> Observation:
+    def set_observation(
+        self, observation: Observation | list[tuple[ValueType, Observation]]
+    ) -> Observation | list[tuple[ValueType, Observation]]:
         """sets the observation for this state"""
-        if self.model.type == ModelType.POMDP:
-            self.observation = Observation(observation)
+        if self.model.type in (ModelType.POMDP, ModelType.HMM):
+            self.observation = observation
             return self.observation
         else:
             raise RuntimeError("The model this state belongs to is not a pomdp")
 
-    def get_observation(self) -> Observation:
+    def get_observation(self) -> Observation | list[tuple[ValueType, Observation]]:
         """gets the observation"""
         if self.model.supports_observations():
             if self.observation is not None:
                 return self.observation
             else:
                 raise RuntimeError(
-                    "This state does not have an observation yet. Add one with the new_observation function."
+                    "This state does not have an observation yet. Add one with the set_observation function."
                 )
         else:
             raise RuntimeError(
@@ -248,7 +285,7 @@ class State:
     def get_valuation(self, variable: str) -> int | bool | float:
         return self.valuations[variable]
 
-    def available_actions(self) -> list["Action"]:
+    def available_actions(self) -> list[Action]:
         """returns the list of all available actions in this state"""
         if self.model.supports_actions():
             choices = self.get_choices()
@@ -257,8 +294,8 @@ class State:
         return [EmptyAction]
 
     def get_outgoing_transitions(
-        self, action: "Action | None" = None
-    ) -> list[tuple[Value, "State"]] | None:
+        self, action: Action | None = None
+    ) -> list[tuple[ValueType, "State[ValueType]"]] | None:
         """gets the outgoing transitions of this state (after a specific action)"""
 
         choice = self.get_choices()
@@ -296,7 +333,7 @@ class State:
     def __str__(self):
         res = f"id: {self.id}, labels: {self.labels}, valuations: {self.valuations}"
         if self.model.supports_observations() and self.observation is not None:
-            res += f", observation: {self.observation.get_observation()}"
+            res += f", observation: {self.observation}"
         return res
 
     def __eq__(self, other):
@@ -325,45 +362,8 @@ class State:
         return self.id < other.id
 
 
-def _to_state_id(state_or_id: State | int) -> int:
-    if isinstance(state_or_id, State):
-        return state_or_id.id
-    else:
-        return state_or_id
-
-
-@dataclass(frozen=True)
-class Action:
-    """Represents an action, e.g., in MDPs.
-        Note that this action object is completely independent of its corresponding branch.
-        Their relation is managed by Choices.
-        Two actions with the same labels are considered equal.
-
-    Args:
-        label: The label of this action. Corresponds to Storm label.
-    """
-
-    label: str | None
-
-    def __post_init__(self):
-        if self.label == "":
-            object.__setattr__(self, "label", None)
-
-    def __lt__(self, other):
-        if not isinstance(other, Action):
-            return NotImplemented
-        return str(self.label) < str(other.label)
-
-    def __str__(self):
-        return f"Action with label {self.label}"
-
-
-# The empty action. Used for DTMCs and empty action transitions in mdps.
-EmptyAction = Action(None)
-
-
 @dataclass(order=True)
-class Branches:
+class Branches[ValueType: Value]:
     """Represents branches, which is a distribution over states.
 
     Args:
@@ -371,7 +371,7 @@ class Branches:
             The first element is the probability value and the second element is the target state.
     """
 
-    branch: list[tuple[Value, State]]
+    branch: list[tuple[ValueType, State[ValueType]]]
 
     def __init__(self, *args):
         if len(args) == 1 and isinstance(args[0], list):
@@ -419,7 +419,7 @@ class Branches:
         return iter(self.branch)
 
 
-class Choices:
+class Choices[ValueType: Value]:
     """Represents a choice, which map actions to branches.
         Note that an EmptyAction may be used if we want a non-action choice.
         Note that a single Choices might correspond to multiple 'arrows'.
@@ -428,9 +428,9 @@ class Choices:
         choice: The choice dictionary. For each available action, we have a branch containing the transitions.
     """
 
-    choice: dict[Action, Branches]
+    choice: dict[Action, Branches[ValueType]]
 
-    def __init__(self, choice: dict[Action, Branches]):
+    def __init__(self, choice: dict[Action, Branches[ValueType]]):
         # Input validation, see RuntimeError.
         if len(choice) > 1 and EmptyAction in choice:
             raise RuntimeError(
@@ -472,7 +472,7 @@ class Choices:
 
         return True
 
-    def sum_probabilities(self, action) -> Number:
+    def sum_probabilities(self, action: Action) -> Number:
         return self.choice[action].sum_probabilities()
 
     def is_stochastic(self, epsilon: Number) -> bool:
@@ -506,8 +506,10 @@ ChoiceShorthand = (
 )
 
 
-def choice_from_shorthand(shorthand: ChoiceShorthand, model: "Model") -> Choices:
-    """Get a Choices object from a ChoiceShorthand. Use for all choices in DTMCs and for empty actions in MDPs.
+def choice_from_shorthand[ValueType: Value](
+    shorthand: ChoiceShorthand, model: "Model[ValueType]"
+) -> Choices[ValueType]:
+    """Get a Choice object from a ChoiceShorthand. Use for all choices in DTMCs and for empty actions in MDPs.
 
     There are two possible ways to define a ChoiceShorthand.
     - using only the probability and the target state (implies default action when in an MDP).
@@ -562,7 +564,7 @@ def choice_from_shorthand(shorthand: ChoiceShorthand, model: "Model") -> Choices
 
 
 @dataclass()
-class RewardModel:
+class RewardModel[ValueType: Value]:
     """Represents a state-exit reward model.
     Args:
         name: Name of the reward model.
@@ -572,19 +574,19 @@ class RewardModel:
 
     name: str
     model: "Model"
-    rewards: dict[Tuple[int, Action], Value]
+    rewards: dict[Tuple[int, Action], ValueType]
     """Rewards dict. Hashed by state id and Action.
     The function update_rewards can be called to update rewards. After this, rewards will correspond to intermediate_rewards.
     Note that in models without actions, EmptyAction will be used here."""
 
     def __init__(
-        self, name: str, model: "Model", rewards: dict[Tuple[int, Action], Value]
+        self, name: str, model: "Model", rewards: dict[Tuple[int, Action], ValueType]
     ):
         self.name = name
         self.rewards = rewards
         self.model = model
 
-    def set_from_rewards_vector(self, vector: list[Value]) -> None:
+    def set_from_rewards_vector(self, vector: list[ValueType]) -> None:
         """Set the rewards of this model according to a (stormpy) rewards vector."""
         combined_id = 0
         self.rewards = dict()
@@ -593,7 +595,7 @@ class RewardModel:
                 self.rewards[s.id, a] = vector[combined_id]
                 combined_id += 1
 
-    def get_state_reward(self, state: State) -> Value | None:
+    def get_state_reward(self, state: State) -> ValueType | None:
         """Gets the reward at said state or state action pair. Return None if no reward is present."""
         if self.model.supports_actions():
             raise RuntimeError(
@@ -604,7 +606,7 @@ class RewardModel:
         else:
             return None
 
-    def get_state_action_reward(self, state: State, action: Action) -> Value | None:
+    def get_state_action_reward(self, state: State, action: Action) -> ValueType | None:
         """Gets the reward at said state or state action pair. Returns None if no reward was found."""
         if self.model.supports_actions():
             if action in state.available_actions():
@@ -619,7 +621,7 @@ class RewardModel:
                 "The model this rewardmodel belongs to does not support actions"
             )
 
-    def set_state_reward(self, state: State, value: Value):
+    def set_state_reward(self, state: State, value: ValueType):
         """Sets the reward at said state. If the model has actions, try to use the empty state."""
         if self.model.supports_actions():
             self.set_state_action_reward(state, EmptyAction, value)
@@ -630,7 +632,7 @@ class RewardModel:
         self,
         state: State,
         action: Action,
-        value: Value,
+        value: ValueType,
     ):
         """sets the reward at said state action pair (in case of models with actions).
         If you disable auto_update_rewards, you will need to call update_intermediate_to
@@ -645,7 +647,7 @@ class RewardModel:
                 "The model this rewardmodel belongs to does not support actions"
             )
 
-    def get_reward_vector(self) -> list[Value]:
+    def get_reward_vector(self) -> list[ValueType]:
         """Return the rewards in a (stormpy) vector format."""
         vector = []
         for id, s in self.model:
@@ -658,7 +660,7 @@ class RewardModel:
                 vector.append(reward)
         return vector
 
-    def set_unset_rewards(self, value: Value):
+    def set_unset_rewards(self, value: ValueType):
         """Fills up rewards that were not set yet with the specified value.
         Use this if converting (to stormpy) doesn't work because the reward vector does not have the expected length.
         """
@@ -683,7 +685,7 @@ class RewardModel:
 
 
 @dataclass
-class Model:
+class Model[ValueType: Value]:
     """Represents a model.
 
     Args:
@@ -698,14 +700,15 @@ class Model:
 
     type: ModelType
     # Both of these are hashed by the id of the state (=rowgroup number in the matrix)
-    states: dict[int, State]
-    choices: dict[int, Choices]
+    states: dict[int, State[ValueType]]
+    choices: dict[int, Choices[ValueType]]
     actions: set[Action] | None
+    observations: list[Observation] | None
     rewards: list[RewardModel]
     # In ctmcs we work with rate transitions but additionally we can optionally store exit rates (hashed by id of the state)
-    exit_rates: dict[int, Value] | None
+    exit_rates: dict[int, ValueType] | None
     # In ma's we keep track of markovian states
-    markovian_states: list[State] | None
+    markovian_states: list[State[ValueType]] | None
 
     def __init__(self, model_type: ModelType, create_initial_state: bool = True):
         self.type = model_type
@@ -725,9 +728,9 @@ class Model:
         else:
             self.exit_rates = None
 
-        # Initialize observations if those are supported by the model type (pomdps)
-        if self.type == ModelType.POMDP:
-            self.observations = {}
+        # Initialize possible observations if those are supported by the model type
+        if self.type in (ModelType.POMDP, ModelType.HMM):
+            self.observations = []
         else:
             self.observations = None
 
@@ -740,8 +743,11 @@ class Model:
         # We also keep track of used state names
         self.used_names = set()
 
-        # we initialize the used id counter
+        # We initialize the used id counter
         self.id_counter = 0
+
+        # We initialize the observation id counter
+        self.observation_id = 0
 
         # Add the initial state if specified to do so
         if create_initial_state:
@@ -773,9 +779,9 @@ class Model:
 
     def supports_observations(self) -> bool:
         """Returns whether this model supports observations."""
-        return self.type == ModelType.POMDP
+        return self.type in (ModelType.POMDP, ModelType.HMM)
 
-    def iterate_transitions(self) -> list[tuple[Value, State]]:
+    def iterate_transitions(self) -> list[tuple[ValueType, State]]:
         """iterates through all transitions in all choices of the model"""
         transitions = []
         for transition in self.choices.values():
@@ -892,7 +898,7 @@ class Model:
 
         return evaluated_model
 
-    def get_choice_id(self, state: State, action: Action) -> int | None:
+    def get_choice_id(self, state: State[ValueType], action: Action) -> int | None:
         """
         We calculate the appropriate choice id for a given state and action.
         This choice id corresponds to the row of the matrix in the underlying matrix.
@@ -909,10 +915,12 @@ class Model:
         return None
 
     @deprecated(version="0.10.0", reason="Use get_choice_id() instead.")
-    def get_state_action_id(self, state: State, action: Action) -> int | None:
+    def get_state_action_id(
+        self, state: State[ValueType], action: Action
+    ) -> int | None:
         return self.get_choice_id(state, action)
 
-    def get_state_action_pair(self, id: int) -> tuple[State, Action] | None:
+    def get_state_action_pair(self, id: int) -> tuple[State[ValueType], Action] | None:
         """Given an state action id, we return the corresponding state action pair
         Each state action pair corresponds to an id (which also corresponds to the row of the matrix).
         """
@@ -950,7 +958,7 @@ class Model:
                 if var not in state.valuations.keys():
                     state.valuations[var] = value
 
-    def unassigned_variables(self) -> list[tuple[State, str]]:
+    def unassigned_variables(self) -> list[tuple[State[ValueType], str]]:
         """we return a list of tuples of state variable pairs that are unassigned"""
         variables = self.get_variables()
 
@@ -1000,7 +1008,9 @@ class Model:
         else:
             raise RuntimeError("This model is not a MA")
 
-    def set_choice(self, s: State, choices: Choices | ChoiceShorthand) -> None:
+    def set_choice(
+        self, s: State, choices: Choices[ValueType] | ChoiceShorthand
+    ) -> None:
         """Set the choice for a state."""
         if not isinstance(choices, Choices):
             choices = choice_from_shorthand(choices, self)
@@ -1012,7 +1022,9 @@ class Model:
             self.actions.add(EmptyAction)
         self.choices[s.id] = choices
 
-    def add_choice(self, s: State, choices: Choices | ChoiceShorthand) -> None:
+    def add_choice(
+        self, s: State, choices: Choices[ValueType] | ChoiceShorthand
+    ) -> None:
         """Add new choices from a state to the model. If no choice currently exists, the result will be the same as set_choice."""
 
         if not isinstance(choices, Choices):
@@ -1051,22 +1063,22 @@ class Model:
                         self.actions.add(action)
                     self.choices[s.id].choice[action] = branch
 
-    def get_successor_states(self, state_or_id: State | int) -> set[int]:
+    def get_successor_states(self, state_or_id: State[ValueType] | int) -> set[int]:
         """Returns the set of successors of state_or_id."""
         result = set()
         for _, branches in self.get_choices(state_or_id):
             result |= branches.get_successors()
         return result
 
-    def get_choices(self, state_or_id: State | int) -> Choices:
+    def get_choices(self, state_or_id: State[ValueType] | int) -> Choices[ValueType]:
         """Get the choices at state s. Throws a KeyError if not present."""
         return self.choices[_to_state_id(state_or_id)]
 
     @deprecated(version="0.10.0", reason="use get_choices instead")
-    def get_choice(self, state_or_id: State | int) -> Choices:
+    def get_choice(self, state_or_id: State[ValueType] | int) -> Choices[ValueType]:
         return self.get_choices(state_or_id)
 
-    def get_branches(self, state_or_id: State | int) -> Branches:
+    def get_branches(self, state_or_id: State | int) -> Branches[ValueType]:
         """Get the branch at state s. Only intended for emtpy choices, otherwise a RuntimeError is thrown."""
         choice = self.get_choices(_to_state_id(state_or_id)).choice
         if EmptyAction not in choice:
@@ -1074,7 +1086,7 @@ class Model:
         return choice[EmptyAction]
 
     @deprecated(version="0.10.0", reason="use get_branches instead")
-    def get_branch(self, state_or_id: State | int) -> Branches:
+    def get_branch(self, state_or_id: State[ValueType] | int) -> Branches[ValueType]:
         """Get the branch at state s. Only intended for emtpy choices, otherwise a RuntimeError is thrown."""
         return self.get_branches(state_or_id)
 
@@ -1085,17 +1097,6 @@ class Model:
             if action.label == label:
                 return action
         return None
-
-    def new_action(self, label: str | None = None) -> Action:
-        """Creates a new action and returns it."""
-        if not self.supports_actions():
-            raise RuntimeError(
-                "Called new_action on a model that does not support actions"
-            )
-        assert self.actions is not None
-        action = Action(label)
-        self.actions.add(action)
-        return action
 
     def reassign_ids(self):
         """Reassigns the ids of states, choices and rates to be in order again.
@@ -1204,6 +1205,17 @@ class Model:
                 "This method only works for models that don't support actions."
             )
 
+    def new_action(self, label: str | None = None) -> Action:
+        """Creates a new action and returns it."""
+        if not self.supports_actions():
+            raise RuntimeError(
+                "Called new_action on a model that does not support actions"
+            )
+        assert self.actions is not None
+        action = Action(label)
+        self.actions.add(action)
+        return action
+
     def get_action(self, name: str) -> Action:
         """Gets an existing action."""
         if not self.supports_actions():
@@ -1211,11 +1223,16 @@ class Model:
                 "Called get_action on a model that does not support actions"
             )
         assert self.actions is not None
-        if name not in self.actions:
-            raise RuntimeError(
-                f"Tried to get action {name} but that action does not exist"
-            )
-        return self.actions[name]
+        found_action = None
+        for action in self.actions:
+            if action.label is not None and name in action.label:
+                found_action = action
+                break
+
+        if found_action is None:
+            raise RuntimeError(f"Could not find an action with name {name}")
+
+        return found_action
 
     def action(self, label: str | None) -> Action:
         """New action or get action if it exists."""
@@ -1230,13 +1247,71 @@ class Model:
             self.new_action(label)
         return action
 
+    def new_observation(
+        self,
+        valuations: dict[str, int | float | bool] | None = None,
+        observation_id: int | None = None,
+    ) -> Observation:
+        if not self.supports_observations():
+            raise RuntimeError(
+                "Called new_observation on a model that does not support observations"
+            )
+        assert self.observations is not None
+        if observation_id is None:
+            observation_id = self.observation_id
+            self.observation_id += 1
+
+        if (found_obs := self.get_observation(observation_id)) is not None:
+            raise RuntimeError(
+                f"An observation with id {observation_id} already exists, namely {found_obs}."
+            )
+
+        observation = Observation(observation_id, valuations)
+        self.observations.append(observation)
+        return observation
+
+    def get_observation(self, observation_id: int) -> Observation | None:
+        if not self.supports_observations():
+            raise RuntimeError(
+                "Called get_observation on a model that does not support observations"
+            )
+        assert self.observations is not None
+        for observation in self.observations:
+            if observation.observation == observation_id:
+                return observation
+        return None
+
+    def observation(
+        self,
+        observation_id: int | None = None,
+        valuations: dict[str, int | float | bool] | None = None,
+    ) -> Observation:
+        """New observation or get observation if it exists."""
+        if not self.supports_observations():
+            raise RuntimeError(
+                "Called method observation on a model that does not support observations"
+            )
+        assert self.observations is not None
+
+        if (
+            observation_id is not None
+            and (found_obs := self.get_observation(observation_id)) is not None
+        ):
+            if valuations is not None and found_obs.valuations != valuations:
+                raise RuntimeError(
+                    f"An observation with id {observation_id} already exists, namely {found_obs}, but has different valuations than the provided ones."
+                )
+            return found_obs
+
+        return self.new_observation(valuations, observation_id)
+
     def new_state(
         self,
         labels: list[str] | str | None = None,
         valuations: dict[str, int | bool | float] | None = None,
-        observation: int | None = None,
+        observation: Observation | list[tuple[ValueType, Observation]] | None = None,
         name: str | None = None,
-    ) -> State:
+    ) -> State[ValueType]:
         """Creates a new state and returns it."""
 
         # we set the id from the counter and increase it
@@ -1266,11 +1341,85 @@ class Model:
                 [], valuations or {}, state_id, self, observation=observation, name=name
             )
         else:
-            raise RuntimeError("Unkown type for labels.")
+            raise RuntimeError("Unknown type for labels.")
 
         self.states[state_id] = state
 
         return state
+
+    def has_only_number_values(self) -> bool:
+        """Checks whether all transition values, observation probabilities, exit rates, markovian states in this model are numbers."""
+        for choice in self.choices.values():
+            for action, branch in choice:
+                for value, _ in branch:
+                    if not isinstance(value, Number):
+                        return False
+
+        if self.exit_rates is not None:
+            for rate in self.exit_rates.values():
+                if not isinstance(rate, Number):
+                    return False
+
+        if self.supports_observations() and self.observations is not None:
+            for state in self.states.values():
+                observation = state.observation
+                if isinstance(observation, list):
+                    for value, _ in observation:
+                        if not isinstance(value, Number):
+                            return False
+
+        return True
+
+    def make_observations_deterministic(self, reassign_ids: bool = False):
+        """
+        In case of POMDPs or HMMs, makes the observations deterministic by splitting states with
+        multiple observations into multiple states with single observations.
+        """
+        if not self.has_only_number_values():
+            raise RuntimeError("This method only works for models with Number values.")
+        if not self.supports_observations():
+            raise RuntimeError(
+                "This method only works for models that support observations."
+            )
+
+        for state in list(self.states.values()):
+            observation = state.observation
+            if isinstance(observation, list):
+                new_states_distribution: list[tuple[ValueType, State]] = []
+                new_choice = state.get_choice()
+
+                # Create new states for each observation possible in this state
+                for prob, obs in observation:
+                    new_state = self.new_state(
+                        state.labels,
+                        state.valuations,
+                        obs,
+                        f"{state.name} {{{str(obs.observation)}}}",
+                    )
+                    if new_choice is not None:
+                        new_state.set_choice(deepcopy(new_choice))
+
+                    new_states_distribution.append((prob, new_state))
+
+                for src_state_idx, choice in self.choices.items():
+                    for action, branch in choice:
+                        for value, dest_state in branch:
+                            if dest_state.id == state.id:
+                                # we need to redirect this transition to the new states
+                                # we first remove the old transition
+                                self.choices[src_state_idx].choice[
+                                    action
+                                ].branch.remove((value, dest_state))
+                                # then we add the new transitions
+                                for prob, new_state in new_states_distribution:
+                                    new_value = cast(Number, value) * cast(Number, prob)
+                                    self.choices[src_state_idx].choice[
+                                        action
+                                    ].branch.append(
+                                        (cast(ValueType, new_value), new_state)
+                                    )
+
+                self.remove_state(state, reassign_ids=reassign_ids)
 
     def get_states_with_label(self, label: str) -> list[State]:
         """Get all states with a given label."""
@@ -1369,20 +1518,13 @@ class Model:
         self.rewards.append(reward_model)
         return reward_model
 
-    def get_observation(self, state: State) -> Observation:
-        """Gets the observation for a given state."""
-        if self.supports_observations and state.observation is not None:
-            return self.states[state.id].get_observation()
-        else:
-            raise RuntimeError("Only POMDP models support observations")
-
-    def get_rate(self, state: State) -> Value:
+    def get_rate(self, state: State) -> ValueType:
         """Gets the rate of a state."""
         if not self.supports_rates() or self.exit_rates is None:
             raise RuntimeError("Cannot get a rate of a discrete-time model.")
         return self.exit_rates[state.id]
 
-    def set_rate(self, state: State, rate: Value):
+    def set_rate(self, state: State, rate: ValueType):
         """Sets the rate of a state."""
         if not self.supports_rates() or self.exit_rates is None:
             raise RuntimeError("Cannot set a rate of a discrete-time model.")
@@ -1491,6 +1633,11 @@ def new_ctmc(create_initial_state: bool = True) -> Model:
 def new_pomdp(create_initial_state: bool = True) -> Model:
     """Creates a POMDP."""
     return Model(ModelType.POMDP, create_initial_state)
+
+
+def new_hmm(create_initial_state: bool = True) -> Model:
+    """Creates a HMM."""
+    return Model(ModelType.HMM, create_initial_state)
 
 
 def new_ma(create_initial_state: bool = True) -> Model:

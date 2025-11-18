@@ -163,12 +163,24 @@ class VisualizationBase:
             or not self.layout.layout["state_properties"]["show_observations"]
         ):
             return ""
+        elif isinstance(s.observation, list):
+            string = ""
+            for prob, obs in s.observation:
+                string += (
+                    "\n"
+                    + self.layout.layout["state_properties"]["observation_symbol"]
+                    + " "
+                    + str(obs.format())
+                    + ": "
+                    + self._format_number(prob)
+                )
+            return string
         else:
             return (
                 "\n"
                 + self.layout.layout["state_properties"]["observation_symbol"]
                 + " "
-                + str(s.observation.observation)
+                + str(s.observation.format())
             )
 
     def _group_state(self, s: stormvogel.model.State, default: str) -> str:
