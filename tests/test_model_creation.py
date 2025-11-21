@@ -4,9 +4,9 @@ import stormvogel.model
 def test_mdp_creation():
     dtmc = stormvogel.model.new_dtmc()
 
-    init = dtmc.get_initial_state()
+    init = dtmc.initial_state
     # roll die
-    init.set_choice(
+    init.set_choices(
         [(1 / 6, dtmc.new_state(f"rolled{i}", {"rolled": i})) for i in range(6)]
     )
 

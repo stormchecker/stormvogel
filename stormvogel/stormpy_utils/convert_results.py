@@ -15,9 +15,9 @@ def convert_scheduler_to_stormvogel(
     taken_actions = {}
     for state in model.states.values():
         av_act = state.available_actions()
-        choice = stormpy_scheduler.get_choice(state.id)
+        choice = stormpy_scheduler.get_choice(state)
         action_index = choice.get_deterministic_choice()
-        taken_actions[state.id] = av_act[action_index]
+        taken_actions[state] = av_act[action_index]
 
     return stormvogel.result.Scheduler(model, taken_actions)
 

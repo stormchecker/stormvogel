@@ -76,7 +76,7 @@ class Path:
     ) -> list[stormvogel.model.Action | stormvogel.model.State]:
         """Convert a Path to a list containing actions and states."""
         res: list[stormvogel.model.Action | stormvogel.model.State] = [
-            self.model.get_initial_state()
+            self.model.initial_state
         ]
         for v in self.path:
             if isinstance(v, tuple):
@@ -97,7 +97,7 @@ class Path:
                 path += f" --(action: {t[0].label})--> state: {t[1].id}"
         else:
             for state in self.path:
-                path += f" --> state: {state.id}"
+                path += f" --> state: {state}"
         return path
 
     def __eq__(self, other):
@@ -169,7 +169,7 @@ def step(
     else:
         next_state = random.choices(states, k=1, weights=probability_distribution)[0]
 
-    next_state_id = next_state.id
+    next_state_id = next_state
 
     # we also add the rewards
     rewards = []
@@ -279,7 +279,7 @@ def simulate(
 
     # we create the initial state ourselves because we want to force the name to be 0
     init = partial_model.new_state(name="0", labels="init")
-    init.valuations = model.get_initial_state().valuations
+    init.valuations = model.initial_state.valuations
 
     # we add each (empty) rewardmodel to the partial model
     if model.rewards:
@@ -290,21 +290,21 @@ def simulate(
             if model.supports_actions():
                 try:
                     r = model.rewards[index].get_state_action_reward(
-                        model.get_initial_state(), EmptyAction
+                        model.initial_state, EmptyAction
                     )
                     assert r is not None
                     reward_model.set_state_action_reward(
-                        partial_model.get_initial_state(),
+                        partial_model.initial_state,
                         EmptyAction,
                         r,
                     )
                 except RuntimeError:
                     pass
             else:
-                r = model.rewards[index].get_state_reward(model.get_initial_state())
+                r = model.rewards[index].get_state_reward(model.initial_state)
                 assert r is not None
                 reward_model.set_state_reward(
-                    partial_model.get_initial_state(),
+                    partial_model.initial_state,
                     r,
                 )
 
@@ -365,14 +365,14 @@ def simulate(
                         discovered_states_before_transitions.add(last_state_id)
                         s = partial_model.get_state_by_name(str(last_state_id))
                         assert s is not None
-                        branch = partial_model.choices[s.id].choice[
+                        branch = partial_model.choices[s.id].choices[
                             stormvogel.modle.EmptyAction
                         ]
                         branch.branch.append((probability, new_state))
                     else:
                         s = partial_model.get_state_by_name(str(last_state_id))
                         assert s is not None
-                        s.add_choice([(probability, new_state)])
+                        s.add_choices([(probability, new_state)])
 
                 last_state_id = state_id
     else:
@@ -446,13 +446,13 @@ def simulate(
                     if (last_state_id, action) in discovered_actions:
                         s = partial_model.get_state_by_name(str(last_state_id))
                         assert s is not None
-                        branch = partial_model.choices[s.id].choice[action]
+                        branch = partial_model.choices[s.id].choices[action]
                         branch.branch.append((probability, new_state))
                     else:
                         discovered_actions.add((last_state_id, action))
                         s = partial_model.get_state_by_name(str(last_state_id))
                         assert s is not None
-                        s.add_choice({action: [(probability, new_state)]})
+                        s.add_choices({action: [(probability, new_state)]})
 
                 last_state_id = state_id
 

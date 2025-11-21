@@ -8,11 +8,11 @@ def create_die_dtmc():
     # Create a new model
     dtmc = stormvogel.model.new_dtmc()
 
-    init = dtmc.get_initial_state()
+    init = dtmc.initial_state
     init.add_valuation("rolled", 0)
 
     # From the initial state, add the transition to 6 new states with probability 1/6th.
-    init.set_choice(
+    init.set_choices(
         [
             (
                 1 / 6,

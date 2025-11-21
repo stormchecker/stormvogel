@@ -251,10 +251,10 @@ def test_stormpy_to_stormvogel_and_back_pomdp():
 #     # Create a new model
 #     stormvogel_ma = stormvogel.model.new_ma("example ma")
 #
-#     init = stormvogel_ma.get_initial_state()
+#     init = stormvogel_ma.initial_state
 #
 #     # We have 5 actions
-#     init.set_choice(
+#     init.set_choices(
 #         [
 #             (
 #                 stormvogel_ma.action(f"{i}"),
@@ -342,7 +342,7 @@ def test_modified_stormpy_to_stormvogel_and_back():
 
         # we modify the model
         assert stormvogel_dtmc is not None
-        stormvogel_dtmc.remove_state(stormvogel_dtmc.get_initial_state())
+        stormvogel_dtmc.remove_state(stormvogel_dtmc.initial_state)
         stormvogel_dtmc.new_state(name="three", labels=["three"])
         stormvogel_dtmc.add_self_loops()
 
@@ -392,7 +392,7 @@ def test_id_mapping():
         # make stormvogel model of dtmc
         stormvogel_dtmc = stormvogel.examples.die.create_die_dtmc()
         # remove states without reassigning ids
-        stormvogel_dtmc.remove_state(stormvogel_dtmc.get_initial_state())
+        stormvogel_dtmc.remove_state(stormvogel_dtmc.initial_state)
         stormvogel_dtmc.remove_state(stormvogel_dtmc.get_state_by_id(2))
         # map to stormpy and back
         stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
@@ -412,7 +412,7 @@ def test_labels():
         model = stormvogel.model.new_dtmc(create_initial_state=False)
         model.new_state()
         model.new_state()
-        model.get_state_by_id(1).add_choice([(1, model.get_state_by_id(0))])
+        model.get_state_by_id(1).add_choices([(1, model.get_state_by_id(0))])
         model.add_self_loops()
 
         with pytest.raises(

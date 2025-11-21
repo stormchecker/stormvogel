@@ -956,13 +956,13 @@ def test_induced_dtmc():
     branch0 = stormvogel.model.Branches([(1 / 2, state1), (1 / 2, state2)])
     branch1 = stormvogel.model.Branches([(1 / 4, state1), (3 / 4, state2)])
     transition = stormvogel.model.Choices({action0: branch0, action1: branch1})
-    mdp.set_choice(mdp.get_initial_state(), transition)
+    mdp.set_choicesmdp.initial_state, transition
     mdp.add_self_loops()
 
     # we set rewards (because we must also check if they are carried over)
     rewardmodel = mdp.new_reward_model("r1")
     for i in range(4):
-        pair = mdp.get_state_action_pair(i)
+        pair = mdp.choices[regular_model.states[i]]
         assert pair is not None
         rewardmodel.set_state_action_reward(pair[0], pair[1], i)
 
@@ -985,7 +985,7 @@ def test_induced_dtmc():
         )
     )
     transition = stormvogel.model.Choices({stormvogel.model.EmptyAction: branch0})
-    other_dtmc.set_choice(other_dtmc.get_initial_state(), transition)
+    other_dtmc.set_choicesother_dtmc.initial_state, transition
     other_dtmc.add_self_loops()
 
     # and the rewards of the induced dtmc

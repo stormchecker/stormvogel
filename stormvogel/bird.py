@@ -280,8 +280,9 @@ def build_bird[ValueType: stormvogel.model.Value](
                 choice[stormvogel.model.EmptyAction] = branch
 
         s = state_lookup[state]
+        print(s, model.states)
         assert s is not None
-        model.add_choice(
+        model.add_choices(
             s,
             choice,
         )

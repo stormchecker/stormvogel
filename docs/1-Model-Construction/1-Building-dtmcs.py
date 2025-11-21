@@ -87,7 +87,7 @@ vis = show(bird_die, layout=Layout("layouts/die.json"))
 
 # Create a new model with an initial state with id 0.
 die_model = stormvogel.model.new_dtmc(create_initial_state=True)
-init = die_model.get_initial_state()
+init = die_model.initial_state
 
 # Create all the states (need 12 more to have 13 in total).
 for sid in range(1, 13):
@@ -97,7 +97,7 @@ for sid in range(1, 13):
 for k, v in TRANSITIONS.items():
     state = die_model.get_state_by_id(k)  # Get the state with id k
     if k <= 6:
-        state.set_choice(
+        state.set_choices(
             [(p, die_model.get_state_by_id(sid)) for p, sid in TRANSITIONS[k]]
         )
 
@@ -163,7 +163,7 @@ for sid in range(1, 4):
 
 for sid in range(0, 4):
     state = commu_model.get_state_by_id(sid)
-    state.set_choice(
+    state.set_choices(
         [(p, commu_model.get_state_by_id(sid_)) for p, sid_ in TRANSITIONS[sid]]
     )
 

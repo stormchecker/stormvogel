@@ -95,7 +95,7 @@ def test_pmc_conversion():
     # Create a new model
     pmc = stormvogel.model.new_dtmc()
 
-    init = pmc.get_initial_state()
+    init = pmc.initial_state
 
     # From the initial state, we have two choices that either bring us to state A or state B
     p1 = stormvogel.parametric.Polynomial(["x", "y", "z"])
@@ -115,7 +115,7 @@ def test_pmc_conversion():
     pmc.new_state(labels=["A"])
     pmc.new_state(labels=["B"])
 
-    init.set_choice(
+    init.set_choices(
         [
             (p1, pmc.get_states_with_label("A")[0]),
             (p2, pmc.get_states_with_label("B")[0]),
@@ -139,7 +139,7 @@ def test_pmdp_conversion():
     # Create a new model
     pmdp = stormvogel.model.new_mdp()
 
-    init = pmdp.get_initial_state()
+    init = pmdp.initial_state
 
     # From the initial state, we have two actions with choices that either bring us to a goal state or sink state
 
@@ -167,7 +167,7 @@ def test_pmdp_conversion():
         ]
     )
 
-    pmdp.add_choice(
+    pmdp.add_choices(
         init, stormvogel.model.Choices({action_a: branch0, action_b: branch1})
     )
 
@@ -202,7 +202,7 @@ def test_pmc_valuations():
     # we build a simple pmc
     pmc = stormvogel.model.new_dtmc()
 
-    init = pmc.get_initial_state()
+    init = pmc.initial_state
 
     # From the initial state, we have two choices that either bring us to state A or state B
     p1 = stormvogel.parametric.Polynomial(["x", "z", "w"])
@@ -219,7 +219,7 @@ def test_pmc_valuations():
     pmc.new_state(labels=["A"])
     pmc.new_state(labels=["B"])
 
-    init.set_choice(
+    init.set_choices(
         [
             (p1, pmc.get_states_with_label("A")[0]),
             (r1, pmc.get_states_with_label("B")[0]),
@@ -234,12 +234,12 @@ def test_pmc_valuations():
     # we build what the induced pmc is supposed to look like
     new_induced_pmc = stormvogel.model.new_dtmc()
 
-    init = new_induced_pmc.get_initial_state()
+    init = new_induced_pmc.initial_state
 
     new_induced_pmc.new_state(labels=["A"])
     new_induced_pmc.new_state(labels=["B"])
 
-    init.set_choice(
+    init.set_choices(
         [
             (20, new_induced_pmc.get_states_with_label("A")[0]),
             (-0.06, new_induced_pmc.get_states_with_label("B")[0]),

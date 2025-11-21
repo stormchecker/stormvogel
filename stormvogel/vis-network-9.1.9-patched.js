@@ -34333,7 +34333,7 @@
 	      var state = getInternalState(that);
 	      var data = getWeakData(anObject(key), true);
 	      if (data === true) uncaughtFrozenStore(state).set(key, value);
-	      else data[state.id] = value;
+	      else data[state] = value;
 	      return that;
 	    };
 
@@ -34346,7 +34346,7 @@
 	        if (!isObject$1(key)) return false;
 	        var data = getWeakData(key);
 	        if (data === true) return uncaughtFrozenStore(state)['delete'](key);
-	        return data && hasOwn(data, state.id) && delete data[state.id];
+	        return data && hasOwn(data, state) && delete data[state];
 	      },
 	      // `{ WeakMap, WeakSet }.prototype.has(key)` methods
 	      // https://tc39.es/ecma262/#sec-weakmap.prototype.has
@@ -34356,7 +34356,7 @@
 	        if (!isObject$1(key)) return false;
 	        var data = getWeakData(key);
 	        if (data === true) return uncaughtFrozenStore(state).has(key);
-	        return data && hasOwn(data, state.id);
+	        return data && hasOwn(data, state);
 	      }
 	    });
 
@@ -34368,7 +34368,7 @@
 	        if (isObject$1(key)) {
 	          var data = getWeakData(key);
 	          if (data === true) return uncaughtFrozenStore(state).get(key);
-	          return data ? data[state.id] : undefined;
+	          return data ? data[state] : undefined;
 	        }
 	      },
 	      // `WeakMap.prototype.set(key, value)` method

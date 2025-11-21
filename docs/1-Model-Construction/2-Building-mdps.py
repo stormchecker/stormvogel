@@ -86,7 +86,7 @@ from stormvogel import *
 
 mdp = stormvogel.model.new_mdp()
 
-init = mdp.get_initial_state()
+init = mdp.initial_state
 study = mdp.action("study")
 not_study = mdp.action("don't study")
 
@@ -94,15 +94,15 @@ pass_test = mdp.new_state("pass test")
 fail_test = mdp.new_state("fail test")
 end = mdp.new_state("end")
 
-init.set_choice(
+init.set_choices(
     {
         study: [(9 / 10, pass_test), (1 / 10, fail_test)],
         not_study: [(4 / 10, pass_test), (6 / 10, fail_test)],
     }
 )
 
-pass_test.set_choice([(1, end)])
-fail_test.set_choice([(1, end)])
+pass_test.set_choices[(1, end)]
+fail_test.set_choices[(1, end)]
 
 reward_model = mdp.new_reward_model("R")
 reward_model.set_state_action_reward(pass_test, stormvogel.model.EmptyAction, 100)
@@ -176,5 +176,5 @@ for x in range(N):
                 " ", ""
             )
             target_state = grid_model.get_states_with_label(target_tile_label)[0]
-            state.add_choice([(grid_model.action(a), target_state)])
+            state.add_choices([(grid_model.action(a), target_state)])
 vis4 = show(grid_model)

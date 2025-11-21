@@ -42,7 +42,7 @@ def naive_value_iteration(
 
     # Create a dynamic matrix (list of lists) to store the result.
     values_matrix = [[0 for state in model.get_states()]]
-    values_matrix[0][target_state.id] = 1
+    values_matrix[0][target_state] = 1
 
     terminate = False
     while not terminate:
@@ -55,7 +55,7 @@ def naive_value_iteration(
             action_values = {}
             for action, branch in choice.choice.items():
                 branch_value = sum(
-                    [prob * old_values[state.id] for (prob, state) in branch.branch]
+                    [prob * old_values[state] for (prob, state) in branch.branch]
                 )
                 action_values[action] = branch_value
             # We take the action with the highest value.
@@ -119,7 +119,7 @@ def dtmc_evolution(model: stormvogel.model.Model, steps: int) -> list[list[float
 
     # Create a matrix and set the value for the starting state to 1 on the first step.
     matrix_steps_states = [[0.0 for s in model.states] for x in range(steps)]
-    matrix_steps_states[0][model.get_initial_state().id] = 1
+    matrix_steps_states[0][model.initial_state] = 1
 
     # Apply the updated values for each step.
     for current_step in range(steps - 1):
