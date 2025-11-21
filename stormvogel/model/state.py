@@ -77,7 +77,7 @@ class State[ValueType: Value]:
             raise RuntimeError("The model this state belongs to does not have observations")
 
     @observation.setter
-    def _set_observation(
+    def observation(
         self, observation: Observation | Distribution[ValueType, Observation]
     ):
         if self.model.supports_observations() and self.model.state_observations is not None:

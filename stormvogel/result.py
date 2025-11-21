@@ -44,7 +44,9 @@ class Scheduler:
 
             # we add all the states and transitions according to the chosen actions
             for state in self.model:
-                induced_dtmc.new_state(labels=list(state.labels), valuations=state.valuations)
+                induced_dtmc.new_state(
+                    labels=list(state.labels), valuations=state.valuations
+                )
                 action = self.get_action_at_state(state)
                 choice = state.get_outgoing_transitions(action)
                 assert choice is not None

@@ -7,6 +7,7 @@ import networkx
 
 from stormvogel.model import Action, EmptyAction, Model, State, Value
 
+
 class NodeType(Enum):
     STATE = 0
     ACTION = 1

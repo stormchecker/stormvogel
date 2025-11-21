@@ -5,13 +5,12 @@ from typing import Optional, Union, cast
 from stormvogel import parametric
 from stormvogel.model.action import EmptyAction
 from stormvogel.model.model import Model, ModelType
-from stormvogel.model.value import Number, Value, Interval
+from stormvogel.model.value import Value, Interval
 
 try:
     import stormpy
 except ImportError:
     stormpy = None
-
 
 
 def stormvogel_to_stormpy(
@@ -87,10 +86,7 @@ def stormvogel_to_stormpy(
                     )
 
                 # if there is an action then add the label to the choice
-                if (
-                    not action[0] == EmptyAction
-                    and choice_labeling is not None
-                ):
+                if not action[0] == EmptyAction and choice_labeling is not None:
                     if action[0].label is not None:
                         choice_labeling.add_label_to_choice(action[0].label, row_index)
                 row_index += 1
@@ -344,10 +340,7 @@ def stormvogel_to_stormpy(
         for state in model.states:
             for action in state.available_actions():
                 count += 1
-                if (
-                    not action == EmptyAction
-                    and action.label is not None
-                ):
+                if not action == EmptyAction and action.label is not None:
                     labels.add(action.label)
 
         # we add the labels to the choice labeling object
@@ -444,10 +437,7 @@ def stormvogel_to_stormpy(
         for state in model.states:
             for action in state.available_actions():
                 count += 1
-                if (
-                    not action == EmptyAction
-                    and action.label is not None
-                ):
+                if not action == EmptyAction and action.label is not None:
                     labels.add(action.label)
 
         # we add the labels to the choice labeling object

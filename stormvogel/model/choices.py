@@ -8,7 +8,7 @@ from stormvogel.model.value import Number
 
 if TYPE_CHECKING:
     from stormvogel.model.state import State
-    from stormvogel.model.model import Model
+
 
 class Choices[ValueType: Value]:
     """Represents a choice, which map actions to branches.
@@ -28,7 +28,7 @@ class Choices[ValueType: Value]:
                 "It is impossible to create a choice that contains more than one action, and an emtpy action"
             )
         self.choices = choices
-  
+
     @property
     def actions(self) -> list[Action]:
         """Returns the actions for the choices"""
@@ -64,10 +64,15 @@ class Choices[ValueType: Value]:
 
         return True
 
-
     def is_stochastic(self, epsilon: Number) -> bool:
         """Returns whether the probabilities in the branches sum to 1"""
-        return all([abs(self.choices[a].branches.is_probabilistic(precision=epsilon) - 1) <= epsilon for a in self.choices])
+        return all(
+            [
+                abs(self.choices[a].branches.is_probabilistic(precision=epsilon) - 1)
+                <= epsilon
+                for a in self.choices
+            ]
+        )
 
     def has_zero_transition(self) -> bool:
         """Returns whether any of the branches contains a zero-probability transition."""
@@ -76,7 +81,7 @@ class Choices[ValueType: Value]:
                 if isinstance(transition[0], Number) and transition[0] == 0:
                     return True
         return False
-    
+
     def add(self, other: Self):
         """Adds two Choices together, provided they have no overlapping actions."""
         for action, branch in other:
@@ -86,7 +91,7 @@ class Choices[ValueType: Value]:
                 )
             else:
                 self.choices[action] = branch
-    
+
     def __add__(self, other: Self) -> "Choices[ValueType]":
         new_choices = Choices(self.choices.copy())
         new_choices.add(other)
@@ -101,13 +106,17 @@ class Choices[ValueType: Value]:
     def __len__(self) -> int:
         return len(self.choices)
 
+
 ChoicesShorthand = (
     list[tuple[Value, "State[Value]"]]
     | list[tuple[Action, "State[Value]"]]
     | dict[Action, list[tuple[Value, "State[Value]"]]]
 )
 
-def choices_from_shorthand[ValueType: Value](shorthand: ChoicesShorthand) -> Choices[ValueType]:
+
+def choices_from_shorthand[ValueType: Value](
+    shorthand: ChoicesShorthand,
+) -> Choices[ValueType]:
     """Get a Choice object from a ChoicesShorthand. Use for all choices in DTMCs and for empty actions in MDPs.
 
     There are two possible ways to define a ChoicesShorthand.

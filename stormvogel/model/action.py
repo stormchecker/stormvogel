@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class Action:
     """Represents an action, e.g., in MDPs.
@@ -26,6 +27,7 @@ class Action:
 
     def __str__(self):
         return f"Action with label {self.label}"
+
 
 # The empty action. Used for DTMCs and empty action transitions in mdps.
 EmptyAction = Action(None)

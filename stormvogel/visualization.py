@@ -195,7 +195,9 @@ class VisualizationBase:
         )
         return self._und(res[0]) if res != [] else default
 
-    def _group_action(self, state: stormvogel.model.State, a: stormvogel.model.Action, default: str) -> str:
+    def _group_action(
+        self, state: stormvogel.model.State, a: stormvogel.model.Action, default: str
+    ) -> str:
         """Return the group of this action. Only relevant for scheduling"""
         # Put the action in the group scheduled_actions if appropriate.
         if self.scheduler is None:
@@ -428,9 +430,7 @@ class JSVisualization(VisualizationBase):
             group = None
             match self.G.nodes[node]["type"]:
                 case NodeType.STATE:
-                    group = self._group_state(
-                        node, "states"
-                    )
+                    group = self._group_state(node, "states")
                 case NodeType.ACTION:
                     in_edges = list(self.G.in_edges(node))
                     assert (
@@ -666,7 +666,12 @@ class JSVisualization(VisualizationBase):
         js = f"""{self.network_wrapper}.network.setOptions({self._get_options()});"""
         ipd.display(ipd.Javascript(js))
 
-    def set_node_color(self, obj: stormvogel.model.State | tuple[stormvogel.model.State, stormvogel.model.Action], color: str | None) -> None:
+    def set_node_color(
+        self,
+        obj: stormvogel.model.State
+        | tuple[stormvogel.model.State, stormvogel.model.Action],
+        color: str | None,
+    ) -> None:
         """Sets the color of a specific node in the visualization.
 
         This method updates the visual appearance of a node by changing its color
@@ -711,7 +716,10 @@ class JSVisualization(VisualizationBase):
         self.set_node_color(state, color)
 
     def highlight_action(
-        self, state: stormvogel.model.State, action: stormvogel.model.Action, color: str | None = "red"
+        self,
+        state: stormvogel.model.State,
+        action: stormvogel.model.Action,
+        color: str | None = "red",
     ):
         """Highlights a single action in the model by changing its color.
 
@@ -735,7 +743,9 @@ class JSVisualization(VisualizationBase):
                 "Tried to highlight an action that is not present in this model."
             )
 
-    def highlight_state_set(self, states: set[stormvogel.model.State], color: str | None = "blue"):
+    def highlight_state_set(
+        self, states: set[stormvogel.model.State], color: str | None = "blue"
+    ):
         """Highlights a set of states in the model by changing their color.
 
         Iterates over each state ID in the provided set and applies the given
@@ -768,7 +778,12 @@ class JSVisualization(VisualizationBase):
 
     def highlight_decomposition(
         self,
-        decomp: list[tuple[set[stormvogel.model.State], set[tuple[stormvogel.model.State, stormvogel.model.Action]]]],
+        decomp: list[
+            tuple[
+                set[stormvogel.model.State],
+                set[tuple[stormvogel.model.State, stormvogel.model.Action]],
+            ]
+        ],
         colors: list[str] | None = None,
     ):
         """Highlight a set of tuples of (states and actions) in the model by changing their color.
@@ -942,8 +957,20 @@ class MplVisualization(VisualizationBase):
         self.title = title or ""
         self.interactive = interactive
         self.hover_node = hover_node
-        self._highlights: dict[stormvogel.model.State | tuple[stormvogel.model.State, stormvogel.model.Action], str] = dict()
-        self._edge_highlights: dict[tuple[stormvogel.model.State | tuple[stormvogel.model.State, stormvogel.model.Action], stormvogel.model.State | tuple[stormvogel.model.State, stormvogel.model.Action]], str] = dict()
+        self._highlights: dict[
+            stormvogel.model.State
+            | tuple[stormvogel.model.State, stormvogel.model.Action],
+            str,
+        ] = dict()
+        self._edge_highlights: dict[
+            tuple[
+                stormvogel.model.State
+                | tuple[stormvogel.model.State, stormvogel.model.Action],
+                stormvogel.model.State
+                | tuple[stormvogel.model.State, stormvogel.model.Action],
+            ],
+            str,
+        ] = dict()
         self._fig = None
         if self.scheduler is not None:
             self.highlight_scheduler(self.scheduler)
@@ -983,7 +1010,14 @@ class MplVisualization(VisualizationBase):
         action_node = (state, action)
         self._highlights[action_node] = color
 
-    def highlight_edge(self, from_: stormvogel.model.State | tuple[stormvogel.model.State, stormvogel.model.Action], to_: stormvogel.model.State | tuple[stormvogel.model.State, stormvogel.model.Action], color: str = "red") -> None:
+    def highlight_edge(
+        self,
+        from_: stormvogel.model.State
+        | tuple[stormvogel.model.State, stormvogel.model.Action],
+        to_: stormvogel.model.State
+        | tuple[stormvogel.model.State, stormvogel.model.Action],
+        color: str = "red",
+    ) -> None:
         """Highlights an edge between two nodes by setting its color.
 
         Args:

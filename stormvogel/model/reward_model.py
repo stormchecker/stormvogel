@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from stormvogel.model.model import Model
 
+
 @dataclass(eq=True, order=True)
 class RewardModel[ValueType: Value]:
     """Represents a state-exit reward model.
@@ -25,9 +26,7 @@ class RewardModel[ValueType: Value]:
     The function update_rewards can be called to update rewards. After this, rewards will correspond to intermediate_rewards.
     Note that in models without actions, EmptyAction will be used here."""
 
-    def __init__(
-        self, name: str, model: "Model", rewards: dict[State, ValueType]
-    ):
+    def __init__(self, name: str, model: "Model", rewards: dict[State, ValueType]):
         self.name = name
         self.rewards = rewards
         self.model = model

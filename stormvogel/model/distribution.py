@@ -3,17 +3,18 @@
 from stormvogel.model.value import Value
 from dataclasses import dataclass
 
+
 @dataclass
 class Distribution[ValueType: Value, SupportType]:
     """A sparse distribution."""
-    distribution: list[tuple[ValueType, SupportType]]
 
+    distribution: list[tuple[ValueType, SupportType]]
 
     @property
     def support(self) -> set[SupportType]:
         """Returns the support of this distribution."""
         return set(s for _, s in self.distribution)
-    
+
     @property
     def values(self) -> list[ValueType]:
         """Returns the values of this distribution."""
@@ -30,7 +31,6 @@ class Distribution[ValueType: Value, SupportType]:
             parts.append(f"{value} -> {support}")
         return ", ".join(parts)
 
-    
     def __add__(self, other):
         if not isinstance(other, Distribution):
             raise TypeError("Can only add Distribution to Distribution")
@@ -47,4 +47,3 @@ class Distribution[ValueType: Value, SupportType]:
 
     def __len__(self) -> int:
         return len(self.distribution)
-    

@@ -1,5 +1,3 @@
-from typing import Optional, Union, cast
-
 from stormvogel import parametric
 from stormvogel.model.action import EmptyAction
 from stormvogel.model.distribution import Distribution
@@ -10,6 +8,7 @@ try:
     import stormpy
 except ImportError:
     stormpy = None
+
 
 def convert_polynomial_to_stormpy(
     polynomial: parametric.Polynomial,
@@ -37,6 +36,7 @@ def convert_polynomial_to_stormpy(
         polynomial, stormpy.pycarl.cln.factorization_cache
     )
     return factorized_polynomial
+
 
 def value_to_stormpy(
     value: Value,
@@ -84,6 +84,7 @@ def value_to_stormpy(
         return interval
     else:
         return value
+
 
 def build_matrix(
     model: Model,
@@ -146,15 +147,13 @@ def build_matrix(
                 )
 
             # if there is an action then add the label to the choice
-            if (
-                not action[0] == EmptyAction
-                and choice_labeling is not None
-            ):
+            if not action[0] == EmptyAction and choice_labeling is not None:
                 if action[0].label is not None:
                     choice_labeling.add_label_to_choice(action[0].label, row_index)
             row_index += 1
 
     return builder.build()
+
 
 def build_choice_labeling(model: Model):
     """
@@ -174,6 +173,7 @@ def build_choice_labeling(model: Model):
 
     return choice_labeling
 
+
 def build_state_labeling(model: Model) -> stormpy.storage.StateLabeling:
     """
     Takes a model and creates a state labelling object that determines which states get which labels in the stormpy representation
@@ -192,6 +192,7 @@ def build_state_labeling(model: Model) -> stormpy.storage.StateLabeling:
 
     return state_labeling
 
+
 def build_reward_models(
     model: Model,
 ) -> dict[str, stormpy.SparseRewardModel]:
@@ -207,6 +208,7 @@ def build_reward_models(
         )
 
     return reward_models
+
 
 def build_state_valuations(model: Model) -> stormpy.storage.StateValuation:
     """
@@ -236,6 +238,7 @@ def build_state_valuations(model: Model) -> stormpy.storage.StateValuation:
 
     return valuations.build()
 
+
 def build_observations(model: Model) -> list[int]:
     """
     Builds the observation mapping for POMDPs
@@ -246,22 +249,27 @@ def build_observations(model: Model) -> list[int]:
             raise NotImplementedError(
                 "Strompy does not support probabilistic observations in POMDPs."
             )
-        
-        if model.observations is None or model.observation not in model.observations or state.observation is None:
+
+        if (
+            model.observations is None
+            or model.observation not in model.observations
+            or state.observation is None
+        ):
             raise RuntimeError(
                 f"State {state} has an observation {state.observation} that is not in the model's observations."
             )
-        
+
         observations.append(model.observations.index(state.observation))
 
     return observations
+
 
 def build_markovian_states_bitvector(model: Model) -> stormpy.BitVector:
     assert stormpy is not None
 
     if model.markovian_states is None:
         raise RuntimeError("Model does not have markovian states defined.")
-    
+
     markovian_state_ids = [state.stormpy_id for state in model.markovian_states]
     if isinstance(markovian_state_ids, list):
         markovian_states_bitvector = stormpy.storage.BitVector(
@@ -272,6 +280,7 @@ def build_markovian_states_bitvector(model: Model) -> stormpy.BitVector:
         markovian_states_bitvector = stormpy.storage.BitVector(0)
 
     return markovian_states_bitvector
+
 
 def build_dtmc(model: Model, matrix, state_labeling, reward_models, state_valuations):
     assert stormpy is not None
@@ -303,7 +312,15 @@ def build_dtmc(model: Model, matrix, state_labeling, reward_models, state_valuat
 
     return dtmc
 
-def build_mdp(model: Model, matrix, choice_labeling, state_labeling, reward_models, state_valuations):
+
+def build_mdp(
+    model: Model,
+    matrix,
+    choice_labeling,
+    state_labeling,
+    reward_models,
+    state_valuations,
+):
     assert stormpy is not None
 
     if model.is_parametric():
@@ -335,6 +352,7 @@ def build_mdp(model: Model, matrix, choice_labeling, state_labeling, reward_mode
         mdp = stormpy.storage.SparseMdp(components)
 
     return mdp
+
 
 def build_ctmc(model: Model, matrix, state_labeling, reward_models, state_valuations):
     assert stormpy is not None
@@ -369,7 +387,16 @@ def build_ctmc(model: Model, matrix, state_labeling, reward_models, state_valuat
 
     return ctmc
 
-def build_pomdp(model: Model, matrix, choice_labeling, state_labeling, observations, reward_models, state_valuations):
+
+def build_pomdp(
+    model: Model,
+    matrix,
+    choice_labeling,
+    state_labeling,
+    observations,
+    reward_models,
+    state_valuations,
+):
     assert stormpy is not None
 
     if model.is_parametric():
@@ -405,9 +432,18 @@ def build_pomdp(model: Model, matrix, choice_labeling, state_labeling, observati
 
     return pomdp
 
-def build_ma(model: Model, matrix, choice_labeling, state_labeling, markovian_states_bitvector, reward_models, state_valuations):
+
+def build_ma(
+    model: Model,
+    matrix,
+    choice_labeling,
+    state_labeling,
+    markovian_states_bitvector,
+    reward_models,
+    state_valuations,
+):
     assert stormpy is not None
-    
+
     if model.is_parametric():
         components = stormpy.SparseParametricModelComponents(
             transition_matrix=matrix,
@@ -440,6 +476,7 @@ def build_ma(model: Model, matrix, choice_labeling, state_labeling, markovian_st
         ma = stormpy.storage.SparseMA(components)
 
     return ma
+
 
 def stormvogel_to_stormpy(
     model: Model,
@@ -484,7 +521,9 @@ def stormvogel_to_stormpy(
 
     # we check the type to handle the model correctly
     if model.type == ModelType.DTMC:
-        return build_dtmc(model, matrix, state_labeling, reward_models, state_valuations)
+        return build_dtmc(
+            model, matrix, state_labeling, reward_models, state_valuations
+        )
     elif model.type == ModelType.MDP:
         return build_mdp(
             model,
@@ -495,7 +534,9 @@ def stormvogel_to_stormpy(
             state_valuations,
         )
     elif model.type == ModelType.CTMC:
-        return build_ctmc(model, matrix, state_labeling, reward_models, state_valuations)
+        return build_ctmc(
+            model, matrix, state_labeling, reward_models, state_valuations
+        )
     elif model.type == ModelType.POMDP:
         return build_pomdp(
             model,

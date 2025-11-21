@@ -1,7 +1,6 @@
 from enum import Enum
-from typing import Iterable, Any, cast
+from typing import Iterable, Any
 from uuid import UUID
-import functools
 
 from deprecated import deprecated
 
@@ -16,6 +15,7 @@ from stormvogel.model.value import Value, Interval, Number
 from stormvogel.model.state import State
 from stormvogel.parametric import Parametric
 from stormvogel.model.reward_model import RewardModel
+
 
 class ModelType(Enum):
     """The type of the model."""
@@ -49,7 +49,10 @@ class Model[ValueType: Value]:
     observations: list[Observation] | None
 
     state_valuations: dict[State[ValueType], dict[str, Any]]
-    state_observations: dict[State[ValueType], Observation | Distribution[ValueType, Observation]] | None
+    state_observations: (
+        dict[State[ValueType], Observation | Distribution[ValueType, Observation]]
+        | None
+    )
     state_names: dict[State[ValueType], str | None]
 
     state_labels: dict[str, set[State[ValueType]]]
@@ -81,18 +84,21 @@ class Model[ValueType: Value]:
 
         # Add the initial state if specified to do so
         if create_initial_state:
-            self.new_state(["init"])
-    
+            if self.supports_observations():
+                self.new_state(["init"], observation=Observation("init"))
+            else:
+                self.new_state(["init"])
+
     def _get_value_type(self) -> type:
         """Returns the ValueType of this model."""
         return self.__orig_class__.__args__[0]
-    
+
     @property
     def actions(self) -> Iterable[Action]:
         """Extracts the actions from a model that supports actions."""
         if not self.supports_actions():
             raise RuntimeError("This model does not support actions.")
-        
+
         for choice in self.choices.values():
             yield from choice.choices.keys()
 
@@ -105,7 +111,9 @@ class Model[ValueType: Value]:
     def summary(self):
         """Give a short summary of the model."""
         choices_bit = (
-            f"{sum(len(choices.choices) for choices in self.choices)} choices, " if self.supports_actions() is not None else ""
+            f"{sum(len(choices.choices) for choices in self.choices)} choices, "
+            if self.supports_actions() is not None
+            else ""
         )
         return (
             f"{self.model_type} model with {len(self.states)} states, "
@@ -164,12 +172,7 @@ class Model[ValueType: Value]:
         if self.is_parametric() or self.is_interval_model():
             return True
         if not self.supports_rates():
-            return all(
-                [
-                    self.choices[state].is_stochastic(epsilon)
-                    for state in self
-                ]
-            )
+            return all([self.choices[state].is_stochastic(epsilon) for state in self])
         else:
             for state in self:
                 for action in state.available_actions():
@@ -257,10 +260,10 @@ class Model[ValueType: Value]:
         """Sets (dummy) value to variables in all states where they don't have a value yet."""
 
         # we either set it at all variables or just at a given subset of variables
-        v = self.variables
-        if v is not None:
+        if variables is not None:
             v = variables
-        assert v is not None
+        else:
+            v = self.variables
 
         # we set the values
         for state in self:
@@ -333,7 +336,7 @@ class Model[ValueType: Value]:
 
         if not isinstance(choices, Choices):
             choices = choices_from_shorthand(choices)
-        
+
         if choices.has_zero_transition() and not self.supports_rates():
             raise RuntimeError("All transition probabilities should be nonzero.")
 
@@ -435,7 +438,7 @@ class Model[ValueType: Value]:
         for action in self.actions:
             if action.label == name:
                 return action
-            
+
         raise RuntimeError(f"Action with name {name} not found.")
 
     def new_state(
@@ -447,25 +450,25 @@ class Model[ValueType: Value]:
     ) -> State:
         """Creates a new state and returns it."""
         state = State(self)
-        
+
         self.states.append(state)
 
         self.state_valuations[state] = dict()
         self.state_names[state] = name
         self.state_valuations[state] = dict()
-        
+
         if labels is not None and isinstance(labels, list):
             for l in labels:
                 state.add_label(l)
         elif labels is not None and isinstance(labels, str):
             state.add_label(labels)
-        
+
         if valuations is not None:
             for var, val in valuations.items():
                 state.add_valuation(var, val)
-        
+
         self.choices[state] = Choices(dict())
-        
+
         if self.supports_observations() and observation is None:
             raise RuntimeError(
                 "Tried to create a state in a model that supports observations without providing an observation."
@@ -476,7 +479,7 @@ class Model[ValueType: Value]:
                     "Tried to set an observation on a model that does not support observations."
                 )
             state.observation = observation
-        
+
         return state
 
     def get_states_with_label(self, label: str) -> set[State]:
@@ -496,7 +499,7 @@ class Model[ValueType: Value]:
             if name == state_name:
                 return state
         return None
-    
+
     def get_state_by_stormpy_id(self, stormpy_id: int) -> State:
         """Get a state by its stormpy id (index in the states list)."""
         if stormpy_id < 0 or stormpy_id >= len(self.states):
@@ -506,7 +509,7 @@ class Model[ValueType: Value]:
     @property
     def initial_state(self) -> State:
         """Gets the initial state (contains label "init", or has id 0)."""
-        
+
         if len(self.state_labels["init"]) != 1:
             raise RuntimeError(
                 "Model does not have exactly one initial state with label 'init'."
@@ -604,7 +607,7 @@ class Model[ValueType: Value]:
         for observation in self.observations:
             if observation.alias == alias:
                 return observation
-        
+
         raise RuntimeError(f"Observation with alias {alias} not found.")
 
     def observation(
@@ -622,7 +625,7 @@ class Model[ValueType: Value]:
             return self.get_observation(alias)
         except RuntimeError:
             return self.new_observation(alias)
-    
+
     def to_dot(self) -> str:
         """Generates a dot representation of this model."""
         dot = "digraph model {\n"
@@ -653,7 +656,6 @@ class Model[ValueType: Value]:
             f"{id}: {transition}" for (id, transition) in self.choices.items()
         ]
 
-
         if (
             self.supports_actions()
             and self.supports_rates()
@@ -670,29 +672,36 @@ class Model[ValueType: Value]:
     def __iter__(self):
         return iter(self.states)
 
+
 def new_dtmc(create_initial_state: bool = True) -> Model:
     """Creates a DTMC."""
     return Model(ModelType.DTMC, create_initial_state)
+
 
 def new_mdp(create_initial_state: bool = True) -> Model:
     """Creates an MDP."""
     return Model(ModelType.MDP, create_initial_state)
 
+
 def new_ctmc(create_initial_state: bool = True) -> Model:
     """Creates a CTMC."""
     return Model(ModelType.CTMC, create_initial_state)
+
 
 def new_pomdp(create_initial_state: bool = True) -> Model:
     """Creates a POMDP."""
     return Model(ModelType.POMDP, create_initial_state)
 
+
 def new_hmm(create_initial_state: bool = True) -> Model:
     """Creates a HMM."""
     return Model(ModelType.HMM, create_initial_state)
 
+
 def new_ma(create_initial_state: bool = True) -> Model:
     """Creates a MA."""
     return Model(ModelType.MA, create_initial_state)
+
 
 def new_model(modeltype: ModelType, create_initial_state: bool = True) -> Model:
     """More general model creation function"""

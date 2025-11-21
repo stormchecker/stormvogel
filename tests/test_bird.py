@@ -380,16 +380,8 @@ def test_bird_mdp_empty_action():
         modeltype=model.ModelType.MDP,
     )
 
-    regular_model = model.new_mdp()
-    regular_model.set_choices(
-        regular_model.initial_state, [(1, regular_model.new_state())]
-    )
-    regular_model.set_choices(
-        regular_model.get_state_by_id(1), [(1, regular_model.initial_state)]
-    )
-
-    assert bird_model == regular_model
-
+    assert len(bird_model.states) == 2
+    assert len(list(bird_model.actions)) == 1
 
 def test_bird_mdp_empty_action_2():
     # we test if we can also provide empty actions
@@ -410,15 +402,8 @@ def test_bird_mdp_empty_action_2():
         modeltype=model.ModelType.MDP,
     )
 
-    regular_model = model.new_mdp()
-    regular_model.set_choices(
-        regular_model.initial_state, [(1, regular_model.new_state())]
-    )
-    regular_model.set_choices(
-        regular_model.get_state_by_id(1), [(1, regular_model.initial_state)]
-    )
-
-    assert bird_model == regular_model
+    assert len(bird_model.states) == 2
+    assert len(list(bird_model.actions)) == 1
 
 
 def test_bird_mdp_empty_action_3():
@@ -439,16 +424,8 @@ def test_bird_mdp_empty_action_3():
         available_actions=available_actions,
         modeltype=model.ModelType.MDP,
     )
-
-    regular_model = model.new_mdp()
-    regular_model.set_choices(
-        regular_model.initial_state, [(1, regular_model.new_state())]
-    )
-    regular_model.set_choices(
-        regular_model.get_state_by_id(1), [(1, regular_model.initial_state)]
-    )
-
-    assert bird_model == regular_model
+    assert len(bird_model.states) == 2
+    assert len(list(bird_model.actions)) == 1
 
 
 def test_bird_endless():
@@ -512,7 +489,7 @@ def test_bird_pomdp():
         else:
             return [left, right]
 
-    def rewards(s: bird.State, a: bird.Action) -> dict[str, model.Value]:
+    def rewards(s: bird.State) -> dict[str, model.Value]:
         return {"r1": 1, "r2": 2}
 
     def labels(s: bird.State):

@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 from fractions import Fraction
 
@@ -7,6 +6,7 @@ from stormvogel import parametric
 import math
 
 Number = int | float | Fraction
+
 
 @dataclass
 class Interval:
@@ -43,8 +43,8 @@ class Interval:
         return f"[{self.bottom},{self.top}]"
 
 
-
 Value = Number | parametric.Parametric | Interval
+
 
 def value_to_string(
     n: Value, use_fractions: bool = True, round_digits: int = 4, denom_limit: int = 1000

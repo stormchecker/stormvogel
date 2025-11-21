@@ -1,7 +1,7 @@
-
 from dataclasses import dataclass
 from uuid import UUID, uuid4
 from typing import Any
+
 
 @dataclass
 class Observation:

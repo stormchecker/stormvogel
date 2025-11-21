@@ -9,7 +9,7 @@ def create_monty_hall_pomdp():
 
     # first choose car position
     init.set_choices(
-        [(1 / 3, pomdp.new_state("carchosen", {"car_pos": i})) for i in range(3)]
+        [(1 / 3, pomdp.new_state("carchosen", {"car_pos": i}, observation=stormvogel.model.Observation("carchosen"))) for i in range(3)]
     )
 
     # we choose a door in each case
@@ -18,7 +18,7 @@ def create_monty_hall_pomdp():
             [
                 (
                     pomdp.action(f"open{i}"),
-                    pomdp.new_state("open", s.valuations | {"chosen_pos": i}),
+                    pomdp.new_state("open", s.valuations | {"chosen_pos": i}, observation=stormvogel.model.Observation("open")),
                 )
                 for i in range(3)
             ]
@@ -34,7 +34,7 @@ def create_monty_hall_pomdp():
             [
                 (
                     1 / len(other_pos),
-                    pomdp.new_state("goatrevealed", s.valuations | {"reveal_pos": i}),
+                    pomdp.new_state("goatrevealed", s.valuations | {"reveal_pos": i}, observation=stormvogel.model.Observation(f"goatrevealed{i}")),
                 )
                 for i in other_pos
             ]
@@ -54,6 +54,7 @@ def create_monty_hall_pomdp():
                     pomdp.new_state(
                         ["done"] + (["target"] if chosen_pos == car_pos else []),
                         s.valuations | {"chosen_pos": chosen_pos},
+                        observation=stormvogel.model.Observation("stay"),
                     ),
                 ),
                 (
@@ -61,6 +62,7 @@ def create_monty_hall_pomdp():
                     pomdp.new_state(
                         ["done"] + (["target"] if other_pos == car_pos else []),
                         s.valuations | {"chosen_pos": other_pos},
+                        observation=stormvogel.model.Observation("switch"),
                     ),
                 ),
             ]
@@ -72,9 +74,7 @@ def create_monty_hall_pomdp():
     # we set the value -1 to all unassigned variables in the states
     pomdp.add_valuation_at_remaining_states(value=-1)
 
-    # # we add the observations TODO: let it make sense
-    # for state in pomdp:
-    #     state.set_observation(pomdp.observation(state))
+    # we add the observations TODO: let it make sense
 
     return pomdp
 
