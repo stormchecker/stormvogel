@@ -354,9 +354,11 @@ class Action:
             return NotImplemented
         return str(self.label) < str(other.label)
 
-    def __str__(self):
-        return f"Action with label {self.label}"
+    def __str__(self) -> str:
+        return self.label if self.label is not None else ""
 
+    def __repr__(self) -> str:
+        return f"[Action: {self.label}]" if self.label is not None else "[Action: None]"
 
 # The empty action. Used for DTMCs and empty action transitions in mdps.
 EmptyAction = Action(None)
@@ -530,7 +532,7 @@ def choice_from_shorthand(shorthand: ChoiceShorthand, model: "Model") -> Choices
 
         transition_content = dict()
         for action, branch in shorthand.items():
-            assert isinstance(action, Action)
+            assert isinstance(action, Action), f"Expected Action, got {action} with type {type(action)}"
             transition_content[action] = Branches(branch)
         return Choices(transition_content)
     else:
@@ -573,7 +575,7 @@ class RewardModel:
     name: str
     model: "Model"
     rewards: dict[Tuple[int, Action], Value]
-    """Rewards dict. Hashed by state id and Action.
+    """Rewards dict, per state id and Action.
     The function update_rewards can be called to update rewards. After this, rewards will correspond to intermediate_rewards.
     Note that in models without actions, EmptyAction will be used here."""
 
@@ -616,7 +618,7 @@ class RewardModel:
                 raise RuntimeError("This action is not available in this state")
         else:
             raise RuntimeError(
-                "The model this rewardmodel belongs to does not support actions"
+                "The model this reward model belongs to does not support actions"
             )
 
     def set_state_reward(self, state: State, value: Value):
@@ -930,7 +932,7 @@ class Model:
                 state.get_choices() is None
             ):  # TODO what if the state has a choice but it is empty?
                 self.set_choice(
-                    state, [(float(0) if self.supports_rates() else float(1), state)]
+                    state, [(float(1) if self.supports_rates() else float(1), state)]
                 )
 
     def add_valuation_at_remaining_states(
@@ -1266,7 +1268,7 @@ class Model:
                 [], valuations or {}, state_id, self, observation=observation, name=name
             )
         else:
-            raise RuntimeError("Unkown type for labels.")
+            raise RuntimeError("Unknown type for labels.")
 
         self.states[state_id] = state
 
@@ -1319,7 +1321,7 @@ class Model:
 
     def get_ordered_labels(self) -> list[list[str]]:
         """Get all the labels of this model, ordered by id.
-        IMPORTANT: If a state has no label, then a value '' is inserted!"""
+        IMPORTANT: If a state has no label, then a value [] is inserted!"""
         return [(s.labels if len(s.labels) > 0 else []) for s in self.get_states()]
 
     def get_labels(self) -> set[str]:

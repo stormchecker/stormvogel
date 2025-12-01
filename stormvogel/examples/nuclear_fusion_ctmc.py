@@ -18,7 +18,7 @@ def create_nuclear_fusion_ctmc():
     ctmc.get_state_by_id(3).set_choice([(12, ctmc.new_state("Supernova"))])
 
     # we add the rates which are equal to whats in the choices since the probabilities are all 1
-    rates = [3, 2, 7, 12, 0]
+    rates = [3, 2, 7, 12, 1]
     for i in range(5):
         ctmc.set_rate(ctmc.get_state_by_id(i), rates[i])
 
