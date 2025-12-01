@@ -11,12 +11,12 @@ except ImportError:
 @pytest.mark.tags("stormpy")
 def test_convert_imc():
     imc = stormvogel.model.new_dtmc()
-    init = imc.get_initial_state()
+    init = imc.initial_state
 
     imc.new_state(labels="A")
     imc.new_state(labels="B")
 
-    init.set_choice(
+    init.set_choices(
         [
             (
                 stormvogel.model.Interval(1 / 3, 2 / 3),

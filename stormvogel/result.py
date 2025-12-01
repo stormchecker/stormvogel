@@ -14,24 +14,22 @@ class Scheduler:
 
     model: stormvogel.model.Model
     # taken actions are hashed by the state id
-    taken_actions: dict[int, stormvogel.model.Action]
+    taken_actions: dict[stormvogel.model.State, stormvogel.model.Action]
 
     def __init__(
         self,
         model: stormvogel.model.Model,
-        taken_actions: dict[int, stormvogel.model.Action],
+        taken_actions: dict[stormvogel.model.State, stormvogel.model.Action],
     ):
         self.model = model
         self.taken_actions = taken_actions
 
     def get_action_at_state(
-        self, state: stormvogel.model.State | int
+        self, state: stormvogel.model.State
     ) -> stormvogel.model.Action:
         """returns the action in the scheduler for the given state if present in the model"""
-        if isinstance(state, int):
-            state = self.model.get_state_by_id(state)
         if state in self.model.states.values():
-            return self.taken_actions[state.id]
+            return self.taken_actions[state]
         else:
             raise RuntimeError("This state is not a part of the model")
 
@@ -45,12 +43,14 @@ class Scheduler:
                 induced_dtmc.new_reward_model(reward_model.name)
 
             # we add all the states and transitions according to the chosen actions
-            for _, state in self.model:
-                induced_dtmc.new_state(labels=state.labels, valuations=state.valuations)
+            for state in self.model:
+                induced_dtmc.new_state(
+                    labels=list(state.labels), valuations=state.valuations
+                )
                 action = self.get_action_at_state(state)
                 choice = state.get_outgoing_transitions(action)
                 assert choice is not None
-                induced_dtmc.add_choice(s=state, choices=choice)
+                induced_dtmc.add_choices(s=state, choices=choice)
 
                 # we also add the rewards
                 for reward_model in self.model.rewards:
@@ -73,7 +73,7 @@ class Scheduler:
 
 def random_scheduler(model: stormvogel.model.Model) -> Scheduler:
     """Create a random scheduler for the provided model."""
-    choices = {i: random.choice(s.available_actions()) for (i, s) in model}
+    choices = {state: random.choice(state.available_actions()) for state in model}
     return Scheduler(model, taken_actions=choices)
 
 
@@ -88,7 +88,7 @@ class Result:
 
     model: stormvogel.model.Model
     # values are hashed by the state id:
-    values: dict[int, stormvogel.model.Value]
+    values: dict[stormvogel.model.State, stormvogel.model.Value]
     scheduler: Scheduler | None
 
     def __init__(
@@ -106,16 +106,14 @@ class Result:
             self.scheduler = None
 
     def get_result_of_state(
-        self, state: stormvogel.model.State | int
+        self, state: stormvogel.model.State
     ) -> stormvogel.model.Value | None:
         """returns the model checking result for a given state"""
-        if isinstance(state, int) and state in self.model.states.keys():
-            return self.values[state]
         if (
             isinstance(state, stormvogel.model.State)
             and state in self.model.states.values()
         ):
-            return self.values[state.id]
+            return self.values[state]
         else:
             raise RuntimeError("This state is not a part of the model")
 

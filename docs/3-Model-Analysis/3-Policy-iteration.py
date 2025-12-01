@@ -65,7 +65,7 @@ def policy_iteration(
             if clear:
                 vis.clear()
 
-        choices = {
+        set_choices{
             i: arg_max(
                 [
                     lambda a: sum(

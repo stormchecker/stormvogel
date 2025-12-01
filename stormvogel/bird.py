@@ -281,7 +281,7 @@ def build_bird[ValueType: stormvogel.model.Value](
 
         s = state_lookup[state]
         assert s is not None
-        model.add_choice(
+        model.add_choices(
             s,
             choice,
         )
@@ -296,79 +296,35 @@ def build_bird[ValueType: stormvogel.model.Value](
 
     # we add the rewards
     if rewards is not None:
-        if model.supports_actions():
-            # we first create the right number of reward models
-            assert available_actions is not None
-            rewards = cast(Callable[[Any, Action], dict[str, ValueType]], rewards)
-            for reward in rewards(init, available_actions(init)[0]).items():
-                model.new_reward_model(reward[0])
+        # we first create the right number of reward models
+        rewards = cast(Callable[[Any], dict[str, ValueType]], rewards)
+        for reward in rewards(init).items():
+            model.new_reward_model(reward[0])
 
-            # we take the initial state reward to compare later
-            action = available_actions(init)[0]
-            initial_state_rewards = rewards(init, action)
+        initial_state_rewards = rewards(init)
+        for state, s in state_lookup.items():
+            rewarddict = rewards(state)
 
-            for state, s in state_lookup.items():
-                assert available_actions is not None
-                for action in available_actions(state):
-                    rewarddict = rewards(state, action)
+            # we check for the rewards when the function does not return a dict object
+            # or the length is not always the same
+            if rewarddict is None:
+                raise ValueError(
+                    f"On input {state}, the rewards function does not have a return value"
+                )
 
-                    # we check for the rewards when the function does not return a dict object
-                    # or the length is not always the same
-                    if rewarddict is None:
-                        raise ValueError(
-                            f"On input pair {state} {action}, the rewards function does not have a return value"
-                        )
+            if not isinstance(rewarddict, dict):
+                raise ValueError(
+                    f"On input {state}, the rewards function does not return a dictionary. Make sure to change it to the format {{<rewardmodel name>:<reward>,...}}"
+                )
+            if rewarddict.keys() != initial_state_rewards.keys():
+                raise ValueError(
+                    "Make sure that the rewards function returns a dictionary with the same keys on each return"
+                )
 
-                    if not isinstance(rewarddict, dict):
-                        raise ValueError(
-                            f"On input pair {state} {action}, the rewards function does not return a dictionary. Make sure to change it to the format {{<rewardmodel>:<reward>,...}}"
-                        )
-                    if rewarddict.keys() != initial_state_rewards.keys():
-                        raise ValueError(
-                            "Make sure that the rewards function returns a dictionary with the same keys on each return"
-                        )
-
-                    assert s is not None
-                    for index, reward in enumerate(rewarddict.items()):
-                        # Convert empty strings to None for the empty action
-                        action_label = None if action == "" else action
-                        a = model.get_action_with_label(action_label)
-                        assert a is not None
-                        model.rewards[index].set_state_action_reward(
-                            s,
-                            a,
-                            reward[1],
-                        )
-        else:
-            # we first create the right number of reward models
-            rewards = cast(Callable[[Any], dict[str, ValueType]], rewards)
-            for reward in rewards(init).items():
-                model.new_reward_model(reward[0])
-
-            initial_state_rewards = rewards(init)
-            for state, s in state_lookup.items():
-                rewarddict = rewards(state)
-
-                # we check for the rewards when the function does not return a dict object
-                # or the length is not always the same
-                if rewarddict is None:
-                    raise ValueError(
-                        f"On input {state}, the rewards function does not have a return value"
-                    )
-
-                if not isinstance(rewarddict, dict):
-                    raise ValueError(
-                        f"On input {state}, the rewards function does not return a dictionary. Make sure to change it to the format {{<rewardmodel name>:<reward>,...}}"
-                    )
-                if rewarddict.keys() != initial_state_rewards.keys():
-                    raise ValueError(
-                        "Make sure that the rewards function returns a dictionary with the same keys on each return"
-                    )
-
-                s = state_lookup[state]
-                assert s is not None
-                for index, reward in enumerate(rewarddict.items()):
-                    model.rewards[index].set_state_reward(s, reward[1])
+            s = state_lookup[state]
+            assert s is not None
+            for index, reward in enumerate(rewarddict.items()):
+                model.rewards[index].set_state_reward(s, reward[1])
 
     # we add the observations
     if observations is not None:

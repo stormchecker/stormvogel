@@ -3,7 +3,7 @@ def example_building_mdps_01():
     import stormpy
 
     nr_states = 13
-    nr_choices = 14
+    nr_set_choices14
 
     # Transition matrix with custom row grouping: nondeterministic choice over the actions available in states
     builder = stormpy.SparseMatrixBuilder(

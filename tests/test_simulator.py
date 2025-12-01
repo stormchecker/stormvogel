@@ -24,9 +24,9 @@ def test_simulate():
 
     # we make the partial model that should be created by the simulator
     other_dtmc = stormvogel.model.new_dtmc()
-    init = other_dtmc.get_initial_state()
+    init = other_dtmc.initial_state
     init.valuations = {"rolled": 0}
-    init.set_choice(
+    init.set_choices(
         [
             (1 / 6, other_dtmc.new_state("rolled2", valuations={"rolled": 2})),
             (1 / 6, other_dtmc.new_state("rolled4", valuations={"rolled": 4})),
@@ -64,9 +64,9 @@ def test_simulate():
 
     # we make the partial model that should be created by the simulator
     other_mdp = stormvogel.model.new_mdp()
-    init = other_mdp.get_initial_state()
+    init = other_mdp.initial_state
     init.valuations = {"reveal_pos": -1, "car_pos": -1, "chosen_pos": -1}
-    init.set_choice(
+    init.set_choices(
         [
             (
                 1 / 3,
@@ -89,8 +89,8 @@ def test_simulate():
     )
     action1 = other_mdp.new_action("open0")
     transition = stormvogel.model.Choices({action1: branch})
-    other_mdp.get_state_by_id(1).set_choice(transition)
-    other_mdp.get_state_by_id(2).add_choice(
+    other_mdp.get_state_by_id(1).set_choicestransition
+    other_mdp.get_state_by_id(2).add_choices(
         [
             (
                 0.5,
@@ -132,9 +132,9 @@ def test_simulate():
 
     # we make the partial model that should be created by the simulator
     other_mdp = stormvogel.model.new_mdp()
-    init = other_mdp.get_initial_state()
+    init = other_mdp.initial_state
     init.valuations = {"reveal_pos": -1, "chosen_pos": -1, "car_pos": -1}
-    other_mdp.get_initial_state().set_choice(
+    other_mdp.initial_state.set_choices(
         [
             (
                 1 / 3,
@@ -157,8 +157,8 @@ def test_simulate():
     )
     action1 = other_mdp.new_action("open0")
     transition = stormvogel.model.Choices({action1: branch})
-    other_mdp.get_state_by_id(1).set_choice(transition)
-    other_mdp.get_state_by_id(2).set_choice(
+    other_mdp.get_state_by_id(1).set_choicestransition
+    other_mdp.get_state_by_id(2).set_choices(
         [
             (
                 0.5,
@@ -177,14 +177,14 @@ def test_simulate():
     partial_model = simulator.simulate(lion, steps=100, seed=1, scheduler=scheduler)
 
     lion = stormvogel.model.new_mdp()
-    init = lion.get_initial_state()
+    init = lion.initial_state
     hungry = lion.new_state("hungry :(")
     satisfied = init
     full = lion.new_state("full")
     starving = lion.new_state("starving :((")
     hunt = lion.new_action("hunt >:D")
 
-    satisfied.set_choice(
+    satisfied.set_choices(
         stormvogel.model.Choices(
             {
                 hunt: stormvogel.model.Branches(
@@ -194,7 +194,7 @@ def test_simulate():
         )
     )
 
-    hungry.set_choice(
+    hungry.set_choices(
         stormvogel.model.Choices(
             {
                 hunt: stormvogel.model.Branches(
@@ -204,7 +204,7 @@ def test_simulate():
         )
     )
 
-    full.set_choice(
+    full.set_choices(
         stormvogel.model.Choices(
             {
                 hunt: stormvogel.model.Branches(
@@ -217,7 +217,7 @@ def test_simulate():
         )
     )
 
-    starving.set_choice(
+    starving.set_choices(
         stormvogel.model.Choices(
             {
                 hunt: stormvogel.model.Branches(0.2, hungry),

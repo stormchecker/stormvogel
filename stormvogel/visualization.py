@@ -159,7 +159,7 @@ class VisualizationBase:
         """Create a String that shows the observation for this state (FOR POMDPs).
         Starts with newline."""
         if (
-            s.observation is None
+            not self.model.supports_observations()
             or not self.layout.layout["state_properties"]["show_observations"]
         ):
             return ""
@@ -180,14 +180,14 @@ class VisualizationBase:
                 "\n"
                 + self.layout.layout["state_properties"]["observation_symbol"]
                 + " "
-                + str(s.observation.format())
+                + str(s.observation)
             )
 
     def _group_state(self, s: stormvogel.model.State, default: str) -> str:
         """The user can edit a number of subsets of the states individually, we call these groups.
         This function determines the group of this state. That is, the label of s that has the highest priority, as specified by the user under edit_groups.
         """
-        und_labels = set(map(lambda x: self._und(x), s.labels))
+        und_labels = set(map(self._und, s.labels))
         res = list(
             filter(
                 lambda x: x in und_labels, self.layout.layout["edit_groups"]["groups"]
@@ -195,13 +195,15 @@ class VisualizationBase:
         )
         return self._und(res[0]) if res != [] else default
 
-    def _group_action(self, s_id: int, a: stormvogel.model.Action, default: str) -> str:
+    def _group_action(
+        self, state: stormvogel.model.State, a: stormvogel.model.Action, default: str
+    ) -> str:
         """Return the group of this action. Only relevant for scheduling"""
         # Put the action in the group scheduled_actions if appropriate.
         if self.scheduler is None:
             return default
 
-        action = self.scheduler.get_action_at_state(self.model.get_state_by_id(s_id))
+        action = self.scheduler.get_action_at_state(state)
         return "scheduled_actions" if a == action else default
 
     def _format_rewards(
@@ -260,9 +262,7 @@ class VisualizationBase:
         rewards = self._format_rewards(state, stormvogel.model.EmptyAction)
         group = self._group_state(state, "states")
         id_label_part = (
-            f"{state.id}\n"
-            if self.layout.layout["state_properties"]["show_ids"]
-            else ""
+            f"{state}\n" if self.layout.layout["state_properties"]["show_ids"] else ""
         )
 
         color = None
@@ -307,7 +307,7 @@ class VisualizationBase:
                 - `"label"`: A string combining the action's labels and reward.
                 - `"model_action"`: The original `Action` object.
         """
-        reward = self._format_rewards(self.model.get_state_by_id(state.id), action)
+        reward = self._format_rewards(state, action)
 
         properties = {"label": (action.label or "") + reward, "model_action": action}
         return properties
@@ -334,7 +334,7 @@ class VisualizationBase:
         if transitions is None:
             return properties
         for prob, target in transitions:
-            if next_state.id == target.id:
+            if next_state == target.id:
                 properties["label"] = self._format_number(prob)
                 return properties
         return properties
@@ -382,10 +382,7 @@ class JSVisualization(VisualizationBase):
 
         super().__init__(model, layout, result, scheduler)
 
-        try:
-            self.initial_state_id = model.get_initial_state().id
-        except RuntimeError:
-            self.initial_state_id = 0
+        self.initial_state = model.initial_state
 
         if output is None:
             self.output = widgets.Output()
@@ -433,9 +430,7 @@ class JSVisualization(VisualizationBase):
             group = None
             match self.G.nodes[node]["type"]:
                 case NodeType.STATE:
-                    group = self._group_state(
-                        self.model.get_state_by_id(node), "states"
-                    )
+                    group = self._group_state(node, "states")
                 case NodeType.ACTION:
                     in_edges = list(self.G.in_edges(node))
                     assert (
@@ -464,7 +459,7 @@ class JSVisualization(VisualizationBase):
                     f", x: {self.layout.layout['positions'][node]['x']}, "
                     f"y: {self.layout.layout['positions'][node]['y']}"
                 )
-            if self.layout.layout["misc"]["explore"] and node != self.initial_state_id:
+            if self.layout.layout["misc"]["explore"] and node != self.initial_state:
                 current += ", hidden: true"
                 current += ", physics: false"
             if color is not None:
@@ -585,7 +580,7 @@ class JSVisualization(VisualizationBase):
         scaled = autoscale_svg(unescaped, width)
         return scaled
 
-    def enable_exploration_mode(self, initial_node_id: int):
+    def enable_exploration_mode(self, initial_state: stormvogel.model.State):
         """Enables exploration mode starting from a specified initial state.
 
         This method activates interactive exploration mode in the visualization
@@ -593,9 +588,9 @@ class JSVisualization(VisualizationBase):
         `show()` needs to be called after this method is executed to have an effect.
 
         Args:
-            initial_node_id (int): The ID of the state from which exploration should begin.
+            initial_state (State): The state from which exploration should begin.
         """
-        self.initial_state_id = initial_node_id
+        self.initial_state = initial_state
         self.layout.set_value(["misc", "explore"], True)
 
     def get_positions(self) -> dict[int, dict[str, int]]:
@@ -671,7 +666,12 @@ class JSVisualization(VisualizationBase):
         js = f"""{self.network_wrapper}.network.setOptions({self._get_options()});"""
         ipd.display(ipd.Javascript(js))
 
-    def set_node_color(self, node_id: int, color: str | None) -> None:
+    def set_node_color(
+        self,
+        obj: stormvogel.model.State
+        | tuple[stormvogel.model.State, stormvogel.model.Action],
+        color: str | None,
+    ) -> None:
         """Sets the color of a specific node in the visualization.
 
         This method updates the visual appearance of a node by changing its color
@@ -694,11 +694,11 @@ class JSVisualization(VisualizationBase):
         else:
             color = f'"{color}"'
 
-        js = f"""{self.network_wrapper}.setNodeColor({node_id}, {color});"""
+        js = f"""{self.network_wrapper}.setNodeColor({hash(obj)}, {color});"""
         ipd.display(ipd.Javascript(js))
         ipd.clear_output()
 
-    def highlight_state(self, state_id: int, color: str | None = "red"):
+    def highlight_state(self, state: stormvogel.model.State, color: str | None = "red"):
         """Highlights a single state in the model by changing its color.
 
         This method changes the color of the specified state node in the visualization.
@@ -712,11 +712,14 @@ class JSVisualization(VisualizationBase):
         Raises:
             AssertionError: If the state ID does not exist in the model graph.
         """
-        assert self.G.nodes.get(state_id) is not None, "State id not in ModelGraph"
-        self.set_node_color(state_id, color)
+        assert self.G.nodes.get(state) is not None, "State id not in ModelGraph"
+        self.set_node_color(state, color)
 
     def highlight_action(
-        self, state_id: int, action: stormvogel.model.Action, color: str | None = "red"
+        self,
+        state: stormvogel.model.State,
+        action: stormvogel.model.Action,
+        color: str | None = "red",
     ):
         """Highlights a single action in the model by changing its color.
 
@@ -734,14 +737,15 @@ class JSVisualization(VisualizationBase):
         import warnings
 
         try:
-            nt_id = self.G.state_action_id_map[(state_id, action)]
-            self.set_node_color(nt_id, color)
+            self.set_node_color((state, action), color)
         except KeyError:
             warnings.warn(
                 "Tried to highlight an action that is not present in this model."
             )
 
-    def highlight_state_set(self, state_ids: set[int], color: str | None = "blue"):
+    def highlight_state_set(
+        self, states: set[stormvogel.model.State], color: str | None = "blue"
+    ):
         """Highlights a set of states in the model by changing their color.
 
         Iterates over each state ID in the provided set and applies the given
@@ -751,12 +755,12 @@ class JSVisualization(VisualizationBase):
             state_ids (set[int]): A set of state IDs to highlight.
             color (str | None, optional): The color to apply. Defaults to "blue".
         """
-        for s_id in state_ids:
-            self.set_node_color(s_id, color)
+        for state in states:
+            self.set_node_color(state, color)
 
     def highlight_action_set(
         self,
-        state_action_set: set[tuple[int, stormvogel.model.Action]],
+        state_action_set: set[tuple[stormvogel.model.State, stormvogel.model.Action]],
         color: str = "red",
     ):
         """Highlights a set of actions in the model by changing their color.
@@ -769,12 +773,17 @@ class JSVisualization(VisualizationBase):
                 (state ID, action) pairs to highlight.
             color (str, optional): The color to apply. Defaults to "red".
         """
-        for s_id, a in state_action_set:
-            self.highlight_action(s_id, a, color)
+        for state, a in state_action_set:
+            self.highlight_action(state, a, color)
 
     def highlight_decomposition(
         self,
-        decomp: list[tuple[set[int], set[tuple[int, stormvogel.model.Action]]]],
+        decomp: list[
+            tuple[
+                set[stormvogel.model.State],
+                set[tuple[stormvogel.model.State, stormvogel.model.Action]],
+            ]
+        ],
         colors: list[str] | None = None,
     ):
         """Highlight a set of tuples of (states and actions) in the model by changing their color.
@@ -792,9 +801,9 @@ class JSVisualization(VisualizationBase):
 
     def clear_highlighting(self):
         """Clear all highlighting that is currently active, returning all states to their original colors."""
-        for s_id, _ in self.model:
-            self.set_node_color(s_id, None)
-        for a_id in self.G.state_action_id_map.values():
+        for state in self.model:
+            self.set_node_color(state, None)
+        for a_id in self.G.nodes:
             self.set_node_color(a_id, None)
 
     def highlight_path(
@@ -821,11 +830,9 @@ class JSVisualization(VisualizationBase):
                 sleep(delay)
                 if clear:
                     self.set_node_color(v.id, None)
-            elif (
-                isinstance(v, stormvogel.model.Action)
-                and (seq[i - 1].id, v) in self.G.state_action_id_map
-            ):
-                node_id = self.G.state_action_id_map[seq[i - 1].id, v]
+            elif isinstance(v, stormvogel.model.Action):
+                last_state = seq[i - 1]
+                node_id = (last_state.id, v)
                 self.set_node_color(node_id, color)
                 sleep(delay)
                 if clear:
@@ -950,14 +957,26 @@ class MplVisualization(VisualizationBase):
         self.title = title or ""
         self.interactive = interactive
         self.hover_node = hover_node
-        self._highlights: dict[int, str] = dict()
-        self._edge_highlights: dict[tuple[int, int], str] = dict()
+        self._highlights: dict[
+            stormvogel.model.State
+            | tuple[stormvogel.model.State, stormvogel.model.Action],
+            str,
+        ] = dict()
+        self._edge_highlights: dict[
+            tuple[
+                stormvogel.model.State
+                | tuple[stormvogel.model.State, stormvogel.model.Action],
+                stormvogel.model.State
+                | tuple[stormvogel.model.State, stormvogel.model.Action],
+            ],
+            str,
+        ] = dict()
         self._fig = None
         if self.scheduler is not None:
             self.highlight_scheduler(self.scheduler)
 
     def highlight_state(
-        self, state: stormvogel.model.State | int, color: str = "red"
+        self, state: stormvogel.model.State, color: str = "red"
     ) -> None:
         """Highlights a state node in the visualization by setting its color.
 
@@ -968,36 +987,37 @@ class MplVisualization(VisualizationBase):
         Raises:
             AssertionError: If the state node is not present in the model graph.
         """
-        if isinstance(state, stormvogel.model.State):
-            state = state.id
-        node = state
-        assert node in self.G.nodes, f"Node {node} not in graph"
+        assert state in self.G.nodes, f"Node {state} not in graph"
         self._highlights[state] = color
 
     def highlight_action(
         self,
-        state: stormvogel.model.State | int,
+        state: stormvogel.model.State,
         action: stormvogel.model.Action,
         color: str = "red",
     ) -> None:
         """Highlights an action node associated with a state by setting its color.
 
         Args:
-            state (stormvogel.model.State | int): The state object or state ID from which the action originates.
+            state (stormvogel.model.State): The state object from which the action originates.
             action (stormvogel.model.Action): The action to highlight.
             color (str, optional): The color to apply. Defaults to "red".
 
         Raises:
             AssertionError: If the state node is not present in the model graph.
         """
-        if isinstance(state, stormvogel.model.State):
-            state = state.id
-        state_node = state
-        assert state_node in self.G.nodes, f"Node {state_node} not in graph"
-        action_node = self.G.state_action_id_map[state_node, action]
+        assert state in self.G.nodes, f"Node {state} not in graph"
+        action_node = (state, action)
         self._highlights[action_node] = color
 
-    def highlight_edge(self, from_: int, to_: int, color: str = "red") -> None:
+    def highlight_edge(
+        self,
+        from_: stormvogel.model.State
+        | tuple[stormvogel.model.State, stormvogel.model.Action],
+        to_: stormvogel.model.State
+        | tuple[stormvogel.model.State, stormvogel.model.Action],
+        color: str = "red",
+    ) -> None:
         """Highlights an edge between two nodes by setting its color.
 
         Args:
@@ -1031,7 +1051,7 @@ class MplVisualization(VisualizationBase):
             self.highlight_state(state_id, color)
             if taken_action == stormvogel.model.EmptyAction:
                 continue
-            action_node = self.G.state_action_id_map[(state_id, taken_action)]
+            action_node = (state_id, taken_action)
             self.highlight_action(state_id, taken_action, color)
             self.highlight_edge(state_id, action_node, color)
             for start, end in self.G.out_edges(action_node):
