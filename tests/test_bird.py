@@ -27,7 +27,7 @@ def test_bird_mdp():
     def labels(s: bird.State):
         return [str(s.x)]
 
-    def delta(s: bird.State, action: bird.Action):
+    def delta(s: bird.State, action: bird.Action) -> list[tuple[float, bird.State]]:
         if action == left:
             return (
                 [
@@ -46,6 +46,8 @@ def test_bird_mdp():
                 if s.x > 0
                 else []
             )
+        else:
+            return []
 
     bird_model = bird.build_bird(
         delta=delta,
@@ -181,7 +183,7 @@ def test_bird_dtmc():
     def rewards(s: bird.State) -> dict[str, model.Value]:
         return {"r1": 1, "r2": 2}
 
-    def delta(s: bird.State):
+    def delta(s: bird.State) -> list[tuple[float, bird.State]] | None:
         match s.s:
             case 0:
                 return [(p, bird.State(s=1)), (1 - p, bird.State(s=2))]
@@ -427,9 +429,9 @@ def test_bird_mdp_empty_action_3():
     def delta(current_state, action):
         match current_state:
             case "hungry":
-                return "eating"
+                return ["eating"]
             case "eating":
-                return "hungry"
+                return ["hungry"]
 
     bird_model = bird.build_bird(
         delta,
@@ -579,7 +581,7 @@ def test_bird_pomdp():
         rewardmodel.set_state_action_reward(pair[0], pair[1], 2)
 
     for _, state in regular_model:
-        state.set_observation(5)
+        state.set_observation(regular_model.observation(5))
 
     assert regular_model == bird_model
 
