@@ -709,12 +709,16 @@ class Model[ValueType: Value]:
     exit_rates: dict[int, ValueType] | None
     # In ma's we keep track of markovian states
     markovian_states: list[State[ValueType]] | None
+    parametric: bool | None
+    interval: bool | None
 
     def __init__(self, model_type: ModelType, create_initial_state: bool = True):
         self.type = model_type
         self.choices = {}
         self.states = {}
         self.rewards = []
+        self.parametric = None
+        self.interval = None
 
         # Initialize actions if those are supported by the model type
         if self.supports_actions():
@@ -792,17 +796,25 @@ class Model[ValueType: Value]:
 
     def is_interval_model(self) -> bool:
         """Returns whether this model is an interval model, i.e., containts interval values)"""
-        for transition in self.iterate_transitions():
-            if isinstance(transition[0], Interval):
-                return True
-        return False
+        if self.interval is None:
+            # Initialize
+            for transition in self.iterate_transitions():
+                if isinstance(transition[0], Interval):
+                    self.interval = True
+                    return self.interval
+            self.interval = False
+        return self.interval
 
     def is_parametric(self) -> bool:
         """Returns whether this model contains parametric transition values"""
-        for transition in self.iterate_transitions():
-            if isinstance(transition[0], parametric.Parametric):
-                return True
-        return False
+        if self.parametric is None:
+            # Initialize
+            for transition in self.iterate_transitions():
+                if isinstance(transition[0], parametric.Parametric):
+                    self.parametric = True
+                    return self.parametric
+            self.parametric = False
+        return self.parametric
 
     def is_stochastic(self, epsilon: Number = 0.000001) -> bool | None:
         """For discrete models: Checks if all sums of outgoing transition probabilities for all states equal 1, with at most epsilon rounding error.
