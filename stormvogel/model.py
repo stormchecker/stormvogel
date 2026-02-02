@@ -991,19 +991,14 @@ class Model[ValueType: Value]:
 
     def all_non_init_states_incoming_transition(self) -> bool:
         """checks if all states except the initial state have an incoming transition"""
-        for _, state in self:
-            # if it is initial then it is ok
-            if state.is_initial():
-                continue
-
-            # if it is not initial we check if it has incoming transitions
-            incoming = False
-            for transition in self.iterate_transitions():
-                if transition[1].id == state.id:
-                    incoming = True
-            if not incoming:
+        # Iterate over all transitions and remove all successor states as having an ingoing transition
+        remaining_states = set(self.states.keys())
+        for transition in self.iterate_transitions():
+            remaining_states.discard(transition[1].id)
+        for s in remaining_states:
+            # Initial states could have no ingoing transition
+            if not self.states[s].is_initial():
                 return False
-
         return True
 
     def has_zero_transition(self) -> bool:
