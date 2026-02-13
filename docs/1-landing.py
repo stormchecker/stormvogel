@@ -18,9 +18,9 @@
 #
 # This notebook provides an introduction to the stormvogel project, a first example, and pointers to further material. We recommend to also look at
 #
-# - The source code, hosted at [Github](https://github.com/moves-rwth/stormvogel)
+# - The source code, hosted at [Github](https://github.com/stormchecker/stormvogel)
 # - The python packages, hosted at [Pypi](https://pypi.org/project/stormvogel/)
-# - User documentation, which includes this notebook [Docs](https://moves-rwth.github.io/stormvogel/)
+# - User documentation, which includes this notebook [Docs](https://stormchecker.github.io/stormvogel/)
 # - Reach out to us at our [Discord Server](https://discord.gg/byeKSasJY6)
 #
 
@@ -96,7 +96,7 @@ vis = show(
 # Details about these can be found in the remaining notebooks.
 #
 # ## Questions/help, bugs & contributing
-# To suggest a feature or report a bug, simply create an issue on [Github](https://github.com/moves-rwth/stormvogel). If you would like to contribute to the project yourself, you can always create a pull request or join our [public Discord server](https://discord.gg/byeKSasJY6).
+# To suggest a feature or report a bug, simply create an issue on [Github](https://github.com/stormchecker/stormvogel). If you would like to contribute to the project yourself, you can always create a pull request or join our [public Discord server](https://discord.gg/byeKSasJY6).
 #
 # Stormvogel was developed at the Radboud University in 2024-2025 by Linus Heck, Pim Leerkes and Ivo Melse under the supervision of Sebastian Junges (Radboud) and Matthias Volk (Eindhoven University of Technology). We would like to thank the Dutch Research Council (NWO) for providing funding for the project via the NWO Open Science Fund Grant StormAE.
 #
