@@ -632,12 +632,16 @@ class Model[ValueType: Value]:
     exit_rates: dict[int, ValueType] | None
     # In ma's we keep track of markovian states
     markovian_states: list[State[ValueType]] | None
+    parametric: bool | None
+    interval: bool | None
 
     def __init__(self, model_type: ModelType, create_initial_state: bool = True):
         self.type = model_type
         self.set_choices{}
         self.states = {}
         self.rewards = []
+        self.parametric = None
+        self.interval = None
 
         # Initialize actions if those are supported by the model type
         if self.supports_actions():
@@ -706,11 +710,25 @@ class Model[ValueType: Value]:
 
     def is_interval_model(self) -> bool:
         """Returns whether this model is an interval model, i.e., containts interval values)"""
-        return ValueType == Interval
+        if self.interval is None:
+            # Initialize
+            for transition in self.iterate_transitions():
+                if isinstance(transition[0], Interval):
+                    self.interval = True
+                    return self.interval
+            self.interval = False
+        return self.interval
 
     def is_parametric(self) -> bool:
         """Returns whether this model contains parametric transition values"""
-        return ValueType == parametric.Parametric
+        if self.parametric is None:
+            # Initialize
+            for transition in self.iterate_transitions():
+                if isinstance(transition[0], parametric.Parametric):
+                    self.parametric = True
+                    return self.parametric
+            self.parametric = False
+        return self.parametric
 
     def is_stochastic(self, epsilon=1e-6) -> bool | None:
         """For discrete models: Checks if all sums of outgoing transition probabilities for all states equal 1, with at most epsilon rounding error.
@@ -887,19 +905,14 @@ class Model[ValueType: Value]:
 
     def all_non_init_states_incoming_transition(self) -> bool:
         """checks if all states except the initial state have an incoming transition"""
-        for _, state in self:
-            # if it is initial then it is ok
-            if state.is_initial():
-                continue
-
-            # if it is not initial we check if it has incoming transitions
-            incoming = False
-            for transition in self.iterate_transitions():
-                if transition[1].id == state:
-                    incoming = True
-            if not incoming:
+        # Iterate over all transitions and remove all successor states as having an ingoing transition
+        remaining_states = set(self.states.keys())
+        for transition in self.iterate_transitions():
+            remaining_states.discard(transition[1].id)
+        for s in remaining_states:
+            # Initial states could have no ingoing transition
+            if not self.states[s].is_initial():
                 return False
-
         return True
 
     def has_zero_transition(self) -> bool:

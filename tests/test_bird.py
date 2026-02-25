@@ -459,7 +459,7 @@ def test_bird_endless():
     with pytest.raises(
         RuntimeError,
         match=re.escape(
-            "The model you want te create has a very large amount of states (at least 10000), if you wish to proceed, set max_size to some larger number."
+            "The model you want to create has a very large amount of states (at least 10000). If you wish to proceed, set max_size to some larger number."
         ),
     ):
         bird.build_bird(

@@ -291,7 +291,7 @@ def build_bird[ValueType: stormvogel.model.Value](
         #     print(f"Building model is slow, discovered {len(list(state_lookup))} states...", file=sys.stderr)
         if len(state_lookup) > max_size:
             raise RuntimeError(
-                f"The model you want te create has a very large amount of states (at least {max_size}), if you wish to proceed, set max_size to some larger number."
+                f"The model you want to create has a very large amount of states (at least {max_size}). If you wish to proceed, set max_size to some larger number."
             )
 
     # we add the rewards
