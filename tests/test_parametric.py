@@ -90,6 +90,7 @@ def pmc_equal(m0, m1) -> bool:
     )
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 @pytest.mark.tags("stormpy")
 def test_pmc_conversion():
     # Create a new model
@@ -117,8 +118,8 @@ def test_pmc_conversion():
 
     init.set_choices(
         [
-            (p1, pmc.get_states_with_label("A")[0]),
-            (p2, pmc.get_states_with_label("B")[0]),
+            (p1, next(iter(pmc.get_states_with_label("A")))),
+            (p2, next(iter(pmc.get_states_with_label("B")))),
         ]
     )
 
@@ -134,6 +135,7 @@ def test_pmc_conversion():
     # assert pmc == new_pmc
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 @pytest.mark.tags("stormpy")
 def test_pmdp_conversion():
     # Create a new model
@@ -182,6 +184,7 @@ def test_pmdp_conversion():
     assert pmdp == new_pmdp
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 @pytest.mark.tags("stormpy")
 def test_pmc_conversion_from_stormpy():
     import stormvogel.examples.stormpy_examples.stormpy_pmc
@@ -221,8 +224,8 @@ def test_pmc_valuations():
 
     init.set_choices(
         [
-            (p1, pmc.get_states_with_label("A")[0]),
-            (r1, pmc.get_states_with_label("B")[0]),
+            (p1, next(iter(pmc.get_states_with_label("A")))),
+            (r1, next(iter(pmc.get_states_with_label("B")))),
         ]
     )
 
@@ -241,8 +244,8 @@ def test_pmc_valuations():
 
     init.set_choices(
         [
-            (20, new_induced_pmc.get_states_with_label("A")[0]),
-            (-0.06, new_induced_pmc.get_states_with_label("B")[0]),
+            (20, next(iter(new_induced_pmc.get_states_with_label("A")))),
+            (-0.06, next(iter(new_induced_pmc.get_states_with_label("B")))),
         ]
     )
 

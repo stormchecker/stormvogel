@@ -17,4 +17,4 @@ def test_mdp_creation():
     assert dtmc.nr_choices == 7
     # Check that all states 1..6 have self loops
     for i in range(1, 7):
-        assert dtmc.get_successor_states(i) == set({i})
+        assert dtmc.get_successor_states(dtmc.states[i]) == {dtmc.states[i]}

@@ -29,7 +29,7 @@ class Path:
         ),
         model: stormvogel.model.Model,
     ):
-        if model.type != stormvogel.model.ModelType.MA:
+        if model.model_type != stormvogel.model.ModelType.MA:
             self.path = path
             self.model = model
         else:
@@ -275,7 +275,7 @@ def simulate(
 
     # we keep track of all discovered states over all runs and add them to the partial model
     # we also add the discovered rewards and actions to the partial model if present
-    partial_model = stormvogel.model.new_model(model.type, create_initial_state=False)
+    partial_model = stormvogel.model.new_model(model.model_type, create_initial_state=False)
 
     # we create the initial state ourselves because we want to force the name to be 0
     init = partial_model.new_state(name="0", labels="init")

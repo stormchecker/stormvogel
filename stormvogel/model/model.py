@@ -578,7 +578,9 @@ class Model[ValueType: Value]:
     @deprecated(version="0.10.0", reason="use type instead.")
     def get_type(self) -> ModelType:
         """Gets the type of this model"""
-        return self.model_type    @property
+        return self.model_type
+
+    @property
     def nr_states(self) -> int:
         """
         Returns the number of states in this model.
