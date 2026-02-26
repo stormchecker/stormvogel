@@ -309,24 +309,12 @@ def test_bird_dtmc():
         regular_model.states[7],
         [(1, regular_model.new_state(valuations={"s": 7, "d": 0}))],
     )
-    regular_model.set_choices(
-        regular_model.states[8], [(1, regular_model.states[13])]
-    )
-    regular_model.set_choices(
-        regular_model.states[9], [(1, regular_model.states[13])]
-    )
-    regular_model.set_choices(
-        regular_model.states[10], [(1, regular_model.states[13])]
-    )
-    regular_model.set_choices(
-        regular_model.states[11], [(1, regular_model.states[13])]
-    )
-    regular_model.set_choices(
-        regular_model.states[12], [(1, regular_model.states[13])]
-    )
-    regular_model.set_choices(
-        regular_model.states[13], [(1, regular_model.states[13])]
-    )
+    regular_model.set_choices(regular_model.states[8], [(1, regular_model.states[13])])
+    regular_model.set_choices(regular_model.states[9], [(1, regular_model.states[13])])
+    regular_model.set_choices(regular_model.states[10], [(1, regular_model.states[13])])
+    regular_model.set_choices(regular_model.states[11], [(1, regular_model.states[13])])
+    regular_model.set_choices(regular_model.states[12], [(1, regular_model.states[13])])
+    regular_model.set_choices(regular_model.states[13], [(1, regular_model.states[13])])
 
     rewardmodel = regular_model.new_reward_model("r1")
     for state in regular_model:
@@ -380,6 +368,7 @@ def test_bird_mdp_empty_action():
 
     assert len(bird_model.states) == 2
     assert len(list(bird_model.actions)) == 1
+
 
 def test_bird_mdp_empty_action_2():
     # we test if we can also provide empty actions
@@ -528,9 +517,15 @@ def test_bird_pomdp():
 
     # we build the pomdp model in the regular way:
     regular_model = model.new_pomdp(create_initial_state=False)
-    state1 = regular_model.new_state(labels=["init", "1"], observation=regular_model.new_observation("obs1"))
-    state2 = regular_model.new_state(labels=["2"], observation=regular_model.new_observation("obs2"))
-    state0 = regular_model.new_state(labels=["0"], observation=regular_model.new_observation("obs0"))
+    state1 = regular_model.new_state(
+        labels=["init", "1"], observation=regular_model.new_observation("obs1")
+    )
+    state2 = regular_model.new_state(
+        labels=["2"], observation=regular_model.new_observation("obs2")
+    )
+    state0 = regular_model.new_state(
+        labels=["0"], observation=regular_model.new_observation("obs0")
+    )
     other_left = regular_model.new_action("left")
     other_right = regular_model.new_action("right")
     branch12 = model.Branches([(0.5, state1), (0.5, state2)])

@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from stormvogel.model.value import Value
 from stormvogel.model.state import State
-from stormvogel.model.action import Action
 
 from typing import TYPE_CHECKING
 
@@ -50,8 +49,6 @@ class RewardModel[ValueType: Value]:
     def set_state_reward(self, state: State, value: ValueType):
         """Sets the reward at said state."""
         self.rewards[state] = value
-
-
 
     def set_unset_rewards(self, value: ValueType):
         """Fills up rewards that were not set yet with the specified value."""

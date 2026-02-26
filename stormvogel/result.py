@@ -81,7 +81,11 @@ class Scheduler:
 
 def random_scheduler(model: stormvogel.model.Model) -> Scheduler:
     """Create a random scheduler for the provided model."""
-    choices = {state: random.choice(state.available_actions()) for state in model if state.available_actions()}
+    choices = {
+        state: random.choice(state.available_actions())
+        for state in model
+        if state.available_actions()
+    }
     return Scheduler(model, taken_actions=choices)
 
 
@@ -117,10 +121,7 @@ class Result:
         self, state: stormvogel.model.State
     ) -> stormvogel.model.Value | None:
         """returns the model checking result for a given state"""
-        if (
-            isinstance(state, stormvogel.model.State)
-            and state in self.model.states.values()
-        ):
+        if isinstance(state, stormvogel.model.State) and state in self.values:
             return self.values[state]
         else:
             raise RuntimeError("This state is not a part of the model")
@@ -157,8 +158,10 @@ class Result:
         if len(self.values) != len(other.values):
             return False
 
-        for s1, v1 in self.values.items():
-            index = s1.model.states.index(s1)
+        for index, s1 in enumerate(self.model.states):
+            if s1 not in self.values:
+                continue
+            v1 = self.values[s1]
             s2 = other.model.states[index]
             if s2 not in other.values:
                 return False
@@ -171,12 +174,15 @@ class Result:
 
         if self.scheduler is not None:
             if self.scheduler.taken_actions != other.scheduler.taken_actions:
-                for s1, a1 in self.scheduler.taken_actions.items():
-                    index = s1.model.states.index(s1)
-                    s2 = other.model.states[index]
-                    if s2 not in other.scheduler.taken_actions or other.scheduler.taken_actions[s2] != a1:
-                        return False
-
+                for index, s1 in enumerate(self.model.states):
+                    if s1 in self.scheduler.taken_actions:
+                        a1 = self.scheduler.taken_actions[s1]
+                        s2 = other.model.states[index]
+                        if (
+                            s2 not in other.scheduler.taken_actions
+                            or other.scheduler.taken_actions[s2] != a1
+                        ):
+                            return False
         return True
 
     def __iter__(self):

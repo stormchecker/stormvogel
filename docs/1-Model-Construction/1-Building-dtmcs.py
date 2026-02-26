@@ -95,11 +95,9 @@ for sid in range(1, 13):
 
 # Create all the transitions
 for k, v in TRANSITIONS.items():
-    state = die_model.get_state_by_id(k)  # Get the state with id k
+    state = die_model.states[k]  # Get the state at index k
     if k <= 6:
-        state.set_choices(
-            [(p, die_model.get_state_by_id(sid)) for p, sid in TRANSITIONS[k]]
-        )
+        state.set_choices([(p, die_model.states[sid]) for p, sid in TRANSITIONS[k]])
 
 die_model.add_self_loops()  # Of course, we could also add the self-loops explicitly like in the previous example.
 vis2 = show(die_model, layout=Layout("layouts/die.json"))
@@ -162,10 +160,8 @@ for sid in range(1, 4):
     commu_model.new_state(LABELS[sid])
 
 for sid in range(0, 4):
-    state = commu_model.get_state_by_id(sid)
-    state.set_choices(
-        [(p, commu_model.get_state_by_id(sid_)) for p, sid_ in TRANSITIONS[sid]]
-    )
+    state = commu_model.states[sid]
+    state.set_choices([(p, commu_model.states[sid_]) for p, sid_ in TRANSITIONS[sid]])
 
 vis4 = show(commu_model, layout=Layout("layouts/commu.json"))
 

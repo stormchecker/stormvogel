@@ -1,3 +1,4 @@
+from stormvogel.model.branches import Branches
 from enum import Enum
 from typing import Iterable, Any
 from uuid import UUID
@@ -7,7 +8,6 @@ from deprecated import deprecated
 from copy import deepcopy
 
 from stormvogel.model.choices import Choices, ChoicesShorthand, choices_from_shorthand
-from stormvogel.model.branches import Branches
 from stormvogel.model.action import Action, EmptyAction
 from stormvogel.model.distribution import Distribution
 from stormvogel.model.observation import Observation
@@ -70,6 +70,7 @@ class Model[ValueType: Value]:
         self.rewards = []
         self.parametric: bool | None = None
         self.interval: bool | None = None
+        self._state_index_cache: dict[State, int] | None = None
         self.state_names = dict()
 
         # Initialize observations if those are supported by the model type (pomdps)
@@ -114,14 +115,14 @@ class Model[ValueType: Value]:
     def summary(self):
         """Give a short summary of the model."""
         choices_bit = (
-            f"{sum(len(choices.choices) for choices in self.choices)} choices, "
-            if self.supports_actions() is not None
+            f"{sum(len(state.choices.choices) for state in self.states)} choices, "
+            if self.supports_actions()
             else ""
         )
         return (
             f"{self.model_type} model with {len(self.states)} states, "
             + choices_bit
-            + f"and {len(self.get_labels())} distinct labels."
+            + f"and {len(self.state_labels)} distinct labels."
         )
 
     def supports_actions(self) -> bool:
@@ -465,6 +466,19 @@ class Model[ValueType: Value]:
 
         raise RuntimeError(f"Action with name {name} not found.")
 
+    def get_state_index(self, state: State) -> int:
+        """Returns the index of the given state in the model, with O(1) amortized lookup."""
+        # Check if the cache is valid for this state
+        if self._state_index_cache is not None:
+            idx = self._state_index_cache.get(state)
+            # We verify the cache is still correct by checking the actual list
+            if idx is not None and idx < len(self.states) and self.states[idx] is state:
+                return idx
+        
+        # If not, we rebuild the whole cache
+        self._state_index_cache = {s: i for i, s in enumerate(self.states)}
+        return self._state_index_cache.get(state, -1)
+
     def new_state(
         self,
         labels: list[str] | str | None = None,
@@ -482,8 +496,8 @@ class Model[ValueType: Value]:
         self.state_valuations[state] = dict()
 
         if labels is not None and isinstance(labels, list):
-            for l in labels:
-                state.add_label(l)
+            for label in labels:
+                state.add_label(label)
         elif labels is not None and isinstance(labels, str):
             state.add_label(labels)
 
@@ -534,11 +548,10 @@ class Model[ValueType: Value]:
     def initial_state(self) -> State:
         """Gets the initial state (contains label "init", or has id 0)."""
 
-        if len(self.state_labels["init"]) != 1:
+        if "init" not in self.state_labels or len(self.state_labels["init"]) != 1:
             raise RuntimeError(
                 "Model does not have exactly one initial state with label 'init'."
             )
-
         return next(iter(self.state_labels["init"]))
     def add_label(self, label: str):
         """Adds a label to the model."""
@@ -735,10 +748,61 @@ class Model[ValueType: Value]:
         if set(self_labels.keys()) != set(other_labels.keys()):
             return False
         for label in self_labels:
-            self_indices = {self.states.index(s) for s in self_labels[label]}
-            other_indices = {other.states.index(s) for s in other_labels[label]}
+            self_indices = {self_idx[id(s)] for s in self_labels[label]}
+            other_indices = {other_idx[id(s)] for s in other_labels[label]}
             if self_indices != other_indices:
                 return False
+        return True
+
+
+
+    def make_observations_deterministic(self, reassign_ids: bool = False):
+        """
+        In case of POMDPs or HMMs, makes the observations deterministic by splitting states with
+        multiple observations into multiple states with single observations.
+        """
+        if not self.supports_observations():
+            raise RuntimeError(
+                "This method only works for models that support observations."
+            )
+
+        for state in list(self.states):
+            observation = state.observation
+            if isinstance(observation, list):
+                # from stormvogel.model.value import ValueType
+                new_states_distribution = []
+
+                # Create new states for each observation possible in this state
+                for prob, obs in observation:
+                    new_state = self.new_state(
+                        labels=list(state.labels),
+                        valuations=state.valuations,
+                        observation=obs,
+                    )
+                    self.choices[new_state] = self.choices[state]
+                    new_states_distribution.append((prob, new_state))
+
+                # Replace transitions to the original state with transitions to the new states
+                for other_state in self.states:
+                    for action in other_state.available_actions():
+                        transitions = other_state.get_outgoing_transitions(action)
+                        if transitions is not None:
+                            new_transitions = []
+                            for transition_prob, target in transitions:
+                                if target == state:
+                                    for new_prob, new_state in new_states_distribution:
+                                        new_transitions.append((transition_prob * new_prob, new_state))
+                                else:
+                                    new_transitions.append((transition_prob, target))
+                            self.choices[other_state].choices[action] = Branches(new_transitions)
+
+                # Remove the original state and choices
+                del self.choices[state]
+                self.states.remove(state)
+                # Remove labels for this state
+                for label in state.labels:
+                    self.state_labels[label].remove(state)
+
         return True
 
 

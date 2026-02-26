@@ -101,14 +101,13 @@ init.set_choices(
     }
 )
 
-pass_test.set_choices[(1, end)]
-fail_test.set_choices[(1, end)]
+pass_test.set_choices([(1, end)])
+fail_test.set_choices([(1, end)])
 
 reward_model = mdp.new_reward_model("R")
-reward_model.set_state_action_reward(pass_test, stormvogel.model.EmptyAction, 100)
-reward_model.set_state_action_reward(fail_test, stormvogel.model.EmptyAction, 0)
-reward_model.set_state_action_reward(init, not_study, 15)
-reward_model.set_state_action_reward(init, study, 0)
+reward_model.set_state_reward(pass_test, 100)
+reward_model.set_state_reward(fail_test, 0)
+reward_model.set_state_reward(init, 15)
 reward_model.set_unset_rewards(0)
 
 vis2 = show(mdp, layout=Layout("layouts/pinkgreen.json"))
@@ -164,17 +163,22 @@ grid_model = stormvogel.model.new_mdp(create_initial_state=False)
 
 for x in range(N):
     for y in range(N):
-        grid_model.new_state(f"({x},{y})")
+        labels = [f"({x},{y})"]
+        if x == 0 and y == 0:
+            labels.append("init")
+        grid_model.new_state(labels)
 
 for x in range(N):
     for y in range(N):
         state_tile_label = str((x, y)).replace(" ", "")
-        state = grid_model.get_states_with_label(state_tile_label)[0]
+        state = next(iter(grid_model.get_states_with_label(state_tile_label)))
         av = available_actions((x, y))
         for a in av:
             target_tile_label = str(pairwise_plus((x, y), ACTION_SEMANTICS[a])).replace(
                 " ", ""
             )
-            target_state = grid_model.get_states_with_label(target_tile_label)[0]
+            target_state = next(
+                iter(grid_model.get_states_with_label(target_tile_label))
+            )
             state.add_choices([(grid_model.action(a), target_state)])
 vis4 = show(grid_model)

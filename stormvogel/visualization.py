@@ -6,6 +6,8 @@ from collections.abc import Callable
 from typing import Any, TYPE_CHECKING
 
 import stormvogel.model
+from stormvogel.model.value import value_to_string
+
 import stormvogel.layout
 import stormvogel.result
 import stormvogel.html_generation
@@ -123,7 +125,7 @@ class VisualizationBase:
             action_properties=self._create_action_properties,
             transition_properties=self._create_transition_properties,
         )
-        underscored_labels = set(map(self._und, self.model.get_labels()))
+        underscored_labels = set(map(self._und, self.model.state_labels.keys()))
         possible_groups = underscored_labels.union(
             {"states", "actions", "scheduled_actions"}
         )
@@ -133,7 +135,7 @@ class VisualizationBase:
         """Call number_to_string in model.py while accounting for the settings specified in the layout object."""
         if self.layout.layout["numbers"]["visible"] is False:
             return ""
-        return stormvogel.model.value_to_string(
+        return value_to_string(
             n,
             self.layout.layout["numbers"]["fractions"],
             self.layout.layout["numbers"]["digits"],
@@ -209,20 +211,16 @@ class VisualizationBase:
     def _format_rewards(
         self, s: stormvogel.model.State, a: stormvogel.model.Action
     ) -> str:
-        """Create a string that contains either the state exit reward (if actions are not supported)
-        or the reward of taking this action from this state. (if actions ARE supported)
-        Starts with newline."""
+        """Create a string that contains the state reward. Actions no longer have individual rewards."""
         if not self.layout.layout["state_properties"]["show_rewards"]:
             return ""
+        if a != stormvogel.model.EmptyAction:
+            return ""
+
         EMPTY_RES = "\n" + self.layout.layout["state_properties"]["reward_symbol"]
         res = EMPTY_RES
         for reward_model in self.model.rewards:
-            if self.model.supports_actions():
-                if a in s.available_actions():
-                    reward = reward_model.get_state_reward(s)
-                    reward = None
-            else:
-                reward = reward_model.get_state_reward(s)
+            reward = reward_model.get_state_reward(s)
             if reward is not None and not (
                 not self.layout.layout["state_properties"]["show_zero_rewards"]
                 and reward == 0
@@ -333,7 +331,7 @@ class VisualizationBase:
         if transitions is None:
             return properties
         for prob, target in transitions:
-            if next_state == target.id:
+            if next_state == target:
                 properties["label"] = self._format_number(prob)
                 return properties
         return properties
@@ -622,14 +620,14 @@ class JSVisualization(VisualizationBase):
 
         with self.output:  # If there was already a rendered network, clear it.
             ipd.clear_output()
-        if len(self.model.get_states()) > self.max_states:
+        if len(self.model.states) > self.max_states:
             with self.output:
                 print(
                     f"This model has more than {self.max_states} states. If you want to proceed, set max_states to a higher value."
                     f"This is to prevent the browser from crashing, be careful."
                 )
             return
-        if len(self.model.get_states()) > self.max_physics_states:
+        if len(self.model.states) > self.max_physics_states:
             with self.output:
                 print(
                     f"This model has more than {self.max_physics_states} states. If you want physics, set max_physics_states to a higher value."
@@ -825,13 +823,13 @@ class JSVisualization(VisualizationBase):
         seq = path.to_state_action_sequence()
         for i, v in enumerate(seq):
             if isinstance(v, stormvogel.model.State):
-                self.set_node_color(v.id, color)
+                self.set_node_color(v, color)
                 sleep(delay)
                 if clear:
-                    self.set_node_color(v.id, None)
+                    self.set_node_color(v, None)
             elif isinstance(v, stormvogel.model.Action):
                 last_state = seq[i - 1]
-                node_id = (last_state.id, v)
+                node_id = (last_state, v)
                 self.set_node_color(node_id, color)
                 sleep(delay)
                 if clear:
@@ -1109,9 +1107,7 @@ class MplVisualization(VisualizationBase):
             layout_group_color = None
             match self.G.nodes[node]["type"]:
                 case NodeType.STATE:
-                    group = self._group_state(
-                        node, "states"
-                    )
+                    group = self._group_state(node, "states")
                     layout_group_color = self.layout.layout["groups"].get(group)
                 case NodeType.ACTION:
                     in_edges = list(self.G.in_edges(node))
@@ -1139,10 +1135,11 @@ class MplVisualization(VisualizationBase):
         for edge, color in self._edge_highlights.items():
             edge_colors[edge] = color
 
-        pos = {
-            int(node): np.array((pos["x"], pos["y"]))
-            for node, pos in self.layout.layout["positions"].items()
-        }
+        pos = {}
+        for nx_node in self.G.nodes:
+            if str(nx_node) in self.layout.layout["positions"]:
+                node_pos = self.layout.layout["positions"][str(nx_node)]
+                pos[nx_node] = np.array((node_pos["x"], node_pos["y"]))
         if len(pos) != len(self.G.nodes):
             pos = nx.random_layout(self.G)
         edges = nx.draw_networkx_edges(

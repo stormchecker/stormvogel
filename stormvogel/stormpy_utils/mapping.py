@@ -1,10 +1,16 @@
 import re
 import json
-from typing import Optional, Union, cast
+from typing import Union, cast
 
 from stormvogel import parametric
-from stormvogel.model.action import EmptyAction
-from stormvogel.model.model import Model, ModelType, new_dtmc, new_mdp, new_ctmc, new_pomdp, new_ma
+from stormvogel.model.model import (
+    Model,
+    ModelType,
+    new_mdp,
+    new_ctmc,
+    new_pomdp,
+    new_ma,
+)
 from stormvogel.model.state import State
 from stormvogel.model.branches import Branches
 from stormvogel.model.choices import Choices, choices_from_shorthand
@@ -18,8 +24,12 @@ except ImportError:
 
 
 def stormvogel_to_stormpy(model):
-    from stormvogel.stormpy_utils.stormvogel_to_stormpy import stormvogel_to_stormpy as _stormvogel_to_stormpy
+    from stormvogel.stormpy_utils.stormvogel_to_stormpy import (
+        stormvogel_to_stormpy as _stormvogel_to_stormpy,
+    )
+
     return _stormvogel_to_stormpy(model)
+
 
 def value_to_stormvogel(value, sparsemodel) -> Value:
     """Converts a stormpy transition value to a stormvogel one"""
@@ -165,6 +175,7 @@ def stormpy_to_stormvogel(
                     )
                 else:
                     model.new_state(labels=list(state.labels))
+
     def new_reward_model(
         model: Model,
         sparsemodel: (
@@ -337,14 +348,15 @@ def stormpy_to_stormvogel(
         # we add the valuations
         add_valuations(model, sparsectmc)
 
-
         return model
 
     def map_pomdp(sparsepomdp: stormpy.storage.SparsePomdp) -> Model:
         # Takes a pomdp stormpy representation as input and outputs a simple stormvogel representation
         model = new_pomdp(create_initial_state=False)
         if len(sparsepomdp.states) > 0:
-            max_obs = max(sparsepomdp.get_observation(i) for i in range(len(sparsepomdp.states)))
+            max_obs = max(
+                sparsepomdp.get_observation(i) for i in range(len(sparsepomdp.states))
+            )
             for i in range(max_obs + 1):
                 model.observation(str(i))
 
@@ -394,7 +406,9 @@ def stormpy_to_stormvogel(
 
         # map the observations to the states
         for index, state in enumerate(model.states):
-            state.observation = model.observation(str(sparsepomdp.get_observation(index)))
+            state.observation = model.observation(
+                str(sparsepomdp.get_observation(index))
+            )
 
         return model
         # we add the transitions
@@ -440,11 +454,17 @@ def stormpy_to_stormvogel(
         add_valuations(model, sparsepomdp)
 
         # we add the observations:
-        max_obs = max(sparsepomdp.get_observation(i) for i in range(len(sparsepomdp.states))) if len(sparsepomdp.states) > 0 else -1
+        max_obs = (
+            max(sparsepomdp.get_observation(i) for i in range(len(sparsepomdp.states)))
+            if len(sparsepomdp.states) > 0
+            else -1
+        )
         for i in range(max_obs + 1):
             model.observation(str(i))
         for index, state in enumerate(model.states):
-            state.observation = model.observation(str(sparsepomdp.get_observation(index)))
+            state.observation = model.observation(
+                str(sparsepomdp.get_observation(index))
+            )
 
         return model
 
@@ -498,7 +518,6 @@ def stormpy_to_stormvogel(
 
         # we add the valuations
         add_valuations(model, sparsema)
-
 
         # we set the markovian states
         for state_id in list(sparsema.markovian_states):

@@ -28,18 +28,13 @@ from stormvogel import *
 ctmc = stormvogel.model.new_ctmc()
 
 # hydrogen fuses into helium
-ctmc.get_state_by_id(0).set_choices[(3, ctmc.new_state("helium"))]
+ctmc.states[0].set_choices([(3, ctmc.new_state("helium"))])
 # helium fuses into carbon
-ctmc.get_state_by_id(1).set_choices[(2, ctmc.new_state("carbon"))]
+ctmc.states[1].set_choices([(2, ctmc.new_state("carbon"))])
 # carbon fuses into iron
-ctmc.get_state_by_id(2).set_choices[(7, ctmc.new_state("iron"))]
+ctmc.states[2].set_choices([(7, ctmc.new_state("iron"))])
 # supernova
-ctmc.get_state_by_id(3).set_choices[(12, ctmc.new_state("Supernova"))]
-
-# we add the rates which are equal to whats in the transitions since the probabilities are all 1
-rates = [3, 2, 7, 12, 0]
-for i in range(5):
-    ctmc.set_rate(ctmc.get_state_by_id(i), rates[i])
+ctmc.states[3].set_choices([(12, ctmc.new_state("Supernova"))])
 
 # we add self loops to all states with no outgoing transitions
 ctmc.add_self_loops()

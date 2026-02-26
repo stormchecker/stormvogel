@@ -3,7 +3,6 @@ import stormvogel.examples.monty_hall
 import stormvogel.examples.die
 import stormvogel.examples.nuclear_fusion_ctmc
 import pytest
-import re
 from typing import cast
 
 
@@ -25,9 +24,7 @@ def test_available_actions():
 def test_get_outgoing_transitions():
     mdp = stormvogel.examples.monty_hall.create_monty_hall_mdp()
 
-    choices = mdp.initial_state.get_outgoing_transitions(
-        stormvogel.model.EmptyAction
-    )
+    choices = mdp.initial_state.get_outgoing_transitions(stormvogel.model.EmptyAction)
 
     probabilities, states = zip(*choices)  # type: ignore
 
@@ -132,6 +129,7 @@ def test_choices_from_shorthand_dict_state():
         )
         == transition
     )
+
 
 def test_is_stochastic():
     # we check for an instance where it is not stochastic

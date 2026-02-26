@@ -2,7 +2,6 @@ import stormvogel.result
 import stormvogel.model
 from typing import Callable
 import random
-from stormvogel.model import EmptyAction
 
 
 class Path:
@@ -169,7 +168,6 @@ def step(
     else:
         next_state = random.choices(states, k=1, weights=probability_distribution)[0]
 
-
     # we also add the rewards
     rewards = []
     if not next_state.model.supports_actions():
@@ -275,7 +273,9 @@ def simulate(
 
     # we keep track of all discovered states over all runs and add them to the partial model
     # we also add the discovered rewards and actions to the partial model if present
-    partial_model = stormvogel.model.new_model(model.model_type, create_initial_state=False)
+    partial_model = stormvogel.model.new_model(
+        model.model_type, create_initial_state=False
+    )
 
     # we create the initial state ourselves because we want to force the name to be 0
     init = partial_model.new_state(name="0", labels="init")
@@ -309,7 +309,9 @@ def simulate(
     discovered_states: set[stormvogel.model.State] = {model.states[0]}
     discovered_transitions: set[tuple] = set()
     # map from original model states to partial model states
-    state_map: dict[stormvogel.model.State, stormvogel.model.State] = {model.states[0]: init}
+    state_map: dict[stormvogel.model.State, stormvogel.model.State] = {
+        model.states[0]: init
+    }
 
     # we distinguish between models with and without actions
     if not partial_model.supports_actions():
@@ -377,9 +379,7 @@ def simulate(
                 action = (
                     get_action_at_state(last_state, scheduler)
                     if scheduler
-                    else random.choice(
-                        last_state.available_actions()
-                    )
+                    else random.choice(last_state.available_actions())
                 )
 
                 # we add the action to the partial model (if new)
@@ -393,7 +393,6 @@ def simulate(
                     action,
                     seed=seed + i + j if seed is not None else None,
                 )
-
 
                 # we add the state to the model
                 if next_state not in discovered_states:

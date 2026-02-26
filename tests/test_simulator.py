@@ -3,7 +3,6 @@ import stormvogel.examples.monty_hall
 import stormvogel.examples.nuclear_fusion_ctmc
 import stormvogel.examples.monty_hall_pomdp
 from stormvogel.examples.lion import create_lion_mdp
-from stormvogel.model import EmptyAction
 import stormvogel.model
 import stormvogel.simulator as simulator
 

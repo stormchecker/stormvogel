@@ -60,8 +60,12 @@ def value_to_stormpy(
                 factorized_polynomial
             )
         elif isinstance(value, parametric.RationalFunction):
-            factorized_numerator = convert_polynomial_to_stormpy(value.numerator, variables)
-            factorized_denominator = convert_polynomial_to_stormpy(value.denominator, variables)
+            factorized_numerator = convert_polynomial_to_stormpy(
+                value.numerator, variables
+            )
+            factorized_denominator = convert_polynomial_to_stormpy(
+                value.denominator, variables
+            )
 
             # TODO gives segmentation fault
             factorized_rational = stormpy.pycarl.cln.FactorizedRationalFunction(
@@ -142,7 +146,7 @@ def build_matrix(
         if nondeterministic:
             builder.new_row_group(row_index)
         for action in transition[1]:
-            action[1].sort_states()
+            action[1].branch.sort(key=lambda t: model.stormpy_id[t[1]])
             for tuple in action[1]:
                 val = value_to_stormpy(tuple[0], variables, model)
                 builder.add_next_value(
@@ -286,6 +290,7 @@ def build_observations(model: Model) -> list[int]:
 
     model.observations = [model.observation(a) for a in known_aliases]
     return observations
+
 
 def build_markovian_states_bitvector(model: Model) -> "stormpy.BitVector":
     assert stormpy is not None
@@ -455,6 +460,7 @@ def build_pomdp(
 
     return pomdp
 
+
 def build_ma(
     model: Model,
     matrix,
@@ -533,7 +539,6 @@ def stormvogel_to_stormpy(
             "There is more than one state in this model without incoming transitions."
         )
 
-
     if model.has_zero_transition() and not model.supports_rates():
         raise RuntimeError(
             "This model has transitions with probability=0. Stormpy assumes that these do not explicitly exist."
@@ -548,7 +553,7 @@ def stormvogel_to_stormpy(
     # we store the pycarl parameters of a model
     stormpy.pycarl.clear_variable_pool()
     variables = []
-    for p in model.get_parameters():
+    for p in model.parameters:
         var = stormpy.pycarl.Variable(p)
         variables.append(var)
 
@@ -568,11 +573,11 @@ def stormvogel_to_stormpy(
     state_valuations = build_state_valuations(model)
 
     # we check the type to handle the model correctly
-    if model.type == ModelType.DTMC:
+    if model.model_type == ModelType.DTMC:
         return build_dtmc(
             model, matrix, state_labeling, reward_models, state_valuations
         )
-    elif model.type == ModelType.MDP:
+    elif model.model_type == ModelType.MDP:
         return build_mdp(
             model,
             matrix,
@@ -581,11 +586,11 @@ def stormvogel_to_stormpy(
             reward_models,
             state_valuations,
         )
-    elif model.type == ModelType.CTMC:
+    elif model.model_type == ModelType.CTMC:
         return build_ctmc(
             model, matrix, state_labeling, reward_models, state_valuations
         )
-    elif model.type == ModelType.POMDP:
+    elif model.model_type == ModelType.POMDP:
         return build_pomdp(
             model,
             matrix,
@@ -595,7 +600,7 @@ def stormvogel_to_stormpy(
             reward_models,
             state_valuations,
         )
-    elif model.type == ModelType.MA:
+    elif model.model_type == ModelType.MA:
         markovian_states_bitvector = build_markovian_states_bitvector(model)
         return build_ma(
             model,

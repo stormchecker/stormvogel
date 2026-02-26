@@ -34338,7 +34338,7 @@
 	      var state = getInternalState(that);
 	      var data = getWeakData(anObject(key), true);
 	      if (data === true) uncaughtFrozenStore(state).set(key, value);
-	      else data[state.id] = value;
+	      else data[state] = value;
 	      return that;
 	    };
 
@@ -34351,7 +34351,7 @@
 	        if (!isObject$1(key)) return false;
 	        var data = getWeakData(key);
 	        if (data === true) return uncaughtFrozenStore(state)['delete'](key);
-	        return data && hasOwn(data, state.id) && delete data[state.id];
+	        return data && hasOwn(data, state) && delete data[state];
 	      },
 	      // `{ WeakMap, WeakSet }.prototype.has(key)` methods
 	      // https://tc39.es/ecma262/#sec-weakmap.prototype.has
@@ -34361,7 +34361,7 @@
 	        if (!isObject$1(key)) return false;
 	        var data = getWeakData(key);
 	        if (data === true) return uncaughtFrozenStore(state).has(key);
-	        return data && hasOwn(data, state.id);
+	        return data && hasOwn(data, state);
 	      }
 	    });
 
@@ -34373,7 +34373,7 @@
 	        if (isObject$1(key)) {
 	          var data = getWeakData(key);
 	          if (data === true) return uncaughtFrozenStore(state).get(key);
-	          return data ? data[state.id] : undefined;
+	          return data ? data[state] : undefined;
 	        }
 	      },
 	      // `WeakMap.prototype.set(key, value)` method
@@ -43499,7 +43499,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
 // exports.Element = SVGCanvasElement;
 </script>
     <style type="text/css">
-      #zKrmWQZYHO {
+      #uaDyCCKeaF {
         width: 800px;
         height: 600px;
         border: 1px solid lightgray;
@@ -43507,7 +43507,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
     </style>
   </head>
   <body>
-    <div id="zKrmWQZYHO"></div>
+    <div id="uaDyCCKeaF"></div>
     <script type="text/javascript">
         //js
 class NetworkWrapper {
@@ -43617,40 +43617,51 @@ class NetworkWrapper {
     </script>
     <script type="text/javascript">
         //js
-    var nodes_local = new vis.DataSet([{ id: 0, label: `init,0`, group: "states" },
-{ id: 1, label: `1`, group: "states" },
-{ id: 2, label: `2`, group: "states" },
-{ id: 3, label: `3`, group: "states" },
-{ id: 4, label: `4`, group: "states" },
-{ id: 5, label: `5`, group: "states" },
-{ id: 6, label: `6`, group: "states" },
-{ id: 7, label: `r,1`, group: "r" },
-{ id: 8, label: `r,2`, group: "r" },
-{ id: 9, label: `r,3`, group: "r" },
-{ id: 10, label: `r,4`, group: "r" },
-{ id: 11, label: `r,5`, group: "r" },
-{ id: 12, label: `r,6`, group: "r" },
+    var nodes_local = new vis.DataSet([{ id: id: cac1d964-2f0e-4ca5-a1ab-4f01fb965d7e, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc4a0>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), label: `init,flip
+ʘ Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2)`, group: "states" },
+{ id: id: 7542287a-27a4-439c-921a-2e4719ce1f86, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc820>, valuations: {}, observation: Obs: 0 (06c196e7-8d0c-46b0-8355-9cc213bd1f4f), label: `heads
+ʘ Obs: 0 (06c196e7-8d0c-46b0-8355-9cc213bd1f4f)`, group: "states" },
+{ id: id: e2172817-e34e-4ad1-b378-bfd2ac75f992, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc4a0>, valuations: {}, observation: Obs: 1 (a8f02956-0f09-4c9a-911d-3b6d82ab208c), label: `heads
+ʘ Obs: 1 (a8f02956-0f09-4c9a-911d-3b6d82ab208c)`, group: "states" },
+{ id: id: fe662c7c-88b9-4312-8a5d-3ce1237f47cd, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc820>, valuations: {}, observation: Obs: 0 (06c196e7-8d0c-46b0-8355-9cc213bd1f4f), label: `tails
+ʘ Obs: 0 (06c196e7-8d0c-46b0-8355-9cc213bd1f4f)`, group: "states" },
+{ id: id: e08fb137-4bce-485e-b72a-f1482759f8ef, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc4a0>, valuations: {}, observation: Obs: 1 (a8f02956-0f09-4c9a-911d-3b6d82ab208c), label: `tails
+ʘ Obs: 1 (a8f02956-0f09-4c9a-911d-3b6d82ab208c)`, group: "states" },
+{ id: id: 60440858-6182-4e49-879e-ecdfa8b669b8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc820>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), label: `correct,done
+ʘ Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2)`, group: "states" },
+{ id: id: 376d157f-4894-4b54-b888-08fe2ec5e2c8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc4a0>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), label: `done,wrong
+ʘ Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2)`, group: "states" },
+{ id: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('7542287a-27a4-439c-921a-2e4719ce1f86')), Action(label='guess_heads')), label: `guess_heads`, group: "actions" },
+{ id: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('7542287a-27a4-439c-921a-2e4719ce1f86')), Action(label='guess_tails')), label: `guess_tails`, group: "actions" },
+{ id: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('e2172817-e34e-4ad1-b378-bfd2ac75f992')), Action(label='guess_heads')), label: `guess_heads`, group: "actions" },
+{ id: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('e2172817-e34e-4ad1-b378-bfd2ac75f992')), Action(label='guess_tails')), label: `guess_tails`, group: "actions" },
+{ id: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('fe662c7c-88b9-4312-8a5d-3ce1237f47cd')), Action(label='guess_heads')), label: `guess_heads`, group: "actions" },
+{ id: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('fe662c7c-88b9-4312-8a5d-3ce1237f47cd')), Action(label='guess_tails')), label: `guess_tails`, group: "actions" },
+{ id: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('e08fb137-4bce-485e-b72a-f1482759f8ef')), Action(label='guess_heads')), label: `guess_heads`, group: "actions" },
+{ id: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('e08fb137-4bce-485e-b72a-f1482759f8ef')), Action(label='guess_tails')), label: `guess_tails`, group: "actions" },
 ]);
-    var edges_local = new vis.DataSet([{ from: 0, to: 1, label: "1/2" },
-{ from: 0, to: 2, label: "1/2" },
-{ from: 1, to: 3, label: "1/2" },
-{ from: 1, to: 4, label: "1/2" },
-{ from: 2, to: 5, label: "1/2" },
-{ from: 2, to: 6, label: "1/2" },
-{ from: 3, to: 1, label: "1/2" },
-{ from: 3, to: 7, label: "1/2" },
-{ from: 4, to: 8, label: "1/2" },
-{ from: 4, to: 9, label: "1/2" },
-{ from: 5, to: 10, label: "1/2" },
-{ from: 5, to: 11, label: "1/2" },
-{ from: 6, to: 2, label: "1/2" },
-{ from: 6, to: 12, label: "1/2" },
-{ from: 7, to: 7, label: "1" },
-{ from: 8, to: 8, label: "1" },
-{ from: 9, to: 9, label: "1" },
-{ from: 10, to: 10, label: "1" },
-{ from: 11, to: 11, label: "1" },
-{ from: 12, to: 12, label: "1" },
+    var edges_local = new vis.DataSet([{ from: id: cac1d964-2f0e-4ca5-a1ab-4f01fb965d7e, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), to: id: 7542287a-27a4-439c-921a-2e4719ce1f86, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 0 (06c196e7-8d0c-46b0-8355-9cc213bd1f4f), label: "2/5" },
+{ from: id: cac1d964-2f0e-4ca5-a1ab-4f01fb965d7e, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), to: id: e2172817-e34e-4ad1-b378-bfd2ac75f992, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 1 (a8f02956-0f09-4c9a-911d-3b6d82ab208c), label: "1/10" },
+{ from: id: cac1d964-2f0e-4ca5-a1ab-4f01fb965d7e, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), to: id: fe662c7c-88b9-4312-8a5d-3ce1237f47cd, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 0 (06c196e7-8d0c-46b0-8355-9cc213bd1f4f), label: "1/10" },
+{ from: id: cac1d964-2f0e-4ca5-a1ab-4f01fb965d7e, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), to: id: e08fb137-4bce-485e-b72a-f1482759f8ef, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 1 (a8f02956-0f09-4c9a-911d-3b6d82ab208c), label: "2/5" },
+{ from: id: 7542287a-27a4-439c-921a-2e4719ce1f86, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 0 (06c196e7-8d0c-46b0-8355-9cc213bd1f4f), to: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('7542287a-27a4-439c-921a-2e4719ce1f86')), Action(label='guess_heads')) },
+{ from: id: 7542287a-27a4-439c-921a-2e4719ce1f86, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 0 (06c196e7-8d0c-46b0-8355-9cc213bd1f4f), to: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('7542287a-27a4-439c-921a-2e4719ce1f86')), Action(label='guess_tails')) },
+{ from: id: e2172817-e34e-4ad1-b378-bfd2ac75f992, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 1 (a8f02956-0f09-4c9a-911d-3b6d82ab208c), to: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('e2172817-e34e-4ad1-b378-bfd2ac75f992')), Action(label='guess_heads')) },
+{ from: id: e2172817-e34e-4ad1-b378-bfd2ac75f992, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 1 (a8f02956-0f09-4c9a-911d-3b6d82ab208c), to: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('e2172817-e34e-4ad1-b378-bfd2ac75f992')), Action(label='guess_tails')) },
+{ from: id: fe662c7c-88b9-4312-8a5d-3ce1237f47cd, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 0 (06c196e7-8d0c-46b0-8355-9cc213bd1f4f), to: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('fe662c7c-88b9-4312-8a5d-3ce1237f47cd')), Action(label='guess_heads')) },
+{ from: id: fe662c7c-88b9-4312-8a5d-3ce1237f47cd, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 0 (06c196e7-8d0c-46b0-8355-9cc213bd1f4f), to: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('fe662c7c-88b9-4312-8a5d-3ce1237f47cd')), Action(label='guess_tails')) },
+{ from: id: e08fb137-4bce-485e-b72a-f1482759f8ef, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 1 (a8f02956-0f09-4c9a-911d-3b6d82ab208c), to: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('e08fb137-4bce-485e-b72a-f1482759f8ef')), Action(label='guess_heads')) },
+{ from: id: e08fb137-4bce-485e-b72a-f1482759f8ef, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 1 (a8f02956-0f09-4c9a-911d-3b6d82ab208c), to: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('e08fb137-4bce-485e-b72a-f1482759f8ef')), Action(label='guess_tails')) },
+{ from: id: 60440858-6182-4e49-879e-ecdfa8b669b8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), to: id: 60440858-6182-4e49-879e-ecdfa8b669b8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), label: "1" },
+{ from: id: 376d157f-4894-4b54-b888-08fe2ec5e2c8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), to: id: 376d157f-4894-4b54-b888-08fe2ec5e2c8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), label: "1" },
+{ from: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('7542287a-27a4-439c-921a-2e4719ce1f86')), Action(label='guess_heads')), to: id: 60440858-6182-4e49-879e-ecdfa8b669b8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), label: "1" },
+{ from: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('7542287a-27a4-439c-921a-2e4719ce1f86')), Action(label='guess_tails')), to: id: 376d157f-4894-4b54-b888-08fe2ec5e2c8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), label: "1" },
+{ from: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('e2172817-e34e-4ad1-b378-bfd2ac75f992')), Action(label='guess_heads')), to: id: 60440858-6182-4e49-879e-ecdfa8b669b8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), label: "1" },
+{ from: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('e2172817-e34e-4ad1-b378-bfd2ac75f992')), Action(label='guess_tails')), to: id: 376d157f-4894-4b54-b888-08fe2ec5e2c8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), label: "1" },
+{ from: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('fe662c7c-88b9-4312-8a5d-3ce1237f47cd')), Action(label='guess_heads')), to: id: 376d157f-4894-4b54-b888-08fe2ec5e2c8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), label: "1" },
+{ from: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('fe662c7c-88b9-4312-8a5d-3ce1237f47cd')), Action(label='guess_tails')), to: id: 60440858-6182-4e49-879e-ecdfa8b669b8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), label: "1" },
+{ from: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('e08fb137-4bce-485e-b72a-f1482759f8ef')), Action(label='guess_heads')), to: id: 376d157f-4894-4b54-b888-08fe2ec5e2c8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), label: "1" },
+{ from: (State(model=<stormvogel.model.model.Model object at 0x10fed05f0>, state_id=UUID('e08fb137-4bce-485e-b72a-f1482759f8ef')), Action(label='guess_tails')), to: id: 60440858-6182-4e49-879e-ecdfa8b669b8, labels: <generator object State.labels.<locals>.<genexpr> at 0x10fedc740>, valuations: {}, observation: Obs: 2 (f80ba8d5-216c-4eb1-ad8d-22dd8d5236c2), label: "1" },
 ]);
     var options_local = {
   "__fake_macros": {
@@ -43674,7 +43685,6 @@ class NetworkWrapper {
   },
   "edit_groups": {
     "groups": [
-      "r",
       "states",
       "actions"
     ]
@@ -43718,24 +43728,7 @@ class NetworkWrapper {
       "mass": 1,
       "font": {
         "color": "black",
-        "size": 21
-      }
-    },
-    "r": {
-      "borderWidth": 1,
-      "color": {
-        "background": "#ff6666",
-        "border": "black",
-        "highlight": {
-          "background": "white",
-          "border": "red"
-        }
-      },
-      "shape": "ellipse",
-      "mass": 1,
-      "font": {
-        "color": "black",
-        "size": 21
+        "size": 14
       }
     }
   },
@@ -43772,9 +43765,7 @@ class NetworkWrapper {
     "reward_symbol": "\u20ac",
     "show_zero_rewards": true,
     "show_observations": true,
-    "observation_symbol": "\u0298",
-    "show_results": true,
-    "result_symbol": "\u2606"
+    "observation_symbol": "\u0298"
   },
   "layout": {
     "randomSeed": 5
@@ -43787,70 +43778,17 @@ class NetworkWrapper {
   },
   "saving": {
     "relative_path": true,
-    "filename": "layouts/die.json",
+    "filename": "layouts/NAME.json",
     "save_button": false,
     "load_button": false
   },
-  "positions": {
-    "0": {
-      "x": 73,
-      "y": 22
-    },
-    "1": {
-      "x": 118,
-      "y": 151
-    },
-    "2": {
-      "x": -26,
-      "y": -61
-    },
-    "3": {
-      "x": 240,
-      "y": 150
-    },
-    "4": {
-      "x": -12,
-      "y": 231
-    },
-    "5": {
-      "x": 20,
-      "y": -198
-    },
-    "6": {
-      "x": -133,
-      "y": -19
-    },
-    "7": {
-      "x": 367,
-      "y": 109
-    },
-    "8": {
-      "x": -144,
-      "y": 198
-    },
-    "9": {
-      "x": -40,
-      "y": 364
-    },
-    "10": {
-      "x": 145,
-      "y": -246
-    },
-    "11": {
-      "x": -88,
-      "y": -278
-    },
-    "12": {
-      "x": -263,
-      "y": -14
-    }
-  },
+  "positions": {},
   "physics": true,
   "autoResize": true
 };
-    var container_local = document.getElementById("zKrmWQZYHO");
-    var nw_zKrmWQZYHO = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
-
+    var container_local = document.getElementById("uaDyCCKeaF");
+    var nw_uaDyCCKeaF = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
+    
     </script>
   </body>
 </html>

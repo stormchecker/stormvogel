@@ -195,10 +195,11 @@ def build_bird[ValueType: stormvogel.model.Value](
                     if model.supports_observations() and observations is not None:
                         given_obs = observations(s)
                         if isinstance(given_obs, int):
-                            obs_kwarg['observation'] = model.observation(str(given_obs))
+                            obs_kwarg["observation"] = model.observation(str(given_obs))
                         elif isinstance(given_obs, list):
-                            obs_kwarg['observation'] = [
-                                (prob, model.observation(str(o))) for prob, o in given_obs
+                            obs_kwarg["observation"] = [
+                                (prob, model.observation(str(o)))
+                                for prob, o in given_obs
                             ]
                     new_state = model.new_state(**obs_kwarg)
                     state_lookup[s] = new_state
@@ -230,12 +231,12 @@ def build_bird[ValueType: stormvogel.model.Value](
     if model.supports_observations() and observations is not None:
         given_obs = observations(init)
         if isinstance(given_obs, int):
-            obs_kwarg['observation'] = model.observation(str(given_obs))
+            obs_kwarg["observation"] = model.observation(str(given_obs))
         elif isinstance(given_obs, list):
-            obs_kwarg['observation'] = [
+            obs_kwarg["observation"] = [
                 (prob, model.observation(str(o))) for prob, o in given_obs
             ]
-    init_state = model.new_state(labels=['init'], **obs_kwarg)
+    init_state = model.new_state(labels=["init"], **obs_kwarg)
 
     # we continue calling delta and adding new states until no states are
     # left to be visited
@@ -397,18 +398,18 @@ def build_bird[ValueType: stormvogel.model.Value](
 
         if observation_valuations is not None and model.observations is not None:
             observation_valuation_keys = observation_valuations(
-                model.observations[0].observation
+                model.observations[0].alias
             ).keys()
             for obs in model.observations:
-                valuation_dict = observation_valuations(obs.observation)
+                valuation_dict = observation_valuations(obs.alias)
                 if valuation_dict is None:
                     raise ValueError(
-                        f"On input observation id {obs.observation}, the observation_valuations function does not have a return value"
+                        f"On input observation id {obs.alias}, the observation_valuations function does not have a return value"
                     )
 
                 if not isinstance(valuation_dict, dict):
                     raise ValueError(
-                        f"On input observation id {obs.observation}, the observation_valuations function does not return a dictionary. Make sure to change the format to [<variable>: <value>,...]"
+                        f"On input observation id {obs.alias}, the observation_valuations function does not return a dictionary. Make sure to change the format to [<variable>: <value>,...]"
                     )
 
                 if valuation_dict.keys() != observation_valuation_keys:
@@ -423,7 +424,7 @@ def build_bird[ValueType: stormvogel.model.Value](
                         or isinstance(val, float)
                     ):
                         raise ValueError(
-                            f"On input observation id {obs.observation}, the dictionary that the observation_valuations function returns contains a value {val} which is not of type int, float or bool"
+                            f"On input observation id {obs.alias}, the dictionary that the observation_valuations function returns contains a value {val} which is not of type int, float or bool"
                         )
 
                 obs.valuations = valuation_dict

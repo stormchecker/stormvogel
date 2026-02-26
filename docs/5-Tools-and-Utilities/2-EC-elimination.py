@@ -72,7 +72,7 @@ def stormvogel_get_maximal_end_components(sv_model):
         states = set()
         actions = set()
         for s_id, choices in mec:
-            states.add(s_id)
+            states.add(sv_model.states[s_id])
             actions = actions | set(map(lambda x: f.inverse[x], choices))
         res.append((frozenset(states), frozenset(actions)))
     return res
@@ -122,8 +122,8 @@ def map_choice_labels(m_old, m_new, res):
 
     for s_old in range(old_nr_columns):
         s_new = res.old_to_new_state_mapping[s_old]
-        old_no_set_choicesm_old.get_nr_available_actions(s_old)
-        new_no_set_choicesm_new.get_nr_available_actions(s_new)
+        old_no_choices = m_old.get_nr_available_actions(s_old)
+        new_no_choices = m_new.get_nr_available_actions(s_new)
         if old_no_choices == new_no_choices:
             for action_no in range(old_no_choices):
                 old_index = m_old.get_choice_index(s_old, action_no)

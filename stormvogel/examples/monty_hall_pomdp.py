@@ -9,7 +9,17 @@ def create_monty_hall_pomdp():
 
     # first choose car position
     init.set_choices(
-        [(1 / 3, pomdp.new_state("carchosen", {"car_pos": i}, observation=stormvogel.model.Observation("carchosen"))) for i in range(3)]
+        [
+            (
+                1 / 3,
+                pomdp.new_state(
+                    "carchosen",
+                    {"car_pos": i},
+                    observation=stormvogel.model.Observation("carchosen"),
+                ),
+            )
+            for i in range(3)
+        ]
     )
 
     # we choose a door in each case
@@ -18,7 +28,11 @@ def create_monty_hall_pomdp():
             [
                 (
                     pomdp.action(f"open{i}"),
-                    pomdp.new_state("open", s.valuations | {"chosen_pos": i}, observation=stormvogel.model.Observation("open")),
+                    pomdp.new_state(
+                        "open",
+                        s.valuations | {"chosen_pos": i},
+                        observation=stormvogel.model.Observation("open"),
+                    ),
                 )
                 for i in range(3)
             ]
@@ -34,7 +48,11 @@ def create_monty_hall_pomdp():
             [
                 (
                     1 / len(other_pos),
-                    pomdp.new_state("goatrevealed", s.valuations | {"reveal_pos": i}, observation=stormvogel.model.Observation(f"goatrevealed{i}")),
+                    pomdp.new_state(
+                        "goatrevealed",
+                        s.valuations | {"reveal_pos": i},
+                        observation=stormvogel.model.Observation(f"goatrevealed{i}"),
+                    ),
                 )
                 for i in other_pos
             ]

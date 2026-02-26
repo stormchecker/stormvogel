@@ -87,7 +87,11 @@ class Choices[ValueType: Value]:
             raise RuntimeError(
                 "You cannot add a choice with an non-empty action to a choice which has an empty action. Use set_choice instead."
             )
-        if not self.has_empty_action() and len(self.choices) > 0 and other.has_empty_action():
+        if (
+            not self.has_empty_action()
+            and len(self.choices) > 0
+            and other.has_empty_action()
+        ):
             raise RuntimeError(
                 "You cannot add a choice with an empty action to a choice which has no empty action. Use set_choice instead."
             )

@@ -50,6 +50,10 @@ def model_checking(
             stormvogel_model, stormpy_result
         )
 
+        # Map back to the original model to preserve UUIDs and references
+        stormvogel_result = convert_results.map_result_to_original_model(
+            stormvogel_result, model, stormvogel_model
+        )
         return stormvogel_result
     else:
         print(

@@ -47,7 +47,7 @@ class State[ValueType: Value]:
     @property
     def labels(self) -> Iterable[str]:
         """Returns an iterator over the state's labels."""
-        return (l for (l, states) in self.model.state_labels.items() if self in states)
+        return (label for (label, states) in self.model.state_labels.items() if self in states)
     
     def set_labels(self, labels: set[str]):
         for label in self.model.state_labels:
@@ -185,5 +185,5 @@ class State[ValueType: Value]:
     def __str__(self):
         res = f"id: {self.state_id}, labels: {self.labels}, valuations: {self.valuations}"
         if self.model.supports_observations() and self.observation is not None:
-            res += f", observation: {self.observation.get_observation()}"
+            res += f", observation: {str(self.observation)}"
         return res
