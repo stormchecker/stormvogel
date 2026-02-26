@@ -4,7 +4,9 @@ from typing import TYPE_CHECKING
 
 from stormvogel.model.action import Action, EmptyAction
 from stormvogel.model.branches import Branches
-from stormvogel.model.value import Number
+from stormvogel.model.value import Number, Interval
+from stormvogel import parametric
+from fractions import Fraction
 
 if TYPE_CHECKING:
     from stormvogel.model.state import State
@@ -67,7 +69,9 @@ class Choices[ValueType: Value]:
     def is_stochastic(self, epsilon: Number) -> bool:
         """Returns whether the probabilities in the branches sum to 1"""
         for a in self.choices:
-            total = sum(v for v, _ in self.choices[a].branch)
+            total = sum(
+                v for v, _ in self.choices[a].branch if isinstance(v, (int, float))
+            )
             if abs(total - 1) > epsilon:
                 return False
         return True
@@ -167,7 +171,9 @@ def choices_from_shorthand[ValueType: Value](
                 assert isinstance(action, Action)
                 transition_content[action] = Branches(1, state)
             return Choices(transition_content)
-        elif isinstance(first_element, Value):
+        elif isinstance(
+            first_element, (int, float, Fraction, parametric.Parametric, Interval)
+        ):
             return Choices(
                 {EmptyAction: Branches(cast(list[tuple[Value, "State"]], shorthand))}
             )

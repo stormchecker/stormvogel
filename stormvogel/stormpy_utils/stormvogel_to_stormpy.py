@@ -175,6 +175,8 @@ def build_choice_labeling(model: Model):
 
     choice_count = sum(len(choices.choices) for choices in model.choices.values())
 
+    assert stormpy is not None
+
     # we add the labels to the choice labeling object
     choice_labeling = stormpy.storage.ChoiceLabeling(choice_count)
     for label in labels:
@@ -286,7 +288,9 @@ def build_observations(model: Model) -> list[int]:
         known_aliases = [str(i) for i in range(max_int + 1)]
 
     for state in model.states:
-        observations.append(known_aliases.index(state.observation.alias))
+        obs = state.observation
+        assert obs is not None and not isinstance(obs, Distribution)
+        observations.append(known_aliases.index(obs.alias))
 
     model.observations = [model.observation(a) for a in known_aliases]
     return observations
@@ -475,6 +479,7 @@ def build_ma(
     # For MA, exit rates are needed for markovian states. We compute them dynamically.
     exit_rates = []
     for state in model.states:
+        assert model.markovian_states is not None
         if state in model.markovian_states:
             rate_sum = 0.0
             if state in model.choices:

@@ -64,7 +64,9 @@ class RewardModel[ValueType: Value]:
         vector = []
         for state in self.model:
             val = self.get_state_reward(state)
-            val_float = float(val) if val is not None else 0.0
+            val_float = (
+                float(val) if val is not None and isinstance(val, (int, float)) else 0.0
+            )
             if self.model.supports_actions() and state in self.model.choices:
                 for _ in state.available_actions():
                     vector.append(val_float)

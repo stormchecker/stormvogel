@@ -829,11 +829,12 @@ class JSVisualization(VisualizationBase):
                     self.set_node_color(v, None)
             elif isinstance(v, stormvogel.model.Action):
                 last_state = seq[i - 1]
-                node_id = (last_state, v)
-                self.set_node_color(node_id, color)
-                sleep(delay)
-                if clear:
-                    self.set_node_color(node_id, None)
+                if isinstance(last_state, stormvogel.model.State):
+                    node_id = (last_state, v)
+                    self.set_node_color(node_id, color)
+                    sleep(delay)
+                    if clear:
+                        self.set_node_color(node_id, None)
 
     def export(self, output_format: str, filename: str = "export") -> None:
         """

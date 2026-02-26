@@ -106,7 +106,7 @@ class Result:
     def __init__(
         self,
         model: stormvogel.model.Model,
-        values: dict[int, stormvogel.model.Value],
+        values: dict[stormvogel.model.State, stormvogel.model.Value],
         scheduler: Scheduler | None = None,
     ):
         self.model = model
@@ -166,13 +166,16 @@ class Result:
             if s2 not in other.values:
                 return False
             v2 = other.values[s2]
-            if abs(float(v1) - float(v2)) > 1e-6:
+            if not isinstance(v1, (int, float)) or not isinstance(v2, (int, float)):
+                if v1 != v2:
+                    return False
+            elif abs(float(v1) - float(v2)) > 1e-6:
                 return False
 
         if (self.scheduler is None) != (other.scheduler is None):
             return False
 
-        if self.scheduler is not None:
+        if self.scheduler is not None and other.scheduler is not None:
             if self.scheduler.taken_actions != other.scheduler.taken_actions:
                 for index, s1 in enumerate(self.model.states):
                     if s1 in self.scheduler.taken_actions:

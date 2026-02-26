@@ -398,10 +398,10 @@ def build_bird[ValueType: stormvogel.model.Value](
 
         if observation_valuations is not None and model.observations is not None:
             observation_valuation_keys = observation_valuations(
-                model.observations[0].alias
+                int(model.observations[0].alias)
             ).keys()
             for obs in model.observations:
-                valuation_dict = observation_valuations(obs.alias)
+                valuation_dict = observation_valuations(int(obs.alias))
                 if valuation_dict is None:
                     raise ValueError(
                         f"On input observation id {obs.alias}, the observation_valuations function does not have a return value"

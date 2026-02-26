@@ -1,7 +1,7 @@
 """A model state."""
 
 from dataclasses import FrozenInstanceError, dataclass
-from typing import Any, Iterable, Self, TYPE_CHECKING
+from typing import Any, Iterable, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 if TYPE_CHECKING:
@@ -101,7 +101,7 @@ class State[ValueType: Value]:
             )
 
     @property
-    def choices(self) -> Choices:
+    def choices(self) -> "Choices[ValueType]":
         if self in self.model.choices:
             return self.model.choices[self]
         else:
@@ -154,7 +154,7 @@ class State[ValueType: Value]:
 
     def get_outgoing_transitions(
         self, action: Action | None = None
-    ) -> list[tuple[Value, Self]] | None:
+    ) -> Distribution[ValueType, "State[ValueType]"] | None:
         """gets the outgoing transitions of this state (after a specific action)"""
 
         choice = self.choices
@@ -169,6 +169,7 @@ class State[ValueType: Value]:
         else:
             if self in self.model.choices:
                 return choice.choices[EmptyAction].branch
+        return None
 
     def is_absorbing(self) -> bool:
         """returns whether the state has a nonzero transition going to another state or not"""

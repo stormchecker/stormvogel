@@ -80,7 +80,6 @@ class Model[ValueType: Value]:
         else:
             self.state_observations = None
             self.observations = None
-        self.markovian_states: set[State] | None
         # Initialize markovian states if applicable (in the case of MA's)
         if self.model_type == ModelType.MA:
             self.markovian_states = set()

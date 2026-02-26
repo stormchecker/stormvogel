@@ -177,7 +177,7 @@ def step(
         for rewardmodel in next_state.model.rewards:
             assert action is not None
             rewards.append(rewardmodel.get_state_reward(state))
-    return next_state, rewards, next_state.labels
+    return next_state, rewards, list(next_state.labels)
 
 
 def simulate_path(
