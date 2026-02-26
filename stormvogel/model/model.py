@@ -1,6 +1,6 @@
 from stormvogel.model.branches import Branches
 from enum import Enum
-from typing import Iterable, Any
+from typing import Iterable, Any, Iterator
 from uuid import UUID
 
 from deprecated import deprecated
@@ -53,7 +53,6 @@ class Model[ValueType: Value]:
         dict[State[ValueType], Observation | Distribution[ValueType, Observation]]
         | None
     )
-    state_names: dict[State[ValueType], str | None]
 
     state_labels: dict[str, set[State[ValueType]]]
 
@@ -71,7 +70,6 @@ class Model[ValueType: Value]:
         self.parametric: bool | None = None
         self.interval: bool | None = None
         self._state_index_cache: dict[State, int] | None = None
-        self.state_names = dict()
 
         # Initialize observations if those are supported by the model type (pomdps)
         if self.model_type == ModelType.POMDP:
@@ -225,14 +223,12 @@ class Model[ValueType: Value]:
             # for ctmcs and mas we currently only add self loops
             self.add_self_loops()
 
-    def get_sub_model(self, states: list[State], normalize: bool = True) -> "Model":
+    def get_sub_model(self, states: Iterable[State], normalize: bool = True) -> "Model":
         """Returns a submodel of the model based on a collection of states.
         The states in the collection are the states that stay in the model."""
         sub_model = deepcopy(self)
-        remove = []
-        for state in sub_model:
-            if state not in states:
-                remove.append(state)
+        states_set = set(states)
+        remove = [state for state in sub_model if state not in states_set]
         for state in remove:
             sub_model.remove_state(state, normalize=False)
 
@@ -278,15 +274,12 @@ class Model[ValueType: Value]:
                 if var not in state.valuations.keys():
                     state.valuations[var] = value
 
-    def unassigned_variables(self) -> list[tuple[State, str]]:
-        """Return a list of tuples of state variable pairs that are unassigned."""
-        # we check all variables in all states
-        unassigned = []
+    def unassigned_variables(self) -> Iterator[tuple[State, str]]:
+        """Yield tuples of state variable pairs that are unassigned."""
         for state in self:
             for variable in self.variables:
-                if variable not in state.valuations.keys():
-                    unassigned.append((state, variable))
-        return unassigned
+                if variable not in state.valuations:
+                    yield (state, variable)
 
     def all_states_outgoing_transition(self) -> bool:
         """Checks if all states have a choice."""
@@ -295,14 +288,12 @@ class Model[ValueType: Value]:
                 return False
         return True
 
-    def iterate_transitions(self) -> list[tuple[ValueType, State]]:
+    def iterate_transitions(self) -> Iterator[tuple[ValueType, State]]:
         """Iterates through all transitions in all choices of the model."""
-        transitions = []
         for choice in self.choices.values():
             for _action, branch in choice:
                 for transition in branch:
-                    transitions.append(transition)
-        return transitions
+                    yield transition
 
     def all_non_init_states_incoming_transition(self) -> bool:
         """Checks if all states except the initial state have an incoming transition."""
@@ -364,14 +355,6 @@ class Model[ValueType: Value]:
         if EmptyAction not in choice:
             raise RuntimeError("Called get_branch on a non-empty choice.")
         return choice[EmptyAction]
-
-    def get_action_with_label(self, label: str | None) -> Action | None:
-        """Get the action with provided label"""
-        assert self.actions is not None
-        for action in self.actions:
-            if action.label == label:
-                return action
-        return None
 
     def action(self, label: str | None = None) -> Action:
         """Creates a new action and returns it."""
@@ -459,18 +442,6 @@ class Model[ValueType: Value]:
         Mainly useful to keep consistent with storm."""
         pass  # no longer needed, using UUIDs
 
-    def get_action(self, name: str) -> Action:
-        """Gets an existing action."""
-        if not self.supports_actions():
-            raise RuntimeError(
-                "Called get_action on a model that does not support actions"
-            )
-        for action in self.actions:
-            if action.label == name:
-                return action
-
-        raise RuntimeError(f"Action with name {name} not found.")
-
     def get_state_index(self, state: State) -> int:
         """Returns the index of the given state in the model, with O(1) amortized lookup."""
         # Check if the cache is valid for this state
@@ -489,7 +460,6 @@ class Model[ValueType: Value]:
         labels: list[str] | str | None = None,
         valuations: dict[str, Any] | None = None,
         observation: Observation | Distribution[ValueType, Observation] | None = None,
-        name: str | None = None,
     ) -> State:
         """Creates a new state and returns it."""
         state = State(self)
@@ -497,7 +467,6 @@ class Model[ValueType: Value]:
         self.states.append(state)
 
         self.state_valuations[state] = dict()
-        self.state_names[state] = name
         self.state_valuations[state] = dict()
 
         if labels is not None and isinstance(labels, list):
@@ -535,13 +504,6 @@ class Model[ValueType: Value]:
             if state.state_id == state_id:
                 return state
         raise RuntimeError(f"State with id {state_id} not found.")
-
-    def get_state_by_name(self, state_name) -> State | None:
-        """Get a state by its name."""
-        for state, name in self.state_names.items():
-            if name == state_name:
-                return state
-        return None
 
     def get_state_by_stormpy_id(self, stormpy_id: int) -> State:
         """Get a state by its stormpy id (index in the states list)."""

@@ -39,16 +39,20 @@ from stormvogel import *
 
 
 def available_actions(s):
-    if s == "init":  # Either study or not
+    if s == "init":
         return ["study", "don't study"]
-    else:  # Otherwise, we have no choice (DTMC-like behavior)
+    else:
         return [""]
 
 
 def delta(s, a):
     if a == "study":
-        return [(9 / 10, "pass test"), (1 / 10, "fail test")]
+        return [(1, "did study")]
     elif a == "don't study":
+        return [(1, "did not study")]
+    elif s == "did study":
+        return [(9 / 10, "pass test"), (1 / 10, "fail test")]
+    elif s == "did not study":
         return [(2 / 5, "pass test"), (3 / 5, "fail test")]
     else:
         return [(1, "end")]
@@ -59,10 +63,10 @@ def labels(s):
 
 
 # For rewards, you have to provide a dict. This enables multiple reward models if you use a non-singleton list.
-def rewards(s: bird.State, a: bird.Action):
+def rewards(s: bird.State):
     if s == "pass test":
         return {"R": 100}
-    elif s == "init" and a == "don't study":
+    elif s == "did not study":
         return {"R": 15}
     else:
         return {"R": 0}

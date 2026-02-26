@@ -278,7 +278,7 @@ def simulate(
     )
 
     # we create the initial state ourselves because we want to force the name to be 0
-    init = partial_model.new_state(name="0", labels="init")
+    init = partial_model.new_state(labels="init")
     init.valuations = model.initial_state.valuations
 
     # we add each (empty) rewardmodel to the partial model

@@ -55,7 +55,7 @@ def delta(s, a):
 labels = lambda s: list(s)
 
 
-def rewards(s, a):
+def rewards(s):
     if "correct" in s:
         return {"R": 100}
     return {"R": 0}

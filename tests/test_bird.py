@@ -21,7 +21,7 @@ def test_bird_mdp():
         else:
             return [left, right]
 
-    def rewards(s: bird.State, a: bird.Action) -> dict[str, model.Value]:
+    def rewards(s: bird.State) -> dict[str, model.Value]:
         return {"r1": 1, "r2": 2}
 
     def labels(s: bird.State):
@@ -105,7 +105,7 @@ def test_bird_mdp_int():
         else:
             return [left, right]
 
-    def rewards(s, a: bird.Action) -> dict[str, model.Value]:
+    def rewards(s) -> dict[str, model.Value]:
         return {"r1": 1, "r2": 2}
 
     def labels(s):
@@ -476,7 +476,7 @@ def test_bird_pomdp():
         else:
             return [left, right]
 
-    def rewards(s: bird.State, a: bird.Action) -> dict[str, model.Value]:
+    def rewards(s: bird.State) -> dict[str, model.Value]:
         return {"r1": 1, "r2": 2}
 
     def labels(s: bird.State):

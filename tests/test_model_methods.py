@@ -433,8 +433,8 @@ def test_valuation_methods():
     )
     dtmc.add_self_loops()
 
-    assert dtmc.unassigned_variables() == [(init, "rolled")]
+    assert list(dtmc.unassigned_variables()) == [(init, "rolled")]
 
     dtmc.add_valuation_at_remaining_states()
 
-    assert not dtmc.unassigned_variables()
+    assert not list(dtmc.unassigned_variables())

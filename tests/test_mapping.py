@@ -350,7 +350,7 @@ def test_modified_stormpy_to_stormvogel_and_back():
         # we modify the model
         assert stormvogel_dtmc is not None
         stormvogel_dtmc.remove_state(stormvogel_dtmc.initial_state)
-        stormvogel_dtmc.new_state(name="three", labels=["three"])
+        stormvogel_dtmc.new_state(labels=["three"])
         stormvogel_dtmc.add_self_loops()
 
         # we map it back to stormpy
