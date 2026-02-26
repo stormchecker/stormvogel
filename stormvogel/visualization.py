@@ -1110,7 +1110,7 @@ class MplVisualization(VisualizationBase):
             match self.G.nodes[node]["type"]:
                 case NodeType.STATE:
                     group = self._group_state(
-                        self.model.get_state_by_id(node), "states"
+                        node, "states"
                     )
                     layout_group_color = self.layout.layout["groups"].get(group)
                 case NodeType.ACTION:
