@@ -13,6 +13,7 @@ from stormvogel.model.observation import Observation
 from stormvogel.model.value import Value
 from stormvogel.model.action import Action, EmptyAction
 
+
 @dataclass(order=False, eq=False)
 class State[ValueType: Value]:
     """Represents a state in a Model.
@@ -32,30 +33,34 @@ class State[ValueType: Value]:
     def __setattr__(self, name, value):
         if name == "state_id" and self.state_id != UUID(int=0):
             raise FrozenInstanceError("Cannot modify values of State")
-        
+
         if name == "model" and self.state_id != UUID(int=0):
             raise FrozenInstanceError("Cannot modify values of State")
-        
+
         super().__setattr__(name, value)
 
     def __delattr__(self, name):
         if name in ["state_id", "model"]:
             raise FrozenInstanceError("Cannot delete properties of State")
-        
+
         super().__delattr__(name)
 
     @property
     def labels(self) -> Iterable[str]:
         """Returns an iterator over the state's labels."""
-        return (label for (label, states) in self.model.state_labels.items() if self in states)
-    
+        return (
+            label
+            for (label, states) in self.model.state_labels.items()
+            if self in states
+        )
+
     def set_labels(self, labels: set[str]):
         for label in self.model.state_labels:
             if label in labels and self not in self.model.state_labels[label]:
                 self.model.state_labels[label].add(self)
             elif label not in labels and self in self.model.state_labels[label]:
                 self.model.state_labels[label].remove(self)
-    
+
     def has_label(self, label: str):
         """Returns whether this state has this label."""
         if label not in self.model.state_labels:
@@ -71,19 +76,29 @@ class State[ValueType: Value]:
     @property
     def observation(self) -> Observation | Distribution[ValueType, Observation] | None:
         """The observation associated with this state."""
-        if self.model.supports_observations() and self.model.state_observations is not None:
+        if (
+            self.model.supports_observations()
+            and self.model.state_observations is not None
+        ):
             return self.model.state_observations[self]
         else:
-            raise RuntimeError("The model this state belongs to does not have observations")
+            raise RuntimeError(
+                "The model this state belongs to does not have observations"
+            )
 
     @observation.setter
     def observation(
         self, observation: Observation | Distribution[ValueType, Observation]
     ):
-        if self.model.supports_observations() and self.model.state_observations is not None:
+        if (
+            self.model.supports_observations()
+            and self.model.state_observations is not None
+        ):
             self.model.state_observations[self] = observation
         else:
-            raise RuntimeError("The model this state belongs to does not have observations")
+            raise RuntimeError(
+                "The model this state belongs to does not have observations"
+            )
 
     @property
     def choices(self) -> Choices:
@@ -130,7 +145,7 @@ class State[ValueType: Value]:
 
     def get_valuation(self, variable: str) -> Any:
         return self.valuations[variable]
-    
+
     def available_actions(self) -> list["Action"]:
         """returns the list of all available actions in this state"""
         if self.model.supports_actions():
@@ -183,7 +198,9 @@ class State[ValueType: Value]:
         return hash(self.state_id)
 
     def __str__(self):
-        res = f"id: {self.state_id}, labels: {self.labels}, valuations: {self.valuations}"
+        res = (
+            f"id: {self.state_id}, labels: {self.labels}, valuations: {self.valuations}"
+        )
         if self.model.supports_observations() and self.observation is not None:
             res += f", observation: {str(self.observation)}"
         return res

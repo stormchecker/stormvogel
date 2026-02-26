@@ -160,7 +160,6 @@ class Model[ValueType: Value]:
                         parameters = parameters.union(transition[0].get_variables())
         return parameters
 
-
     def is_parametric(self) -> bool:
         """Returns whether this model contains parametric transition values"""
         if self.parametric is None:
@@ -360,7 +359,6 @@ class Model[ValueType: Value]:
             result |= branches.successors
         return result
 
-
     def get_branches(self, state: State) -> Branches:
         """Get the branch at state s. Only intended for emtpy choices, otherwise a RuntimeError is thrown."""
         choice = self.choices[state].choices
@@ -391,12 +389,19 @@ class Model[ValueType: Value]:
         return self.action(label)
 
     def remove_state(
-        self, state: State, normalize: bool = True, reassign_ids: bool = False, suppress_warning: bool = False
+        self,
+        state: State,
+        normalize: bool = True,
+        reassign_ids: bool = False,
+        suppress_warning: bool = False,
     ):
         """Properly removes a state, it can optionally normalize the model and reassign ids automatically."""
         if not suppress_warning:
             import warnings
-            warnings.warn("Warning: Using this can cause problems in your code if there are existing references to states by id.")
+
+            warnings.warn(
+                "Warning: Using this can cause problems in your code if there are existing references to states by id."
+            )
         if state not in self.states:
             raise RuntimeError("This state is not part of this model.")
 
@@ -413,10 +418,10 @@ class Model[ValueType: Value]:
                 # if branch is empty, we must remove the action
                 if len(branch.branch) == 0:
                     actions_to_remove.append(action)
-            
+
             for action in actions_to_remove:
                 del transition.choices[action]
-            
+
             # if state has no choices left, remove it from choices dict
             if len(transition.choices) == 0 and source_state != state:
                 states_to_remove_from_choices.append(source_state)
@@ -453,7 +458,8 @@ class Model[ValueType: Value]:
     def reassign_ids(self):
         """Reassigns the ids of states, choices and rates to be in order again.
         Mainly useful to keep consistent with storm."""
-        pass # no longer needed, using UUIDs
+        pass  # no longer needed, using UUIDs
+
     def get_action(self, name: str) -> Action:
         """Gets an existing action."""
         if not self.supports_actions():
@@ -474,7 +480,7 @@ class Model[ValueType: Value]:
             # We verify the cache is still correct by checking the actual list
             if idx is not None and idx < len(self.states) and self.states[idx] is state:
                 return idx
-        
+
         # If not, we rebuild the whole cache
         self._state_index_cache = {s: i for i, s in enumerate(self.states)}
         return self._state_index_cache.get(state, -1)
@@ -553,6 +559,7 @@ class Model[ValueType: Value]:
                 "Model does not have exactly one initial state with label 'init'."
             )
         return next(iter(self.state_labels["init"]))
+
     def add_label(self, label: str):
         """Adds a label to the model."""
         self.state_labels[label] = set()
@@ -564,7 +571,6 @@ class Model[ValueType: Value]:
         for state in self.states:
             variables = variables | set(state.valuations.keys())
         return variables
-
 
     def get_default_rewards(self) -> RewardModel:
         """Gets the default reward model, throws a RuntimeError if there is none."""
@@ -719,7 +725,10 @@ class Model[ValueType: Value]:
         def _branches_eq(b1: Branches, b2: Branches) -> bool:
             if len(b1.branch) != len(b2.branch):
                 return False
-            for (v1, st1), (v2, st2) in zip(sorted(b1.branch, key=lambda t: self_idx[id(t[1])]), sorted(b2.branch, key=lambda t: other_idx[id(t[1])])):
+            for (v1, st1), (v2, st2) in zip(
+                sorted(b1.branch, key=lambda t: self_idx[id(t[1])]),
+                sorted(b2.branch, key=lambda t: other_idx[id(t[1])]),
+            ):
                 if v1 != v2:
                     return False
                 if self_idx[id(st1)] != other_idx[id(st2)]:
@@ -753,8 +762,6 @@ class Model[ValueType: Value]:
             if self_indices != other_indices:
                 return False
         return True
-
-
 
     def make_observations_deterministic(self, reassign_ids: bool = False):
         """
@@ -791,10 +798,14 @@ class Model[ValueType: Value]:
                             for transition_prob, target in transitions:
                                 if target == state:
                                     for new_prob, new_state in new_states_distribution:
-                                        new_transitions.append((transition_prob * new_prob, new_state))
+                                        new_transitions.append(
+                                            (transition_prob * new_prob, new_state)
+                                        )
                                 else:
                                     new_transitions.append((transition_prob, target))
-                            self.choices[other_state].choices[action] = Branches(new_transitions)
+                            self.choices[other_state].choices[action] = Branches(
+                                new_transitions
+                            )
 
                 # Remove the original state and choices
                 del self.choices[state]

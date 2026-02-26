@@ -25,13 +25,17 @@ def naive_value_iteration(
         RuntimeError("The algorithm will not terminate if epsilon is zero.")
 
     # Create a dynamic list of dicts to store the result.
-    values_matrix = [{state: 0 for state in model.states}]
-    values_matrix[0][target_state] = 1
+    values_matrix: list[dict[stormvogel.model.State, float]] = [
+        {state: 0.0 for state in model.states}
+    ]
+    values_matrix[0][target_state] = 1.0
 
     terminate = False
     while not terminate:
         old_values = values_matrix[-1]
-        new_values = {state: None for state in model.states}
+        new_values: dict[stormvogel.model.State, float] = {
+            state: 0.0 for state in model.states
+        }
         for state in model.states:
             choices = model.choices[state].choices.items()
             # Now we have to take a decision for an action.
@@ -43,7 +47,11 @@ def naive_value_iteration(
                         for (prob, target_state_in_branch) in branch.branch
                     ]  # type: ignore
                 )
-                action_values[action] = branch_value
+                action_values[action] = (
+                    float(branch_value)
+                    if not isinstance(branch_value, float)
+                    else branch_value
+                )
             # We take the action with the highest value.
             new_values[state] = max(action_values.values()) if action_values else 0
         values_matrix.append(new_values)  # type: ignore
@@ -175,7 +183,7 @@ def policy_iteration(
                 vis.clear()
 
         choices = {
-            i: arg_max(
+            s1: arg_max(
                 [
                     lambda a: sum(
                         [
@@ -187,7 +195,7 @@ def policy_iteration(
                 ],
                 s1.available_actions(),
             )
-            for i, s1 in enumerate(model)
+            for s1 in model
         }
         new = stormvogel.Scheduler(model, choices)
     if visualize:

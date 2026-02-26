@@ -1,3 +1,4 @@
+# ruff: noqa: F403
 """The model."""
 
 from stormvogel.model.action import *

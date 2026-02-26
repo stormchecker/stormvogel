@@ -374,7 +374,6 @@ def test_get_state_reward():
     rewardmodel.set_from_rewards_vector(list(range(67)))
 
     state = mdp.states[2]
-    action = state.available_actions()[1]
 
     assert rewardmodel.get_state_reward(state) == 2
 
