@@ -159,9 +159,6 @@ class Model[ValueType: Value]:
                         parameters = parameters.union(transition[0].get_variables())
         return parameters
 
-    def get_parameters(self) -> set[str]:
-        """Backward compat alias for parameters property."""
-        return self.parameters
 
     def is_parametric(self) -> bool:
         """Returns whether this model contains parametric transition values"""
@@ -342,10 +339,6 @@ class Model[ValueType: Value]:
 
         self.choices[s] = choices
 
-    # Backward compatibility alias
-    set_choice = set_choices
-
-
     def add_choices(self, s: State, choices: Choices | ChoicesShorthand) -> None:
         """Add new choices from a state to the model. If no choice currently exists, the result will be the same as set_choice."""
         if s not in self.choices:
@@ -517,10 +510,8 @@ class Model[ValueType: Value]:
         """Get all states with a given label."""
         return self.state_labels[label]
 
-    def get_state_by_id(self, state_id: UUID | int) -> State:
-        """Get a state by its UUID id, or by integer index (for backward compat)."""
-        if isinstance(state_id, int):
-            return self.get_state_by_stormpy_id(state_id)
+    def get_state_by_id(self, state_id: UUID) -> State:
+        """Get a state by its UUID id."""
         for state in self.states:
             if state.state_id == state_id:
                 return state
@@ -549,16 +540,6 @@ class Model[ValueType: Value]:
             )
 
         return next(iter(self.state_labels["init"]))
-
-    def get_initial_state(self) -> State:
-        """Backward compat alias for initial_state property."""
-        return self.initial_state
-
-    @deprecated(version="0.11.0", reason="use state_labels instead.")
-    def get_labels(self) -> set[str]:
-        """Get all labels in states of this Model."""
-        return set(self.state_labels.keys())
-
     def add_label(self, label: str):
         """Adds a label to the model."""
         self.state_labels[label] = set()
@@ -571,9 +552,6 @@ class Model[ValueType: Value]:
             variables = variables | set(state.valuations.keys())
         return variables
 
-    def get_variables(self) -> set[str]:
-        """Backward compat alias for variables property."""
-        return self.variables
 
     def get_default_rewards(self) -> RewardModel:
         """Gets the default reward model, throws a RuntimeError if there is none."""
@@ -600,14 +578,7 @@ class Model[ValueType: Value]:
     @deprecated(version="0.10.0", reason="use type instead.")
     def get_type(self) -> ModelType:
         """Gets the type of this model"""
-        return self.model_type
-
-
-    @property
-    def type(self) -> ModelType:
-        """Backward compat alias for model_type."""
-        return self.model_type
-    @property
+        return self.model_type    @property
     def nr_states(self) -> int:
         """
         Returns the number of states in this model.
@@ -733,7 +704,7 @@ class Model[ValueType: Value]:
         def _branches_eq(b1: Branches, b2: Branches) -> bool:
             if len(b1.branch) != len(b2.branch):
                 return False
-            for (v1, st1), (v2, st2) in zip(b1.branch, b2.branch):
+            for (v1, st1), (v2, st2) in zip(sorted(b1.branch, key=lambda t: self_idx[id(t[1])]), sorted(b2.branch, key=lambda t: other_idx[id(t[1])])):
                 if v1 != v2:
                     return False
                 if self_idx[id(st1)] != other_idx[id(st2)]:

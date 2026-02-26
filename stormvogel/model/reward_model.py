@@ -51,13 +51,7 @@ class RewardModel[ValueType: Value]:
         """Sets the reward at said state."""
         self.rewards[state] = value
 
-    def set_state_action_reward(self, state: State, action: Action, value: ValueType):
-        """Backward-compatibility shim. Sets the state reward."""
-        self.rewards[state] = value
 
-    def get_state_action_reward(self, state: State, action: Action) -> ValueType | None:
-        """Backward-compatibility shim. Gets the state reward."""
-        return self.get_state_reward(state)
 
     def set_unset_rewards(self, value: ValueType):
         """Fills up rewards that were not set yet with the specified value."""
