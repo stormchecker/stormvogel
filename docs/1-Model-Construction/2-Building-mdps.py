@@ -39,16 +39,20 @@ from stormvogel import *
 
 
 def available_actions(s):
-    if s == "init":  # Either study or not
+    if s == "init":
         return ["study", "don't study"]
-    else:  # Otherwise, we have no choice (DTMC-like behavior)
+    else:
         return [""]
 
 
 def delta(s, a):
     if a == "study":
-        return [(9 / 10, "pass test"), (1 / 10, "fail test")]
+        return [(1, "did study")]
     elif a == "don't study":
+        return [(1, "did not study")]
+    elif s == "did study":
+        return [(9 / 10, "pass test"), (1 / 10, "fail test")]
+    elif s == "did not study":
         return [(2 / 5, "pass test"), (3 / 5, "fail test")]
     else:
         return [(1, "end")]
@@ -59,10 +63,10 @@ def labels(s):
 
 
 # For rewards, you have to provide a dict. This enables multiple reward models if you use a non-singleton list.
-def rewards(s: bird.State, a: bird.Action):
+def rewards(s: bird.State):
     if s == "pass test":
         return {"R": 100}
-    elif s == "init" and a == "don't study":
+    elif s == "did not study":
         return {"R": 15}
     else:
         return {"R": 0}
@@ -86,7 +90,7 @@ from stormvogel import *
 
 mdp = stormvogel.model.new_mdp()
 
-init = mdp.get_initial_state()
+init = mdp.initial_state
 study = mdp.action("study")
 not_study = mdp.action("don't study")
 
@@ -94,21 +98,20 @@ pass_test = mdp.new_state("pass test")
 fail_test = mdp.new_state("fail test")
 end = mdp.new_state("end")
 
-init.set_choice(
+init.set_choices(
     {
         study: [(9 / 10, pass_test), (1 / 10, fail_test)],
         not_study: [(4 / 10, pass_test), (6 / 10, fail_test)],
     }
 )
 
-pass_test.set_choice([(1, end)])
-fail_test.set_choice([(1, end)])
+pass_test.set_choices([(1, end)])
+fail_test.set_choices([(1, end)])
 
 reward_model = mdp.new_reward_model("R")
-reward_model.set_state_action_reward(pass_test, stormvogel.model.EmptyAction, 100)
-reward_model.set_state_action_reward(fail_test, stormvogel.model.EmptyAction, 0)
-reward_model.set_state_action_reward(init, not_study, 15)
-reward_model.set_state_action_reward(init, study, 0)
+reward_model.set_state_reward(pass_test, 100)
+reward_model.set_state_reward(fail_test, 0)
+reward_model.set_state_reward(init, 15)
 reward_model.set_unset_rewards(0)
 
 vis2 = show(mdp, layout=Layout("layouts/pinkgreen.json"))
@@ -164,17 +167,22 @@ grid_model = stormvogel.model.new_mdp(create_initial_state=False)
 
 for x in range(N):
     for y in range(N):
-        grid_model.new_state(f"({x},{y})")
+        labels = [f"({x},{y})"]
+        if x == 0 and y == 0:
+            labels.append("init")
+        grid_model.new_state(labels)
 
 for x in range(N):
     for y in range(N):
         state_tile_label = str((x, y)).replace(" ", "")
-        state = grid_model.get_states_with_label(state_tile_label)[0]
+        state = next(iter(grid_model.get_states_with_label(state_tile_label)))
         av = available_actions((x, y))
         for a in av:
             target_tile_label = str(pairwise_plus((x, y), ACTION_SEMANTICS[a])).replace(
                 " ", ""
             )
-            target_state = grid_model.get_states_with_label(target_tile_label)[0]
-            state.add_choice([(grid_model.action(a), target_state)])
+            target_state = next(
+                iter(grid_model.get_states_with_label(target_tile_label))
+            )
+            state.add_choices([(grid_model.action(a), target_state)])
 vis4 = show(grid_model)

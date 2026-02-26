@@ -110,7 +110,7 @@ def to_gymnasium_scheduler(
 
     def gymnasium_scheduler(env_sid: int):
         # TODO change this once bird API features are a thing.
-        model_state = model.get_states_with_label(str(int(env_sid)))[0]
+        model_state = next(iter(model.get_states_with_label(str(int(env_sid)))))
         if isinstance(scheduler, stormvogel.result.Scheduler):
             choice = scheduler.get_action_at_state(model_state)
         elif callable(scheduler):

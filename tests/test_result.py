@@ -956,20 +956,18 @@ def test_induced_dtmc():
     branch0 = stormvogel.model.Branches([(1 / 2, state1), (1 / 2, state2)])
     branch1 = stormvogel.model.Branches([(1 / 4, state1), (3 / 4, state2)])
     transition = stormvogel.model.Choices({action0: branch0, action1: branch1})
-    mdp.set_choice(mdp.get_initial_state(), transition)
+    mdp.set_choices(mdp.initial_state, transition)
     mdp.add_self_loops()
 
     # we set rewards (because we must also check if they are carried over)
     rewardmodel = mdp.new_reward_model("r1")
-    for i in range(4):
-        pair = mdp.get_state_action_pair(i)
-        assert pair is not None
-        rewardmodel.set_state_action_reward(pair[0], pair[1], i)
+    for i, state in enumerate(mdp.states):
+        rewardmodel.set_state_reward(state, i)
 
     # we create the induced dtmc
     chosen_actions = dict()
-    for state_id, state in mdp:
-        chosen_actions[state_id] = state.available_actions()[0]
+    for state in mdp:
+        chosen_actions[state] = list(mdp.choices[state])[0][0]
     scheduler = stormvogel.result.Scheduler(mdp, chosen_actions)
 
     dtmc = scheduler.generate_induced_dtmc()
@@ -985,14 +983,14 @@ def test_induced_dtmc():
         )
     )
     transition = stormvogel.model.Choices({stormvogel.model.EmptyAction: branch0})
-    other_dtmc.set_choice(other_dtmc.get_initial_state(), transition)
+    other_dtmc.set_choices(other_dtmc.initial_state, transition)
     other_dtmc.add_self_loops()
 
     # and the rewards of the induced dtmc
     rewardmodel = other_dtmc.new_reward_model("r1")
-    rewardmodel.set_state_reward(other_dtmc.get_state_by_id(0), 0)
-    rewardmodel.set_state_reward(other_dtmc.get_state_by_id(1), 2)
-    rewardmodel.set_state_reward(other_dtmc.get_state_by_id(2), 3)
+    rewardmodel.set_state_reward(other_dtmc.states[0], 0)
+    rewardmodel.set_state_reward(other_dtmc.states[1], 2)
+    rewardmodel.set_state_reward(other_dtmc.states[2], 3)
 
     assert dtmc == other_dtmc
 
@@ -1000,5 +998,5 @@ def test_induced_dtmc():
 def test_random_scheduler():
     lion = stormvogel.examples.create_lion_mdp()
     sched = stormvogel.result.random_scheduler(lion)
-    for i, _ in lion:
-        sched.get_action_at_state(i)
+    for state in lion:
+        sched.get_action_at_state(state)

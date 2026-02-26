@@ -33,9 +33,24 @@ def sparse_equal(
     states_equal = True
     for i in range(m0.nr_states):
         actions_equal = True
-        for j in range(len(m0.states[i].actions)):
-            if not m0.states[i].actions[j] == m1.states[i].actions[j]:
-                actions_equal = True
+        if len(m0.states[i].actions) != len(m1.states[i].actions):
+            actions_equal = False
+        else:
+            for j in range(len(m0.states[i].actions)):
+                a0 = m0.states[i].actions[j]
+                a1 = m1.states[i].actions[j]
+                if a0.id != a1.id:
+                    actions_equal = False
+                else:
+                    t0 = list(a0.transitions)
+                    t1 = list(a1.transitions)
+                    if len(t0) != len(t1):
+                        actions_equal = False
+                    else:
+                        for e0, e1 in zip(t0, t1):
+                            if e0.column != e1.column or e0.value() != e1.value():
+                                actions_equal = False
+                                break
         if not (
             m0.states[i].id == m1.states[i].id
             and m0.states[i].labels == m1.states[i].labels
@@ -61,14 +76,6 @@ def sparse_equal(
                 if not m0.reward_models[key].get_state_reward(i) == m1.reward_models[
                     key
                 ].get_state_reward(i):
-                    reward_models_equal = False
-            if (
-                m0.reward_models[key].has_state_action_rewards
-                and m1.reward_models[key].has_state_action_rewards
-            ):
-                if not m0.reward_models[key].get_state_action_reward(
-                    i
-                ) == m1.reward_models[key].get_state_action_reward(i):
                     reward_models_equal = False
 
     # check if exit rates are equal (in case of ctmcs):
@@ -120,11 +127,11 @@ def test_stormvogel_to_stormpy_and_back_dtmc():
 
         # we test if rewardmodels work:
         rewardmodel = stormvogel_dtmc.new_reward_model("rewardmodel")
-        for stateid, _ in stormvogel_dtmc:
-            rewardmodel.rewards[(stateid, stormvogel.model.EmptyAction)] = 1
+        for state in stormvogel_dtmc:
+            rewardmodel.rewards[(state.state_id, stormvogel.model.EmptyAction)] = 1
         rewardmodel2 = stormvogel_dtmc.new_reward_model("rewardmodel2")
-        for stateid, _ in stormvogel_dtmc:
-            rewardmodel2.rewards[(stateid, stormvogel.model.EmptyAction)] = 2
+        for state in stormvogel_dtmc:
+            rewardmodel2.rewards[(state.state_id, stormvogel.model.EmptyAction)] = 2
 
         # print(stormvogel_dtmc)
         stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
@@ -251,10 +258,10 @@ def test_stormpy_to_stormvogel_and_back_pomdp():
 #     # Create a new model
 #     stormvogel_ma = stormvogel.model.new_ma("example ma")
 #
-#     init = stormvogel_ma.get_initial_state()
+#     init = stormvogel_ma.initial_state
 #
 #     # We have 5 actions
-#     init.set_choice(
+#     init.set_choices(
 #         [
 #             (
 #                 stormvogel_ma.action(f"{i}"),
@@ -266,9 +273,9 @@ def test_stormpy_to_stormvogel_and_back_pomdp():
 #
 #     # We add the rates and markovian states
 #     stormvogel_ma.markovian_states = [
-#         stormvogel_ma.get_state_by_id(0),
-#         stormvogel_ma.get_state_by_id(3),
-#         stormvogel_ma.get_state_by_id(4),
+#         stormvogel_ma.states[0],
+#         stormvogel_ma.states[3],
+#         stormvogel_ma.states[4],
 #     ]
 #     stormvogel_ma.exit_rates = {i: 0 for i in range(6)}
 #
@@ -342,8 +349,8 @@ def test_modified_stormpy_to_stormvogel_and_back():
 
         # we modify the model
         assert stormvogel_dtmc is not None
-        stormvogel_dtmc.remove_state(stormvogel_dtmc.get_initial_state())
-        stormvogel_dtmc.new_state(name="three", labels=["three"])
+        stormvogel_dtmc.remove_state(stormvogel_dtmc.initial_state)
+        stormvogel_dtmc.new_state(labels=["three"])
         stormvogel_dtmc.add_self_loops()
 
         # we map it back to stormpy
@@ -392,14 +399,14 @@ def test_id_mapping():
         # make stormvogel model of dtmc
         stormvogel_dtmc = stormvogel.examples.die.create_die_dtmc()
         # remove states without reassigning ids
-        stormvogel_dtmc.remove_state(stormvogel_dtmc.get_initial_state())
-        stormvogel_dtmc.remove_state(stormvogel_dtmc.get_state_by_id(2))
+        stormvogel_dtmc.remove_state(stormvogel_dtmc.initial_state)
+        stormvogel_dtmc.remove_state(stormvogel_dtmc.states[2])
         # map to stormpy and back
         stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
         new_stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
 
-        # we compare (should be unequal)
-        assert new_stormvogel_dtmc != stormvogel_dtmc
+        # we compare (should be equal since we compare structure, not UUIDs)
+        assert new_stormvogel_dtmc == stormvogel_dtmc
 
         # we reassign ids of original model and compare again (should be equal now)
         stormvogel_dtmc.reassign_ids()
@@ -412,7 +419,7 @@ def test_labels():
         model = stormvogel.model.new_dtmc(create_initial_state=False)
         model.new_state()
         model.new_state()
-        model.get_state_by_id(1).add_choice([(1, model.get_state_by_id(0))])
+        model.states[1].add_choices([(1, model.states[0])])
         model.add_self_loops()
 
         with pytest.raises(

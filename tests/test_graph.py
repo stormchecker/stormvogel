@@ -19,11 +19,11 @@ from stormvogel.model import EmptyAction
 )
 def test_graph_creation(model):
     G = ModelGraph.from_model(model)
-    for _, state in model:
-        assert state.id in G.nodes, f"Missing state {state.id} in ModelGraph"
+    for state in model:
+        assert state in G.nodes, f"Missing state {state} in ModelGraph"
         for action in state.available_actions():
             if action == EmptyAction:
                 continue
             assert (
-                (state.id, action) in G.state_action_id_map
-            ), f"Mapping state: {state.id}, Action: {action} missing in ModelGraph"
+                (state, action) in G.nodes
+            ), f"Mapping state: {state}, Action: {action} missing in ModelGraph"

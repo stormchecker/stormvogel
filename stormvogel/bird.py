@@ -31,11 +31,7 @@ type Action = str
 def valid_input[ValueType: stormvogel.model.Value](
     delta: Callable[[Any, Action], Any] | Callable[[Any], Any],
     init: Any,
-    rewards: (
-        Callable[[Any, Action], dict[str, ValueType]]
-        | Callable[[Any], dict[str, ValueType]]
-        | None
-    ) = None,
+    rewards: Callable[[Any], dict[str, ValueType]] | None = None,
     labels: Callable[[Any], list[str] | str | None] | None = None,
     available_actions: Callable[[Any], list[Action]] | None = None,
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
@@ -97,16 +93,10 @@ def valid_input[ValueType: stormvogel.model.Value](
     if rewards is not None:
         sig = inspect.signature(rewards)
         num_params = len(sig.parameters)
-        if supports_actions:
-            if num_params != 2:
-                raise ValueError(
-                    f"The rewards function must take exactly two arguments (state, action), but it takes {num_params} arguments"
-                )
-        else:
-            if num_params != 1:
-                raise ValueError(
-                    f"The rewards function must take exactly one argument (state), but it takes {num_params} arguments"
-                )
+        if num_params != 1:
+            raise ValueError(
+                f"The rewards function must take exactly one argument (state), but it takes {num_params} arguments"
+            )
 
     if labels is not None:
         sig = inspect.signature(labels)
@@ -147,11 +137,7 @@ def build_bird[ValueType: stormvogel.model.Value](
     ]
     | Callable[[Any], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None],
     init: Any,
-    rewards: (
-        Callable[[Any, Action], dict[str, ValueType]]
-        | Callable[[Any], dict[str, ValueType]]
-        | None
-    ) = None,
+    rewards: Callable[[Any], dict[str, ValueType]] | None = None,
     labels: Callable[[Any], list[str] | str | None] | None = None,
     available_actions: Callable[[Any], list[Action]] | None = None,
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
@@ -191,7 +177,17 @@ def build_bird[ValueType: stormvogel.model.Value](
                     )
 
                 if s not in state_lookup:
-                    new_state = model.new_state()
+                    obs_kwarg = {}
+                    if model.supports_observations() and observations is not None:
+                        given_obs = observations(s)
+                        if isinstance(given_obs, int):
+                            obs_kwarg["observation"] = model.observation(str(given_obs))
+                        elif isinstance(given_obs, list):
+                            obs_kwarg["observation"] = [
+                                (prob, model.observation(str(o)))
+                                for prob, o in given_obs
+                            ]
+                    new_state = model.new_state(**obs_kwarg)
                     state_lookup[s] = new_state
                     branch.append((val, new_state))
                     states_to_be_visited.append(s)
@@ -217,7 +213,16 @@ def build_bird[ValueType: stormvogel.model.Value](
 
     # we create the model with the given type and initial state
     model = stormvogel.model.new_model(modeltype=modeltype, create_initial_state=False)
-    init_state = model.new_state(labels=["init"])
+    obs_kwarg = {}
+    if model.supports_observations() and observations is not None:
+        given_obs = observations(init)
+        if isinstance(given_obs, int):
+            obs_kwarg["observation"] = model.observation(str(given_obs))
+        elif isinstance(given_obs, list):
+            obs_kwarg["observation"] = [
+                (prob, model.observation(str(o))) for prob, o in given_obs
+            ]
+    init_state = model.new_state(labels=["init"], **obs_kwarg)
 
     # we continue calling delta and adding new states until no states are
     # left to be visited
@@ -281,7 +286,7 @@ def build_bird[ValueType: stormvogel.model.Value](
 
         s = state_lookup[state]
         assert s is not None
-        model.add_choice(
+        model.add_choices(
             s,
             choice,
         )
@@ -296,80 +301,31 @@ def build_bird[ValueType: stormvogel.model.Value](
 
     # we add the rewards
     if rewards is not None:
-        if model.supports_actions():
-            # we first create the right number of reward models
-            assert available_actions is not None
-            rewards = cast(Callable[[Any, Action], dict[str, ValueType]], rewards)
-            for reward in rewards(init, available_actions(init)[0]).items():
-                model.new_reward_model(reward[0])
+        rewards_1 = cast(Callable[[Any], dict[str, ValueType]], rewards)
+        for name in rewards_1(init).keys():
+            model.new_reward_model(name)
 
-            # we take the initial state reward to compare later
-            action = available_actions(init)[0]
-            initial_state_rewards = rewards(init, action)
+        initial_state_rewards = rewards_1(init)
+        for state, s in state_lookup.items():
+            rewarddict = rewards_1(state)
 
-            for state, s in state_lookup.items():
-                assert available_actions is not None
-                for action in available_actions(state):
-                    rewarddict = rewards(state, action)
+            if rewarddict is None:
+                raise ValueError(
+                    f"On input {state}, the rewards function does not have a return value"
+                )
+            if not isinstance(rewarddict, dict):
+                raise ValueError(
+                    f"On input {state}, the rewards function does not return a dictionary. Make sure to change it to the format {{<rewardmodel name>:<reward>,...}}"
+                )
+            if rewarddict.keys() != initial_state_rewards.keys():
+                raise ValueError(
+                    "Make sure that the rewards function returns a dictionary with the same keys on each return"
+                )
 
-                    # we check for the rewards when the function does not return a dict object
-                    # or the length is not always the same
-                    if rewarddict is None:
-                        raise ValueError(
-                            f"On input pair {state} {action}, the rewards function does not have a return value"
-                        )
-
-                    if not isinstance(rewarddict, dict):
-                        raise ValueError(
-                            f"On input pair {state} {action}, the rewards function does not return a dictionary. Make sure to change it to the format {{<rewardmodel>:<reward>,...}}"
-                        )
-                    if rewarddict.keys() != initial_state_rewards.keys():
-                        raise ValueError(
-                            "Make sure that the rewards function returns a dictionary with the same keys on each return"
-                        )
-
-                    assert s is not None
-                    for index, reward in enumerate(rewarddict.items()):
-                        # Convert empty strings to None for the empty action
-                        action_label = None if action == "" else action
-                        a = model.get_action_with_label(action_label)
-                        assert a is not None
-                        model.rewards[index].set_state_action_reward(
-                            s,
-                            a,
-                            reward[1],
-                        )
-        else:
-            # we first create the right number of reward models
-            rewards = cast(Callable[[Any], dict[str, ValueType]], rewards)
-            for reward in rewards(init).items():
-                model.new_reward_model(reward[0])
-
-            initial_state_rewards = rewards(init)
-            for state, s in state_lookup.items():
-                rewarddict = rewards(state)
-
-                # we check for the rewards when the function does not return a dict object
-                # or the length is not always the same
-                if rewarddict is None:
-                    raise ValueError(
-                        f"On input {state}, the rewards function does not have a return value"
-                    )
-
-                if not isinstance(rewarddict, dict):
-                    raise ValueError(
-                        f"On input {state}, the rewards function does not return a dictionary. Make sure to change it to the format {{<rewardmodel name>:<reward>,...}}"
-                    )
-                if rewarddict.keys() != initial_state_rewards.keys():
-                    raise ValueError(
-                        "Make sure that the rewards function returns a dictionary with the same keys on each return"
-                    )
-
-                s = state_lookup[state]
-                assert s is not None
-                for index, reward in enumerate(rewarddict.items()):
-                    model.rewards[index].set_state_reward(s, reward[1])
-
+            s = state_lookup[state]
+            assert s is not None
+            for index, reward in enumerate(rewarddict.items()):
+                model.rewards[index].set_state_reward(s, reward[1])
     # we add the observations
     if observations is not None:
         for state, s in state_lookup.items():
@@ -381,13 +337,13 @@ def build_bird[ValueType: stormvogel.model.Value](
                 )
 
             if isinstance(given_obs, int):
-                obs = model.observation(observation_id=given_obs)
-                s.set_observation(obs)
+                obs = model.observation(str(given_obs))
+                s.observation = obs
             elif isinstance(given_obs, list):
                 obs_distribution = [
-                    (prob, model.observation(observation_id=o)) for prob, o in given_obs
+                    (prob, model.observation(str(o))) for prob, o in given_obs
                 ]
-                s.set_observation(obs_distribution)
+                s.observation = obs_distribution
             else:
                 raise ValueError(
                     f"On input {state}, the observations function does not return an integer or a distribution"
@@ -395,18 +351,18 @@ def build_bird[ValueType: stormvogel.model.Value](
 
         if observation_valuations is not None and model.observations is not None:
             observation_valuation_keys = observation_valuations(
-                model.observations[0].observation
+                int(model.observations[0].alias)
             ).keys()
             for obs in model.observations:
-                valuation_dict = observation_valuations(obs.observation)
+                valuation_dict = observation_valuations(int(obs.alias))
                 if valuation_dict is None:
                     raise ValueError(
-                        f"On input observation id {obs.observation}, the observation_valuations function does not have a return value"
+                        f"On input observation id {obs.alias}, the observation_valuations function does not have a return value"
                     )
 
                 if not isinstance(valuation_dict, dict):
                     raise ValueError(
-                        f"On input observation id {obs.observation}, the observation_valuations function does not return a dictionary. Make sure to change the format to [<variable>: <value>,...]"
+                        f"On input observation id {obs.alias}, the observation_valuations function does not return a dictionary. Make sure to change the format to [<variable>: <value>,...]"
                     )
 
                 if valuation_dict.keys() != observation_valuation_keys:
@@ -421,7 +377,7 @@ def build_bird[ValueType: stormvogel.model.Value](
                         or isinstance(val, float)
                     ):
                         raise ValueError(
-                            f"On input observation id {obs.observation}, the dictionary that the observation_valuations function returns contains a value {val} which is not of type int, float or bool"
+                            f"On input observation id {obs.alias}, the dictionary that the observation_valuations function returns contains a value {val} which is not of type int, float or bool"
                         )
 
                 obs.valuations = valuation_dict
@@ -434,8 +390,15 @@ def build_bird[ValueType: stormvogel.model.Value](
                 raise ValueError(
                     f"On input {state}, the rates function does not return a number"
                 )
-            model.set_rate(s, r)
-
+            if model.model_type.name == "CTMC":
+                if s in model.choices:
+                    for a in model.choices[s].choices:
+                        new_branch = [
+                            (v * r, t) for v, t in model.choices[s].choices[a].branch
+                        ]
+                        model.choices[s].choices[a].branch = new_branch
+            else:
+                pass
     # we add the valuations
     if valuations is not None:
         initial_state_valuations = valuations(init)

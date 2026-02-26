@@ -21,30 +21,48 @@ def naive_value_iteration(
     """
     if epsilon <= 0:
         RuntimeError("The algorithm will not terminate if epsilon is zero.")
+    if epsilon <= 0:
+        RuntimeError("The algorithm will not terminate if epsilon is zero.")
 
-    # Create a dynamic matrix (list of lists) to store the result.
-    values_matrix = [[0 for state in model.get_states()]]
-    values_matrix[0][target_state.id] = 1
+    # Create a dynamic list of dicts to store the result.
+    values_matrix: list[dict[stormvogel.model.State, float]] = [
+        {state: 0.0 for state in model.states}
+    ]
+    values_matrix[0][target_state] = 1.0
 
     terminate = False
     while not terminate:
-        old_values = values_matrix[len(values_matrix) - 1]
-        new_values = [None for state in model.get_states()]
-        for sid, state in model:
-            choices = model.get_choice(state)
+        old_values = values_matrix[-1]
+        new_values: dict[stormvogel.model.State, float] = {
+            state: 0.0 for state in model.states
+        }
+        for state in model.states:
+            choices = model.choices[state].choices.items()
             # Now we have to take a decision for an action.
             action_values = {}
             for action, branch in choices:
                 branch_value = sum(
-                    [prob * old_values[state.id] for (prob, state) in branch]  # type: ignore
+                    [
+                        prob * old_values[target_state_in_branch]
+                        for (prob, target_state_in_branch) in branch.branch
+                    ]  # type: ignore
                 )
-                action_values[action] = branch_value
+                action_values[action] = (
+                    float(branch_value)
+                    if not isinstance(branch_value, float)
+                    else branch_value
+                )
             # We take the action with the highest value.
-            new_values[sid] = max(action_values.values())
+            new_values[state] = max(action_values.values()) if action_values else 0
         values_matrix.append(new_values)  # type: ignore
         terminate = (
-            sum([abs(x - y) for (x, y) in zip(new_values, old_values)]) < epsilon  # type: ignore
+            sum([abs(new_values[s] - old_values[s]) for s in model.states]) < epsilon  # type: ignore
         )
+
+    # Convert back to list of lists for compatibility with return type and display
+    return [
+        [step_values[state] for state in model.states] for step_values in values_matrix
+    ]  # type: ignore
     return values_matrix  # type: ignore
 
 
@@ -60,25 +78,30 @@ def dtmc_evolution(model: stormvogel.model.Model, steps: int) -> list[list[float
     """
     if steps < 2:
         RuntimeError("Need at least two steps")
-    if model.type != stormvogel.model.ModelType.DTMC:
+    if model.model_type != stormvogel.model.ModelType.DTMC:
         RuntimeError("Only works for DTMC")
 
-    # Create a matrix and set the value for the starting state to 1 on the first step.
-    matrix_steps_states = [[0.0 for s in model.get_states()] for x in range(steps)]
-    matrix_steps_states[0][model.get_initial_state().id] = 1
+    # Create a list of dicts to store values
+    matrix_steps_states = [{s: 0.0 for s in model.states} for _ in range(steps)]
+    matrix_steps_states[0][model.initial_state] = 1
 
     # Apply the updated values for each step.
     for current_step in range(steps - 1):
         next_step = current_step + 1
-        for s_id, s in model:
-            branch = model.get_branches(s)
+        for s in model.states:
+            branch = model.choices[s].choices[stormvogel.model.EmptyAction].branch
             for transition_prob, target in branch:
-                current_prob = matrix_steps_states[current_step][s_id]
+                current_prob = matrix_steps_states[current_step][s]
                 assert isinstance(transition_prob, (int, float))
-                matrix_steps_states[next_step][target.id] += current_prob * float(
+                matrix_steps_states[next_step][target] += current_prob * float(
                     transition_prob
                 )
 
+    # Convert to list of lists for display
+    return [
+        [step_values[state] for state in model.states]
+        for step_values in matrix_steps_states
+    ]
     return matrix_steps_states
 
 
@@ -160,7 +183,7 @@ def policy_iteration(
                 vis.clear()
 
         choices = {
-            i: arg_max(
+            s1: arg_max(
                 [
                     lambda a: sum(
                         [
@@ -172,7 +195,7 @@ def policy_iteration(
                 ],
                 s1.available_actions(),
             )
-            for i, s1 in model
+            for s1 in model
         }
         new = stormvogel.Scheduler(model, choices)
     if visualize:

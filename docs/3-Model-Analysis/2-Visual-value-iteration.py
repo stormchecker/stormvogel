@@ -40,26 +40,30 @@ def naive_value_iteration(
     if epsilon <= 0:
         RuntimeError("The algorithm will not terminate if epsilon is zero.")
 
-    # Create a dynamic matrix (list of lists) to store the result.
-    values_matrix = [[0 for state in model.get_states()]]
-    values_matrix[0][target_state.id] = 1
+    # Map state objects to their integer index to avoid slow lookup
+    state_to_index = {state: i for i, state in enumerate(model.states)}
+    target_idx = state_to_index[target_state]
+    values_matrix = [[0 for _ in model.states]]
+    values_matrix[0][target_idx] = 1
 
     terminate = False
     while not terminate:
-        old_values = values_matrix[len(values_matrix) - 1]
-        new_values = [None for state in model.get_states()]
-        for sid, state in model.states.items():
-            choice = model.get_choice(state)
+        old_values = values_matrix[-1]
+        new_values = [0 for _ in model.states]
+        for sid, state in enumerate(model.states):
+            choices = state.choices
             # Now we have to take a decision for an action.
-            actions = choice.choice.keys()
             action_values = {}
-            for action, branch in choice.choice.items():
+            for action, branch in choices.choices.items():
                 branch_value = sum(
-                    [prob * old_values[state.id] for (prob, state) in branch.branch]
+                    [
+                        prob * old_values[state_to_index[s]]
+                        for (prob, s) in branch.branch
+                    ]
                 )
                 action_values[action] = branch_value
             # We take the action with the highest value.
-            highest_value = max(action_values.values())
+            highest_value = max(action_values.values()) if action_values else 0
             new_values[sid] = highest_value
         values_matrix.append(new_values)
         terminate = (
@@ -79,9 +83,9 @@ vis = show(lion, layout=Layout("layouts/lion.json"))
 # Now we can display the inner workings of a value iteration algorithm: At the beginning we give the target state a value of 1, then we work backwards, always choosing the action that would maximize the value in the previous iteration. In the end, we always end up converging (This was mathematically proven). The brighter the cell is at the end, the higher the chance that we reach the target state from this state.
 
 # %%
-target = lion.get_states_with_label("full")[0]
+target = next(iter(lion.get_states_with_label("full")))
 res = naive_value_iteration(lion, 0.003, target)
-labels = lion.get_ordered_labels()
+labels = [str(i) for i in range(len(lion.states))]
 extensions.display_value_iteration_result(res, 10, labels)
 
 # %% [markdown]
@@ -89,7 +93,7 @@ extensions.display_value_iteration_result(res, 10, labels)
 
 # %%
 res2 = extensions.naive_value_iteration(
-    lion, 0.003, lion.get_states_with_label("full")[0]
+    lion, 0.003, next(iter(lion.get_states_with_label("full")))
 )
 res == res2
 
@@ -114,22 +118,22 @@ def dtmc_evolution(model: stormvogel.model.Model, steps: int) -> list[list[float
     """
     if steps < 2:
         RuntimeError("Need at least two steps")
-    if model.type != stormvogel.model.ModelType.DTMC:
+    if model.model_type != stormvogel.model.ModelType.DTMC:
         RuntimeError("Only works for DTMC")
 
     # Create a matrix and set the value for the starting state to 1 on the first step.
     matrix_steps_states = [[0.0 for s in model.states] for x in range(steps)]
-    matrix_steps_states[0][model.get_initial_state().id] = 1
+    matrix_steps_states[0][model.get_state_index(model.initial_state)] = 1
 
     # Apply the updated values for each step.
     for current_step in range(steps - 1):
         next_step = current_step + 1
-        for s_id, s in model.states.items():
-            branch = model.get_branch(s)
+        for s_id, s in enumerate(model.states):
+            branch = s.choices.choices[stormvogel.model.EmptyAction]
             for transition_prob, target in branch.branch:
                 current_prob = matrix_steps_states[current_step][s_id]
-                matrix_steps_states[next_step][target.id] += current_prob * float(
-                    transition_prob
+                matrix_steps_states[next_step][model.get_state_index(target)] += (
+                    current_prob * float(transition_prob)
                 )
 
     return matrix_steps_states
@@ -141,7 +145,7 @@ vis = show(stormvogel_dtmc)
 
 # %%
 res3 = dtmc_evolution(stormvogel_dtmc, steps=15)
-labels = stormvogel_dtmc.get_ordered_labels()
+labels = [str(i) for i in range(len(stormvogel_dtmc.states))]
 extensions.display_value_iteration_result(res3, 10, labels)
 
 # %% [markdown]

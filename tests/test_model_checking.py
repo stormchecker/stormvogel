@@ -61,7 +61,7 @@ def test_model_checking():
         assert result == stormvogel_result
 
         # we check if it fails in the case of non-stochastic models
-        dtmc.remove_state(dtmc.get_state_by_id(1), normalize=False)
+        dtmc.remove_state(dtmc.states[1], normalize=False)
         prop = 'P=? [F "rolled2"]'
         with pytest.raises(RuntimeError):
             assert stormvogel.stormpy_utils.model_checking.model_checking(

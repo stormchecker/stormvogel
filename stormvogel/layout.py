@@ -152,7 +152,7 @@ class Layout:
         self.set_value(
             ["positions"],
             {
-                k: {"x": float(x * scale), "y": float(y * scale)}
+                str(k): {"x": float(x * scale), "y": float(y * scale)}
                 for k, (x, y) in pos.items()
             },
         )

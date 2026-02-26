@@ -49,7 +49,12 @@ def model_checking(
         stormvogel_result = convert_results.convert_model_checking_result(
             stormvogel_model, stormpy_result
         )
+        assert stormvogel_result is not None
 
+        # Map back to the original model to preserve UUIDs and references
+        stormvogel_result = convert_results.map_result_to_original_model(
+            stormvogel_result, model, stormvogel_model
+        )
         return stormvogel_result
     else:
         print(

@@ -1,9 +1,21 @@
-import stormvogel.model
 import re
-import stormvogel.parametric as parametric
-
 import json
-from typing import Optional, Union, cast
+from typing import Union, cast
+
+from stormvogel import parametric
+from stormvogel.model.model import (
+    Model,
+    ModelType,
+    new_mdp,
+    new_ctmc,
+    new_pomdp,
+    new_ma,
+)
+from stormvogel.model.state import State
+from stormvogel.model.branches import Branches
+from stormvogel.model.choices import Choices, choices_from_shorthand
+from stormvogel.model.value import Value, Interval
+from stormvogel.model.observation import Observation
 
 try:
     import stormpy
@@ -11,641 +23,15 @@ except ImportError:
     stormpy = None
 
 
-def value_to_stormpy(
-    value: stormvogel.model.Value,
-    variables: list["stormpy.pycarl.Variable"],
-    model: "stormvogel.model.Model",
-) -> "stormpy.pycarl.cln.FactorizedRationalFunction | stormpy.pycarl.Interval | stormvogel.model.Value":
-    """converts a stormvogel transition value to a stormpy (pycarl) value"""
+def stormvogel_to_stormpy(model):
+    from stormvogel.stormpy_utils.stormvogel_to_stormpy import (
+        stormvogel_to_stormpy as _stormvogel_to_stormpy,
+    )
 
-    assert stormpy is not None
+    return _stormvogel_to_stormpy(model)
 
-    def convert_polynomial(
-        polynomial: parametric.Polynomial,
-    ) -> "stormpy.pycarl.cln.FactorizedPolynomial":
-        """helper function for converting polynomials to pycarl polyomials"""
-        assert stormpy is not None
 
-        terms = []
-        for exponent, coefficient in polynomial.terms.items():
-            if coefficient != 0:
-                stormpy_term = stormpy.pycarl.cln.Term(
-                    stormpy.pycarl.cln.Rational(coefficient)
-                )
-                assert isinstance(exponent, tuple)
-                for index, exp in enumerate(exponent):
-                    for i in range(exp):
-                        stormpy_term *= variables[
-                            [str(var) for var in variables].index(
-                                polynomial.variables[index]
-                            )
-                        ]
-                terms.append(stormpy_term)
-        polynomial = stormpy.pycarl.cln.Polynomial(terms)
-        factorized_polynomial = stormpy.pycarl.cln.FactorizedPolynomial(
-            polynomial, stormpy.pycarl.cln.factorization_cache
-        )
-        return factorized_polynomial
-
-    if model.is_parametric():
-        # we have a special case for numbers as they are not just a specific case of a polynomial in stormvogel
-        if isinstance(value, stormvogel.model.Number):
-            rational = stormpy.pycarl.cln.Rational(float(value))
-            polynomial = stormpy.pycarl.cln.Polynomial(rational)
-            factorized_polynomial = stormpy.pycarl.cln.FactorizedPolynomial(
-                polynomial, stormpy.pycarl.cln.factorization_cache
-            )
-            factorized_rational = stormpy.pycarl.cln.FactorizedRationalFunction(
-                factorized_polynomial
-            )
-        elif isinstance(value, parametric.RationalFunction):
-            factorized_numerator = convert_polynomial(value.numerator)
-            factorized_denominator = convert_polynomial(value.denominator)
-
-            # TODO gives segmentation fault
-            factorized_rational = stormpy.pycarl.cln.FactorizedRationalFunction(
-                factorized_numerator, factorized_denominator
-            )
-        else:
-            assert isinstance(value, parametric.Polynomial)
-            factorized_rational = stormpy.pycarl.cln.FactorizedRationalFunction(
-                convert_polynomial(value)
-            )
-
-        return factorized_rational
-    elif model.is_interval_model():
-        # in the case of interval models, we convert intervals, and regular values are converted
-        # to intervals where the lower and upper value are the same
-        if isinstance(value, stormvogel.model.Interval):
-            interval = stormpy.pycarl.Interval(value[0], value[1])
-        else:
-            interval = stormpy.pycarl.Interval(value, value)
-
-        return interval
-    else:
-        return value
-
-
-def stormvogel_to_stormpy(
-    model: stormvogel.model.Model,
-) -> Optional[
-    Union[
-        "stormpy.storage.SparseDtmc",
-        "stormpy.storage.SparseMdp",
-        "stormpy.storage.SparseCtmc",
-        "stormpy.storage.SparsePomdp",
-    ]
-]:
-    assert stormpy is not None
-
-    def build_matrix(
-        model: stormvogel.model.Model,
-        choice_labeling: stormpy.storage.ChoiceLabeling | None,
-    ) -> stormpy.storage.SparseMatrix:
-        """
-        Takes a model and creates a stormpy sparsematrix that represents the same choices.
-        We also create the choice_labeling by reference simultaneously
-        """
-
-        assert stormpy is not None
-
-        # we precompute the following two values
-        nondeterministic = model.supports_actions()
-        is_parametric = model.is_parametric()
-        is_interval = model.is_interval_model()
-
-        # we distinguish between parametric, interval and regular models
-        if is_parametric:
-            builder = stormpy.ParametricSparseMatrixBuilder(
-                rows=0,
-                columns=0,
-                entries=0,
-                force_dimensions=False,
-                has_custom_row_grouping=nondeterministic,
-                row_groups=0,
-            )
-        elif is_interval:
-            builder = stormpy.IntervalSparseMatrixBuilder(
-                rows=0,
-                columns=0,
-                entries=0,
-                force_dimensions=False,
-                has_custom_row_grouping=nondeterministic,
-                row_groups=0,
-            )
-        else:
-            builder = stormpy.SparseMatrixBuilder(
-                rows=0,
-                columns=0,
-                entries=0,
-                force_dimensions=False,
-                has_custom_row_grouping=nondeterministic,
-                row_groups=0,
-            )
-
-        # we build the matrix
-        row_index = 0
-        for transition in sorted(model.choices.items()):
-            if nondeterministic:
-                builder.new_row_group(row_index)
-            for action in transition[1]:
-                action[1].sort_states()
-                for tuple in action[1]:
-                    val = value_to_stormpy(tuple[0], variables, model)
-                    builder.add_next_value(
-                        row=row_index,
-                        column=model.stormpy_id[tuple[1].id],
-                        value=val,
-                    )
-
-                # if there is an action then add the label to the choice
-                if (
-                    not action[0] == stormvogel.model.EmptyAction
-                    and choice_labeling is not None
-                ):
-                    if action[0].label is not None:
-                        choice_labeling.add_label_to_choice(action[0].label, row_index)
-                row_index += 1
-
-        return builder.build()
-
-    def add_labels(model: stormvogel.model.Model) -> stormpy.storage.StateLabeling:
-        """
-        Takes a model and creates a state labelling object that determines which states get which labels in the stormpy representation
-        """
-        assert stormpy is not None
-
-        # we first initialize all labels
-        state_labeling = stormpy.storage.StateLabeling(len(model.states.keys()))
-        for label in model.get_labels():
-            state_labeling.add_label(label)
-
-        # then we assign the labels to the correct states
-        for _, state in model:
-            for label in state.labels:
-                state_labeling.add_label_to_state(label, model.stormpy_id[state.id])
-
-        return state_labeling
-
-    def new_reward_model(
-        model: stormvogel.model.Model,
-    ) -> dict[str, stormpy.SparseRewardModel]:
-        """
-        Takes a model and creates a dictionary of all the stormpy representations of reward models
-        """
-        assert stormpy is not None
-
-        reward_models = {}
-        for rewardmodel in model.rewards:
-            reward_models[rewardmodel.name] = stormpy.SparseRewardModel(
-                optional_state_action_reward_vector=rewardmodel.get_reward_vector()
-            )
-
-        return reward_models
-
-    def add_valuations(model: stormvogel.model.Model) -> stormpy.storage.StateValuation:
-        """
-        Helps to add the valuations to the sparsemodel using a statevaluation object
-        """
-        assert stormpy is not None
-
-        manager = stormpy.ExpressionManager()
-        valuations = stormpy.storage.StateValuationsBuilder()
-
-        # we create all the variable names
-        created_vars = set()
-        for state in model.states.values():
-            for var in sorted(state.valuations.items()):
-                name = str(var[0])
-                if name not in created_vars:
-                    storm_var = manager.create_integer_variable(name)
-                    valuations.add_variable(storm_var)
-                    created_vars.add(name)
-
-        # we assign the values to the variables in the states
-        for state in model.states.values():
-            valuations.add_state(
-                model.stormpy_id[state.id],
-                integer_values=list(state.valuations.values()),
-            )
-
-        return valuations.build()
-
-    def map_dtmc(model: stormvogel.model.Model) -> stormpy.storage.SparseDtmc:
-        """
-        Takes a simple representation of a dtmc as input and outputs a dtmc how it is represented in stormpy
-        """
-        assert stormpy is not None
-
-        # we first build the SparseMatrix
-        matrix = build_matrix(model, None)
-
-        # then we add the state labels
-        state_labeling = add_labels(model)
-
-        # then we add the rewards
-        reward_models = new_reward_model(model)
-
-        # we add the valuations
-        valuations = add_valuations(model)
-
-        # then we build the dtmc
-        if model.is_parametric():
-            components = stormpy.SparseParametricModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-            )
-            components.state_valuations = valuations
-            dtmc = stormpy.storage.SparseParametricDtmc(components)
-        elif model.is_interval_model():
-            components = stormpy.SparseIntervalModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-            )
-            components.state_valuations = valuations
-            dtmc = stormpy.storage.SparseIntervalDtmc(components)
-        else:
-            components = stormpy.SparseModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-            )
-            components.state_valuations = valuations
-            dtmc = stormpy.storage.SparseDtmc(components)
-
-        return dtmc
-
-    def map_mdp(model: stormvogel.model.Model) -> stormpy.storage.SparseMdp:
-        """
-        Takes a simple representation of an mdp as input and outputs an mdp how it is represented in stormpy
-        """
-        assert stormpy is not None
-
-        # we determine the number of choices and the labels
-        count = 0
-        labels = set()
-        for _, state in model:
-            for action in state.available_actions():
-                count += 1
-                if action != stormvogel.model.EmptyAction and action.label is not None:
-                    labels.add(action.label)
-
-        # we add the labels to the choice labeling object
-        choice_labeling = stormpy.storage.ChoiceLabeling(count)
-        for label in labels:
-            choice_labeling.add_label(str(label))
-
-        # then we create the matrix and simultanuously add the correct labels to the choices
-        matrix = build_matrix(model, choice_labeling=choice_labeling)
-
-        # then we add the state labels
-        state_labeling = add_labels(model)
-
-        # then we add the rewards
-        reward_models = new_reward_model(model)
-
-        # we add the valuations
-        valuations = add_valuations(model)
-
-        # then we build the mdp
-        if model.is_parametric():
-            components = stormpy.SparseParametricModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-            )
-            components.choice_labeling = choice_labeling
-            mdp = stormpy.storage.SparseParametricMdp(components)
-        elif model.is_interval_model():
-            components = stormpy.SparseIntervalModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-            )
-            components.state_valuations = valuations
-            components.choice_labeling = choice_labeling
-            mdp = stormpy.storage.SparseIntervalMdp(components)
-        else:
-            components = stormpy.SparseModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-            )
-            components.state_valuations = valuations
-            components.choice_labeling = choice_labeling
-            mdp = stormpy.storage.SparseMdp(components)
-
-        return mdp
-
-    def map_ctmc(model: stormvogel.model.Model) -> stormpy.storage.SparseCtmc:
-        """
-        Takes a simple representation of a ctmc as input and outputs a ctmc how it is represented in stormpy
-        """
-        assert stormpy is not None
-
-        # we first build the SparseMatrix (in stormvogel these are always the rate choices)
-        matrix = build_matrix(model, None)
-
-        # then we add the state labels
-        state_labeling = add_labels(model)
-
-        # then we add the rewards
-        reward_models = new_reward_model(model)
-
-        # we add the valuations
-        valuations = add_valuations(model)
-
-        # then we build the ctmc and we add the exit rates if necessary
-        if model.is_parametric():
-            components = stormpy.SparseParametricModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-                rate_choices=True,
-            )
-            components.state_valuations = valuations
-            if not model.exit_rates == {} and model.exit_rates is not None:
-                components.exit_rates = list(model.exit_rates.values())
-
-            ctmc = stormpy.storage.SparseParametricCtmc(components)
-        elif model.is_interval_model():
-            components = stormpy.SparseIntervalModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-                rate_transitions=True,
-            )
-            components.state_valuations = valuations
-            if not model.exit_rates == {} and model.exit_rates is not None:
-                components.exit_rates = list(model.exit_rates.values())
-
-            ctmc = stormpy.storage.SparseIntervalCtmc(components)
-        else:
-            components = stormpy.SparseModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-                rate_transitions=True,
-            )
-            components.state_valuations = valuations
-            if not model.exit_rates == {} and model.exit_rates is not None:
-                components.exit_rates = list(model.exit_rates.values())
-
-            ctmc = stormpy.storage.SparseCtmc(components)
-
-        return ctmc
-
-    def map_pomdp(model: stormvogel.model.Model) -> stormpy.storage.SparsePomdp:
-        """
-        Takes a simple representation of an pomdp as input and outputs an pomdp how it is represented in stormpy
-        """
-        assert stormpy is not None
-
-        # Check if the model contains stochastic observation, since we need to do a transformation in that case
-        for state in model.states.values():
-            if isinstance(state.observation, list):
-                raise NotImplementedError(
-                    "Stormpy does not support stochastic observations in POMDPs. Please convert the stochastic observations to deterministic ones before converting the model."
-                )
-
-        # we determine the number of choices and the labels
-        count = 0
-        labels = set()
-        for state in model.states.values():
-            for action in state.available_actions():
-                count += 1
-                if (
-                    not action == stormvogel.model.EmptyAction
-                    and action.label is not None
-                ):
-                    labels.add(action.label)
-
-        # we add the labels to the choice labeling object
-        choice_labeling = stormpy.storage.ChoiceLabeling(count)
-        for label in labels:
-            choice_labeling.add_label(str(label))
-
-        # then we create the matrix and simultanuously add the correct labels to the choices
-        matrix = build_matrix(model, choice_labeling=choice_labeling)
-
-        # then we add the state labels
-        state_labeling = add_labels(model)
-
-        # then we add the rewards
-        reward_models = new_reward_model(model)
-
-        # we add the valuations
-        valuations = add_valuations(model)
-
-        # then we build the pomdp
-        if model.is_parametric():
-            components = stormpy.SparseParametricModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-            )
-            components.state_valuations = valuations
-            observations = []
-            for state in model.states.values():
-                if state.get_observation() is not None:
-                    observations.append(state.get_observation().get_observation())
-                else:
-                    raise RuntimeError(
-                        f"State {state.id} does not have an observation. Please assign an observation to each state."
-                    )
-
-            components.observability_classes = observations
-            components.choice_labeling = choice_labeling
-            pomdp = stormpy.storage.SparseParametricPomdp(components)
-        elif model.is_interval_model():
-            components = stormpy.SparseIntervalModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-            )
-            components.state_valuations = valuations
-            observations = []
-            for state in model.states.values():
-                if state.get_observation() is not None:
-                    observations.append(state.get_observation().get_observation())
-                else:
-                    raise RuntimeError(
-                        f"State {state.id} does not have an observation. Please assign an observation to each state."
-                    )
-
-            components.observability_classes = observations
-            components.choice_labeling = choice_labeling
-            pomdp = stormpy.storage.SparseIntervalPomdp(components)
-        else:
-            components = stormpy.SparseModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-            )
-            components.state_valuations = valuations
-            observations = []
-            for state in model.states.values():
-                if state.get_observation() is None:
-                    raise RuntimeError(
-                        f"State {state.id} does not have an observation. Please assign an observation to each state."
-                    )
-                elif isinstance(state.get_observation(), list):
-                    raise NotImplementedError(
-                        "Stormpy does not support stochastic observations in POMDPs. Please convert the stochastic observations to deterministic ones before converting the model."
-                    )
-                else:
-                    observations.append(state.get_observation().observation)
-
-            components.observability_classes = observations
-            components.choice_labeling = choice_labeling
-            pomdp = stormpy.storage.SparsePomdp(components)
-
-        return pomdp
-
-    def map_ma(model: stormvogel.model.Model) -> stormpy.storage.SparseMA:
-        """
-        Takes a simple representation of an ma as input and outputs an ma how it is represented in stormpy
-        """
-        assert stormpy is not None
-
-        # we determine the number of choices and the labels
-        count = 0
-        labels = set()
-        for state in model.states.values():
-            for action in state.available_actions():
-                count += 1
-                if (
-                    not action == stormvogel.model.EmptyAction
-                    and action.label is not None
-                ):
-                    labels.add(action.label)
-
-        # we add the labels to the choice labeling object
-        choice_labeling = stormpy.storage.ChoiceLabeling(count)
-        for label in labels:
-            choice_labeling.add_label(str(label))
-
-        # then we create the matrix and simultanuously add the correct labels to the choices
-        matrix = build_matrix(model, choice_labeling=choice_labeling)
-
-        # then we add the state labels
-        state_labeling = add_labels(model)
-
-        # then we add the rewards
-        reward_models = new_reward_model(model)
-
-        # we add the valuations
-        valuations = add_valuations(model)
-
-        # we create the list of markovian state ids
-        assert model.markovian_states is not None
-        markovian_states_list = [state.id for state in model.markovian_states]
-        if isinstance(markovian_states_list, list):
-            markovian_states_bitvector = stormpy.storage.BitVector(
-                max(markovian_states_list) + 1,
-                markovian_states_list,
-            )
-        else:
-            markovian_states_bitvector = stormpy.storage.BitVector(0)
-
-        # then we build the ma
-        if model.is_parametric():
-            components = stormpy.SparseParametricModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-                markovian_states=markovian_states_bitvector,
-            )
-            components.state_valuations = valuations
-            if not model.exit_rates == {} and model.exit_rates is not None:
-                components.exit_rates = list(model.exit_rates.values())
-            else:
-                components.exit_rates = []
-            components.choice_labeling = choice_labeling
-            ma = stormpy.storage.SparseParametricMA(components)
-        elif model.is_interval_model():
-            components = stormpy.SparseIntervalModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-                markovian_states=markovian_states_bitvector,
-            )
-            components.state_valuations = valuations
-            if not model.exit_rates == {} and model.exit_rates is not None:
-                components.exit_rates = list(model.exit_rates.values())
-            else:
-                components.exit_rates = []
-            components.choice_labeling = choice_labeling
-            ma = stormpy.storage.SparseIntervalMA(components)
-        else:
-            components = stormpy.SparseModelComponents(
-                transition_matrix=matrix,
-                state_labeling=state_labeling,
-                reward_models=reward_models,
-                markovian_states=markovian_states_bitvector,
-            )
-            components.state_valuations = valuations
-            if not model.exit_rates == {} and model.exit_rates is not None:
-                components.exit_rates = list(model.exit_rates.values())
-            else:
-                components.exit_rates = []
-            components.choice_labeling = choice_labeling
-            ma = stormpy.storage.SparseMA(components)
-
-        return ma
-
-    # we throw the neccessary errors first
-    if not model.all_states_outgoing_transition():
-        raise RuntimeError(
-            "This model has states with no outgoing transitions.\nUse the add_self_loops() function to add self loops to all states with no outgoing transition."
-        )
-
-    if model.unassigned_variables():
-        raise RuntimeError("Each state should have a value for each variable")
-
-    if not model.all_non_init_states_incoming_transition():
-        raise RuntimeError(
-            "There is more than one state in this model without incoming transitions."
-        )
-
-    if model.has_zero_transition() and not model.supports_rates():
-        raise RuntimeError(
-            "This model has transitions with probability=0. Stormpy assumes that these do not explicitly exist."
-        )
-
-    # we make a mapping between stormvogel and stormpy ids in case they are out of order.
-    stormpy_id = {}
-    for index, stormvogel_id in enumerate(model.states.keys()):
-        stormpy_id[stormvogel_id] = index
-    model.stormpy_id = stormpy_id
-
-    # we store the pycarl parameters of a model
-    stormpy.pycarl.clear_variable_pool()
-    variables = []
-    for p in model.get_parameters():
-        var = stormpy.pycarl.Variable(p)
-        variables.append(var)
-
-    # we check the type to handle the model correctly
-    if model.type == stormvogel.model.ModelType.DTMC:
-        return map_dtmc(model)
-    elif model.type == stormvogel.model.ModelType.MDP:
-        return map_mdp(model)
-    elif model.type == stormvogel.model.ModelType.CTMC:
-        return map_ctmc(model)
-    elif model.type == stormvogel.model.ModelType.POMDP:
-        return map_pomdp(model)
-    elif model.type == stormvogel.model.ModelType.MA:
-        return map_ma(model)
-    else:
-        raise NotImplementedError(
-            "Converting this type of model to stormpy is not yet supported"
-        )
-
-
-def value_to_stormvogel(value, sparsemodel) -> stormvogel.model.Value:
+def value_to_stormvogel(value, sparsemodel) -> Value:
     """Converts a stormpy transition value to a stormvogel one"""
 
     assert stormpy is not None
@@ -730,7 +116,7 @@ def value_to_stormvogel(value, sparsemodel) -> stormvogel.model.Value:
             if lower == upper:
                 return lower
 
-            return stormvogel.model.Interval(lower, upper)
+            return Interval(lower, upper)
 
         # if our function is just a rational number we return a float:
         return float(value)
@@ -744,11 +130,11 @@ def stormpy_to_stormvogel(
         "stormpy.storage.SparsePomdp",
         "stormpy.storage.SparseMA",
     ],
-) -> stormvogel.model.Model | None:
+) -> Model | None:
     assert stormpy is not None
 
     def add_states(
-        model: stormvogel.model.Model,
+        model: Model,
         sparsemodel: (
             stormpy.storage.SparseDtmc
             | stormpy.storage.SparseMdp
@@ -760,16 +146,38 @@ def stormpy_to_stormvogel(
         """
         helper function to add the states from the sparsemodel to the model
         """
-        model.new_state()
+        # First add all known labels to the model
+        for label in sparsemodel.labeling.get_labels():
+            model.add_label(label)
+
         for state in sparsemodel.states:
             if state.id == 0:
-                for label in state.labels:
-                    model.get_state_by_id(0).add_label(label)
+                if model.supports_observations():
+                    if len(model.states) == 0:
+                        model.new_state(
+                            labels=list(state.labels),
+                            observation=Observation(str(state.id)),
+                        )
+                    else:
+                        for label in state.labels:
+                            model.states[0].add_label(label)
+                else:
+                    if len(model.states) == 0:
+                        model.new_state(labels=list(state.labels))
+                    else:
+                        for label in state.labels:
+                            model.states[0].add_label(label)
             if state.id > 0:
-                model.new_state(labels=list(state.labels))
+                if model.supports_observations():
+                    model.new_state(
+                        labels=list(state.labels),
+                        observation=Observation(str(state.id)),
+                    )
+                else:
+                    model.new_state(labels=list(state.labels))
 
     def new_reward_model(
-        model: stormvogel.model.Model,
+        model: Model,
         sparsemodel: (
             stormpy.storage.SparseDtmc
             | stormpy.storage.SparseMdp
@@ -793,7 +201,7 @@ def stormpy_to_stormvogel(
             rewardmodel.set_from_rewards_vector(get_reward_vector)
 
     def add_valuations(
-        model: stormvogel.model.Model,
+        model: Model,
         sparsemodel: (
             stormpy.storage.SparseDtmc
             | stormpy.storage.SparseMdp
@@ -808,18 +216,18 @@ def stormpy_to_stormvogel(
         if sparsemodel.has_state_valuations():
             valuations = sparsemodel.state_valuations
 
-            for state_id, state in model.states.items():
+            for state_id, state in enumerate(model.states):
                 v = json.loads(str(valuations.get_json(state_id)))
                 if v is not None:
                     state.valuations = v
 
-    def map_dtmc(sparsedtmc: stormpy.storage.SparseDtmc) -> stormvogel.model.Model:
+    def map_dtmc(sparsedtmc: stormpy.storage.SparseDtmc) -> Model:
         """
         Takes a dtmc stormpy representation as input and outputs a simple stormvogel representation
         """
 
         # we create the model
-        model = stormvogel.model.new_dtmc(create_initial_state=False)
+        model = Model(ModelType.DTMC, create_initial_state=False)
 
         # we add the states
         add_states(model, sparsedtmc)
@@ -831,18 +239,12 @@ def stormpy_to_stormvogel(
             choiceshorthand = [
                 (
                     value_to_stormvogel(x.value(), sparsedtmc),
-                    model.get_state_by_id(x.column),
+                    model.get_state_by_stormpy_id(x.column),
                 )
                 for x in row
             ]
-            choices = stormvogel.model.choice_from_shorthand(
-                cast(
-                    list[tuple[stormvogel.model.Value, stormvogel.model.State]],
-                    choiceshorthand,
-                ),
-                model,
-            )
-            model.set_choice(model.get_state_by_id(state.id), choices)
+            choices = choices_from_shorthand(choiceshorthand)
+            model.set_choices(model.get_state_by_stormpy_id(state.id), choices)
 
         # we add the valuations
         add_valuations(model, sparsedtmc)
@@ -855,13 +257,13 @@ def stormpy_to_stormvogel(
 
         return model
 
-    def map_mdp(sparsemdp: stormpy.storage.SparseMdp) -> stormvogel.model.Model:
+    def map_mdp(sparsemdp: stormpy.storage.SparseMdp) -> Model:
         """
         Takes a mdp stormpy representation as input and outputs a simple stormvogel representation
         """
 
         # we create the model
-        model = stormvogel.model.new_mdp(create_initial_state=False)
+        model = new_mdp(create_initial_state=False)
 
         # we add the states
         add_states(model, sparsemdp)
@@ -887,17 +289,17 @@ def stormpy_to_stormvogel(
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsemdp),
-                        model.get_state_by_id(x.column),
+                        model.get_state_by_stormpy_id(x.column),
                     )
                     for x in row
                 ]
-                choice[action] = stormvogel.model.Branches(
+                choice[action] = Branches(
                     cast(
-                        list[tuple[stormvogel.model.Value, stormvogel.model.State]],
+                        list[tuple[Value, State]],
                         branch,
                     )
                 )
-                model.set_choice(model.get_state_by_id(state.id), choice)
+            model.set_choices(model.get_state_by_stormpy_id(state.id), Choices(choice))
 
         # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
@@ -910,13 +312,13 @@ def stormpy_to_stormvogel(
 
         return model
 
-    def map_ctmc(sparsectmc: stormpy.storage.SparseCtmc) -> stormvogel.model.Model:
+    def map_ctmc(sparsectmc: stormpy.storage.SparseCtmc) -> Model:
         """
         Takes a ctmc stormpy representation as input and outputs a simple stormvogel representation
         """
 
         # we create the model
-        model = stormvogel.model.new_ctmc(create_initial_state=False)
+        model = new_ctmc(create_initial_state=False)
 
         # we add the states
         add_states(model, sparsectmc)
@@ -925,21 +327,17 @@ def stormpy_to_stormvogel(
         matrix = sparsectmc.transition_matrix
         for state in sparsectmc.states:
             row = matrix.get_row(state.id)
+            # In stormpy CTMCs, the transition values are already the individual rates (exit_rate * probability)
+            # No need to multiply by exit_rate again
             choiceshorthand = [
                 (
                     value_to_stormvogel(x.value(), sparsectmc),
-                    model.get_state_by_id(x.column),
+                    model.get_state_by_stormpy_id(x.column),
                 )
                 for x in row
             ]
-            choices = stormvogel.model.choice_from_shorthand(
-                cast(
-                    list[tuple[stormvogel.model.Value, stormvogel.model.State]],
-                    choiceshorthand,
-                ),
-                model,
-            )
-            model.set_choice(model.get_state_by_id(state.id), choices)
+            choices = choices_from_shorthand(choiceshorthand)
+            model.set_choices(model.get_state_by_stormpy_id(state.id), choices)
 
         # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
@@ -950,21 +348,18 @@ def stormpy_to_stormvogel(
         # we add the valuations
         add_valuations(model, sparsectmc)
 
-        # we set the correct exit rates
-        for state in model.states.items():
-            model.set_rate(state[1], sparsectmc.exit_rates[state[1].id])
-
         return model
 
-    def map_pomdp(sparsepomdp: stormpy.storage.SparsePomdp) -> stormvogel.model.Model:
-        """
-        Takes a pomdp stormpy representation as input and outputs a simple stormvogel representation
-        """
+    def map_pomdp(sparsepomdp: stormpy.storage.SparsePomdp) -> Model:
+        # Takes a pomdp stormpy representation as input and outputs a simple stormvogel representation
+        model = new_pomdp(create_initial_state=False)
+        if len(sparsepomdp.states) > 0:
+            max_obs = max(
+                sparsepomdp.get_observation(i) for i in range(len(sparsepomdp.states))
+            )
+            for i in range(max_obs + 1):
+                model.observation(str(i))
 
-        # we create the model
-        model = stormvogel.model.new_pomdp(create_initial_state=False)
-
-        # we add the states
         add_states(model, sparsepomdp)
 
         # we add the transitions
@@ -988,17 +383,66 @@ def stormpy_to_stormvogel(
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsepomdp),
-                        model.get_state_by_id(x.column),
+                        model.get_state_by_stormpy_id(x.column),
                     )
                     for x in row
                 ]
-                choice[action] = stormvogel.model.Branches(
+                choice[action] = Branches(
                     cast(
-                        list[tuple[stormvogel.model.Value, stormvogel.model.State]],
+                        list[tuple[Value, State]],
                         branch,
                     )
                 )
-                model.set_choice(model.get_state_by_id(state.id), choice)
+            model.set_choices(model.get_state_by_stormpy_id(state.id), Choices(choice))
+
+        # we add self loops to all states with no outgoing transitions
+        model.add_self_loops()
+
+        # we add the reward models to the state action pairs
+        new_reward_model(model, sparsepomdp)
+
+        # we add the valuations
+        add_valuations(model, sparsepomdp)
+
+        # map the observations to the states
+        for index, state in enumerate(model.states):
+            state.observation = model.observation(
+                str(sparsepomdp.get_observation(index))
+            )
+
+        return model
+        # we add the transitions
+        matrix = sparsepomdp.transition_matrix
+        for index, state in enumerate(sparsepomdp.states):
+            row_group_start = matrix.get_row_group_start(index)
+            row_group_end = matrix.get_row_group_end(index)
+
+            # within a row group we add for each action the transitions
+            choice = dict()
+            for i in range(row_group_start, row_group_end):
+                row = matrix.get_row(i)
+
+                if sparsepomdp.has_choice_labeling():
+                    labels = sparsepomdp.choice_labeling.get_labels_of_choice(i)
+                    actionlabel = ",".join(sorted(labels)) if labels else None
+                else:
+                    actionlabel = str(i)
+
+                action = model.action(actionlabel)
+                branch = [
+                    (
+                        value_to_stormvogel(x.value(), sparsepomdp),
+                        model.get_state_by_stormpy_id(x.column),
+                    )
+                    for x in row
+                ]
+                choice[action] = Branches(
+                    cast(
+                        list[tuple[Value, State]],
+                        branch,
+                    )
+                )
+            model.set_choices(model.get_state_by_stormpy_id(state.id), Choices(choice))
 
         # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
@@ -1010,20 +454,25 @@ def stormpy_to_stormvogel(
         add_valuations(model, sparsepomdp)
 
         # we add the observations:
-        for state in model.states.values():
-            state.set_observation(
-                model.observation(sparsepomdp.get_observation(state.id))
+        max_obs = (
+            max(sparsepomdp.get_observation(i) for i in range(len(sparsepomdp.states)))
+            if len(sparsepomdp.states) > 0
+            else -1
+        )
+        for i in range(max_obs + 1):
+            model.observation(str(i))
+        for index, state in enumerate(model.states):
+            state.observation = model.observation(
+                str(sparsepomdp.get_observation(index))
             )
 
         return model
 
-    def map_ma(sparsema: stormpy.storage.SparseMA) -> stormvogel.model.Model:
-        """
-        Takes a ma stormpy representation as input and outputs a simple stormvogel representation
-        """
+    def map_ma(sparsema: stormpy.storage.SparseMA) -> Model:
+        # Takes a ma stormpy representation as input and outputs a simple stormvogel representation
 
         # we create the model
-        model = stormvogel.model.new_ma(create_initial_state=False)
+        model = new_ma(create_initial_state=False)
 
         # we add the states
         add_states(model, sparsema)
@@ -1049,17 +498,17 @@ def stormpy_to_stormvogel(
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsema),
-                        model.get_state_by_id(x.column),
+                        model.get_state_by_stormpy_id(x.column),
                     )
                     for x in row
                 ]
-                choice[action] = stormvogel.model.Branches(
+                choice[action] = Branches(
                     cast(
-                        list[tuple[stormvogel.model.Value, stormvogel.model.State]],
+                        list[tuple[Value, State]],
                         branch,
                     )
                 )
-                model.set_choice(model.get_state_by_id(state.id), choice)
+            model.set_choices(model.get_state_by_stormpy_id(state.id), Choices(choice))
 
         # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
@@ -1070,13 +519,9 @@ def stormpy_to_stormvogel(
         # we add the valuations
         add_valuations(model, sparsema)
 
-        # we set the correct exit rates
-        for state in model.states.items():
-            model.set_rate(state[1], sparsema.exit_rates[state[1].id])
-
         # we set the markovian states
         for state_id in list(sparsema.markovian_states):
-            model.add_markovian_state(model.get_state_by_id(state_id))
+            model.add_markovian_state(model.get_state_by_stormpy_id(state_id))
 
         return model
 
@@ -1098,7 +543,7 @@ def stormpy_to_stormvogel(
 
 
 def from_prism(prism_code="stormpy.storage.storage.PrismProgram"):
-    """Create a model from prism."""
+    # Create a model from prism.
 
     assert stormpy is not None
     return stormpy_to_stormvogel(stormpy.build_model(prism_code))

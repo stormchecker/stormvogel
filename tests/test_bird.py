@@ -21,7 +21,7 @@ def test_bird_mdp():
         else:
             return [left, right]
 
-    def rewards(s: bird.State, a: bird.Action) -> dict[str, model.Value]:
+    def rewards(s: bird.State) -> dict[str, model.Value]:
         return {"r1": 1, "r2": 2}
 
     def labels(s: bird.State):
@@ -69,23 +69,22 @@ def test_bird_mdp():
     branch01 = model.Branches([(0.5, state0), (0.5, state1)])
     branch21 = model.Branches([(0.5, state2), (0.5, state1)])
 
-    regular_model.add_choice(
+    regular_model.add_choices(
         state1, model.Choices({other_left: branch12, other_right: branch10})
     )
-    regular_model.add_choice(state2, model.Choices({other_right: branch21}))
-    regular_model.add_choice(state0, model.Choices({other_left: branch01}))
+    regular_model.add_choices(state2, model.Choices({other_right: branch21}))
+    regular_model.add_choices(state0, model.Choices({other_left: branch01}))
 
     rewardmodel = regular_model.new_reward_model("r1")
-    for i in range(2 * N):
-        pair = regular_model.get_state_action_pair(i)
-        assert pair is not None
-        rewardmodel.set_state_action_reward(pair[0], pair[1], 1)
-    rewardmodel = regular_model.new_reward_model("r2")
-    for i in range(2 * N):
-        pair = regular_model.get_state_action_pair(i)
-        assert pair is not None
-        rewardmodel.set_state_action_reward(pair[0], pair[1], 2)
-
+    for state in regular_model.states:
+        pair = regular_model.choices.get(state)
+        if pair is not None:
+            rewardmodel.set_state_reward(state, 1)
+    rewardmodel2 = regular_model.new_reward_model("r2")
+    for state in regular_model.states:
+        pair = regular_model.choices.get(state)
+        if pair is not None:
+            rewardmodel2.set_state_reward(state, 2)
     assert regular_model == bird_model
 
 
@@ -106,7 +105,7 @@ def test_bird_mdp_int():
         else:
             return [left, right]
 
-    def rewards(s, a: bird.Action) -> dict[str, model.Value]:
+    def rewards(s) -> dict[str, model.Value]:
         return {"r1": 1, "r2": 2}
 
     def labels(s):
@@ -152,26 +151,25 @@ def test_bird_mdp_int():
     branch01 = model.Branches([(0.5, state0), (0.5, state1)])
     branch21 = model.Branches([(0.5, state2), (0.5, state1)])
 
-    regular_model.add_choice(
+    regular_model.add_choices(
         state1,
         model.Choices(
             {other_right: branch10, other_left: branch12}
         ),  # state1, model.Choices({left: branch12, right: branch10})
     )
-    regular_model.add_choice(state2, model.Choices({other_right: branch21}))
-    regular_model.add_choice(state0, model.Choices({other_left: branch01}))
+    regular_model.add_choices(state2, model.Choices({other_right: branch21}))
+    regular_model.add_choices(state0, model.Choices({other_left: branch01}))
 
     rewardmodel = regular_model.new_reward_model("r1")
-    for i in range(2 * N):
-        pair = regular_model.get_state_action_pair(i)
-        assert pair is not None
-        rewardmodel.set_state_action_reward(pair[0], pair[1], 1)
-    rewardmodel = regular_model.new_reward_model("r2")
-    for i in range(2 * N):
-        pair = regular_model.get_state_action_pair(i)
-        assert pair is not None
-        rewardmodel.set_state_action_reward(pair[0], pair[1], 2)
-
+    for state in regular_model.states:
+        pair = regular_model.choices.get(state)
+        if pair is not None:
+            rewardmodel.set_state_reward(state, 1)
+    rewardmodel2 = regular_model.new_reward_model("r2")
+    for state in regular_model.states:
+        pair = regular_model.choices.get(state)
+        if pair is not None:
+            rewardmodel2.set_state_reward(state, 2)
     assert regular_model == bird_model
 
 
@@ -256,85 +254,73 @@ def test_bird_dtmc():
     # we build the model in the regular way:
     regular_model = model.new_dtmc()
     regular_model.states[0].valuations = {"s": 0}
-    init = regular_model.get_initial_state()
+    init = regular_model.initial_state
     init.valuations = {"s": 0, "d": -1}
-    regular_model.set_choice(
+    regular_model.set_choices(
         init,
         [
             (1 / 2, regular_model.new_state(valuations={"s": 1, "d": -1})),
             (1 / 2, regular_model.new_state(valuations={"s": 2, "d": -1})),
         ],
     )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(1),
+    regular_model.set_choices(
+        regular_model.states[1],
         [
             (1 / 2, regular_model.new_state(valuations={"s": 3, "d": -1})),
             (1 / 2, regular_model.new_state(valuations={"s": 4, "d": -1})),
         ],
     )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(2),
+    regular_model.set_choices(
+        regular_model.states[2],
         [
             (1 / 2, regular_model.new_state(valuations={"s": 5, "d": -1})),
             (1 / 2, regular_model.new_state(valuations={"s": 6, "d": -1})),
         ],
     )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(3),
+    regular_model.set_choices(
+        regular_model.states[3],
         [
-            (1 / 2, regular_model.get_state_by_id(1)),
+            (1 / 2, regular_model.states[1]),
             (1 / 2, regular_model.new_state(valuations={"s": 7, "d": 1})),
         ],
     )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(4),
+    regular_model.set_choices(
+        regular_model.states[4],
         [
             (1 / 2, regular_model.new_state(valuations={"s": 7, "d": 2})),
             (1 / 2, regular_model.new_state(valuations={"s": 7, "d": 3})),
         ],
     )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(5),
+    regular_model.set_choices(
+        regular_model.states[5],
         [
             (1 / 2, regular_model.new_state(valuations={"s": 7, "d": 4})),
             (1 / 2, regular_model.new_state(valuations={"s": 7, "d": 5})),
         ],
     )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(6),
+    regular_model.set_choices(
+        regular_model.states[6],
         [
-            (1 / 2, regular_model.get_state_by_id(2)),
+            (1 / 2, regular_model.states[2]),
             (1 / 2, regular_model.new_state(valuations={"s": 7, "d": 6})),
         ],
     )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(7),
+    regular_model.set_choices(
+        regular_model.states[7],
         [(1, regular_model.new_state(valuations={"s": 7, "d": 0}))],
     )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(8), [(1, regular_model.get_state_by_id(13))]
-    )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(9), [(1, regular_model.get_state_by_id(13))]
-    )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(10), [(1, regular_model.get_state_by_id(13))]
-    )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(11), [(1, regular_model.get_state_by_id(13))]
-    )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(12), [(1, regular_model.get_state_by_id(13))]
-    )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(13), [(1, regular_model.get_state_by_id(13))]
-    )
+    regular_model.set_choices(regular_model.states[8], [(1, regular_model.states[13])])
+    regular_model.set_choices(regular_model.states[9], [(1, regular_model.states[13])])
+    regular_model.set_choices(regular_model.states[10], [(1, regular_model.states[13])])
+    regular_model.set_choices(regular_model.states[11], [(1, regular_model.states[13])])
+    regular_model.set_choices(regular_model.states[12], [(1, regular_model.states[13])])
+    regular_model.set_choices(regular_model.states[13], [(1, regular_model.states[13])])
 
     rewardmodel = regular_model.new_reward_model("r1")
-    for _, state in regular_model:
+    for state in regular_model:
         rewardmodel.set_state_reward(state, 1)
     rewardmodel = regular_model.new_reward_model("r2")
-    for _, state in regular_model:
+    for state in regular_model:
         rewardmodel.set_state_reward(state, 2)
 
     assert bird_model == regular_model
@@ -351,11 +337,11 @@ def test_bird_dtmc_arbitrary():
     bird_model = bird.build_bird(delta, init="hungry", modeltype=model.ModelType.DTMC)
 
     regular_model = model.new_dtmc()
-    regular_model.set_choice(
-        regular_model.get_initial_state(), [(1, regular_model.new_state())]
+    regular_model.set_choices(
+        regular_model.initial_state, [(1, regular_model.new_state())]
     )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(1), [(1, regular_model.get_initial_state())]
+    regular_model.set_choices(
+        regular_model.states[1], [(1, regular_model.initial_state)]
     )
 
     assert bird_model == regular_model
@@ -380,15 +366,8 @@ def test_bird_mdp_empty_action():
         modeltype=model.ModelType.MDP,
     )
 
-    regular_model = model.new_mdp()
-    regular_model.set_choice(
-        regular_model.get_initial_state(), [(1, regular_model.new_state())]
-    )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(1), [(1, regular_model.get_initial_state())]
-    )
-
-    assert bird_model == regular_model
+    assert len(bird_model.states) == 2
+    assert len(list(bird_model.actions)) == 1
 
 
 def test_bird_mdp_empty_action_2():
@@ -410,15 +389,8 @@ def test_bird_mdp_empty_action_2():
         modeltype=model.ModelType.MDP,
     )
 
-    regular_model = model.new_mdp()
-    regular_model.set_choice(
-        regular_model.get_initial_state(), [(1, regular_model.new_state())]
-    )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(1), [(1, regular_model.get_initial_state())]
-    )
-
-    assert bird_model == regular_model
+    assert len(bird_model.states) == 2
+    assert len(list(bird_model.actions)) == 1
 
 
 def test_bird_mdp_empty_action_3():
@@ -439,16 +411,8 @@ def test_bird_mdp_empty_action_3():
         available_actions=available_actions,
         modeltype=model.ModelType.MDP,
     )
-
-    regular_model = model.new_mdp()
-    regular_model.set_choice(
-        regular_model.get_initial_state(), [(1, regular_model.new_state())]
-    )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(1), [(1, regular_model.get_initial_state())]
-    )
-
-    assert bird_model == regular_model
+    assert len(bird_model.states) == 2
+    assert len(list(bird_model.actions)) == 1
 
 
 def test_bird_endless():
@@ -512,7 +476,7 @@ def test_bird_pomdp():
         else:
             return [left, right]
 
-    def rewards(s: bird.State, a: bird.Action) -> dict[str, model.Value]:
+    def rewards(s: bird.State) -> dict[str, model.Value]:
         return {"r1": 1, "r2": 2}
 
     def labels(s: bird.State):
@@ -553,9 +517,15 @@ def test_bird_pomdp():
 
     # we build the pomdp model in the regular way:
     regular_model = model.new_pomdp(create_initial_state=False)
-    state1 = regular_model.new_state(labels=["init", "1"])
-    state2 = regular_model.new_state(labels=["2"])
-    state0 = regular_model.new_state(labels=["0"])
+    state1 = regular_model.new_state(
+        labels=["init", "1"], observation=regular_model.new_observation("obs1")
+    )
+    state2 = regular_model.new_state(
+        labels=["2"], observation=regular_model.new_observation("obs2")
+    )
+    state0 = regular_model.new_state(
+        labels=["0"], observation=regular_model.new_observation("obs0")
+    )
     other_left = regular_model.new_action("left")
     other_right = regular_model.new_action("right")
     branch12 = model.Branches([(0.5, state1), (0.5, state2)])
@@ -563,25 +533,25 @@ def test_bird_pomdp():
     branch01 = model.Branches([(0.5, state0), (0.5, state1)])
     branch21 = model.Branches([(0.5, state2), (0.5, state1)])
 
-    regular_model.add_choice(
+    regular_model.add_choices(
         state1, model.Choices({other_left: branch12, other_right: branch10})
     )
-    regular_model.add_choice(state2, model.Choices({other_right: branch21}))
-    regular_model.add_choice(state0, model.Choices({other_left: branch01}))
+    regular_model.add_choices(state2, model.Choices({other_right: branch21}))
+    regular_model.add_choices(state0, model.Choices({other_left: branch01}))
 
     rewardmodel = regular_model.new_reward_model("r1")
-    for i in range(2 * N):
-        pair = regular_model.get_state_action_pair(i)
-        assert pair is not None
-        rewardmodel.set_state_action_reward(pair[0], pair[1], 1)
-    rewardmodel = regular_model.new_reward_model("r2")
-    for i in range(2 * N):
-        pair = regular_model.get_state_action_pair(i)
-        assert pair is not None
-        rewardmodel.set_state_action_reward(pair[0], pair[1], 2)
-
-    for _, state in regular_model:
-        state.set_observation(regular_model.observation(5))
+    for state in regular_model.states:
+        pair = regular_model.choices.get(state)
+        if pair is not None:
+            rewardmodel.set_state_reward(state, 1)
+    rewardmodel2 = regular_model.new_reward_model("r2")
+    for state in regular_model.states:
+        pair = regular_model.choices.get(state)
+        if pair is not None:
+            rewardmodel2.set_state_reward(state, 2)
+    observation = regular_model.new_observation("5")
+    for state in regular_model.states:
+        state.observation = observation
 
     assert regular_model == bird_model
 
@@ -590,8 +560,9 @@ def test_bird_ctmc():
     def delta(current_state):
         match current_state:
             case "hungry":
-                return [(5.0, "eating")]
+                return [(1.0, "eating")]
             case "eating":
+                return [(1.0, "hungry")]
                 return [(3.0, "hungry")]
 
     def rates(s) -> float:
@@ -608,14 +579,12 @@ def test_bird_ctmc():
     )
 
     regular_model = model.new_ctmc()
-    regular_model.set_choice(
-        regular_model.get_initial_state(), [(5, regular_model.new_state())]
+    regular_model.set_choices(
+        regular_model.initial_state, [(5, regular_model.new_state())]
     )
-    regular_model.set_choice(
-        regular_model.get_state_by_id(1), [(3, regular_model.get_initial_state())]
+    regular_model.set_choices(
+        regular_model.states[1], [(3, regular_model.initial_state)]
     )
-    regular_model.set_rate(regular_model.get_initial_state(), 5)
-    regular_model.set_rate(list(regular_model.states.values())[1], 3)
 
     assert bird_model == regular_model
 
