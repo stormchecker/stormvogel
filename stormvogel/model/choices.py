@@ -66,13 +66,11 @@ class Choices[ValueType: Value]:
 
     def is_stochastic(self, epsilon: Number) -> bool:
         """Returns whether the probabilities in the branches sum to 1"""
-        return all(
-            [
-                abs(self.choices[a].branches.is_probabilistic(precision=epsilon) - 1)
-                <= epsilon
-                for a in self.choices
-            ]
-        )
+        for a in self.choices:
+            total = sum(v for v, _ in self.choices[a].branch)
+            if abs(total - 1) > epsilon:
+                return False
+        return True
 
     def has_zero_transition(self) -> bool:
         """Returns whether any of the branches contains a zero-probability transition."""
@@ -84,11 +82,24 @@ class Choices[ValueType: Value]:
 
     def add(self, other: Self):
         """Adds two Choices together, provided they have no overlapping actions."""
+        # Check EmptyAction invariant before adding
+        if self.has_empty_action() and not other.has_empty_action():
+            raise RuntimeError(
+                "You cannot add a choice with an non-empty action to a choice which has an empty action. Use set_choice instead."
+            )
+        if not self.has_empty_action() and len(self.choices) > 0 and other.has_empty_action():
+            raise RuntimeError(
+                "You cannot add a choice with an empty action to a choice which has no empty action. Use set_choice instead."
+            )
         for action, branch in other:
             if action in self.choices:
-                raise RuntimeError(
-                    "Cannot add two Choices that have overlapping actions."
-                )
+                if action == EmptyAction:
+                    # Merge branches for EmptyAction
+                    self.choices[action] = self.choices[action] + branch
+                else:
+                    raise RuntimeError(
+                        "Cannot add two Choices that have overlapping actions."
+                    )
             else:
                 self.choices[action] = branch
 

@@ -12,6 +12,7 @@ except ImportError:
 
 def convert_polynomial_to_stormpy(
     polynomial: parametric.Polynomial,
+    variables: list["stormpy.pycarl.Variable"],
 ) -> "stormpy.pycarl.cln.FactorizedPolynomial":
     """helper function for converting polynomials to pycarl polyomials"""
     assert stormpy is not None
@@ -59,8 +60,8 @@ def value_to_stormpy(
                 factorized_polynomial
             )
         elif isinstance(value, parametric.RationalFunction):
-            factorized_numerator = convert_polynomial(value.numerator)
-            factorized_denominator = convert_polynomial(value.denominator)
+            factorized_numerator = convert_polynomial_to_stormpy(value.numerator, variables)
+            factorized_denominator = convert_polynomial_to_stormpy(value.denominator, variables)
 
             # TODO gives segmentation fault
             factorized_rational = stormpy.pycarl.cln.FactorizedRationalFunction(
@@ -69,7 +70,7 @@ def value_to_stormpy(
         else:
             assert isinstance(value, parametric.Polynomial)
             factorized_rational = stormpy.pycarl.cln.FactorizedRationalFunction(
-                convert_polynomial(value)
+                convert_polynomial_to_stormpy(value, variables)
             )
 
         return factorized_rational
@@ -88,8 +89,9 @@ def value_to_stormpy(
 
 def build_matrix(
     model: Model,
-    choice_labeling: stormpy.storage.ChoiceLabeling | None,
-) -> stormpy.storage.SparseMatrix:
+    choice_labeling,
+    variables: list,
+) -> "stormpy.storage.SparseMatrix":
     """
     Takes a model and creates a stormpy sparsematrix that represents the same choices.
     We also create the choice_labeling by reference simultaneously
@@ -133,7 +135,10 @@ def build_matrix(
 
     # we build the matrix
     row_index = 0
-    for transition in sorted(model.choices.items()):
+    for state in model.states:
+        if state not in model.choices:
+            continue
+        transition = (state, model.choices[state])
         if nondeterministic:
             builder.new_row_group(row_index)
         for action in transition[1]:
@@ -142,7 +147,7 @@ def build_matrix(
                 val = value_to_stormpy(tuple[0], variables, model)
                 builder.add_next_value(
                     row=row_index,
-                    column=model.stormpy_id[tuple[1].id],
+                    column=model.stormpy_id[tuple[1]],
                     value=val,
                 )
 
@@ -164,7 +169,7 @@ def build_choice_labeling(model: Model):
         if action.label is not None:
             labels.add(action.label)
 
-    choice_count = sum(len(choices.choices) for choices in model.choices)
+    choice_count = sum(len(choices.choices) for choices in model.choices.values())
 
     # we add the labels to the choice labeling object
     choice_labeling = stormpy.storage.ChoiceLabeling(choice_count)
@@ -174,14 +179,14 @@ def build_choice_labeling(model: Model):
     return choice_labeling
 
 
-def build_state_labeling(model: Model) -> stormpy.storage.StateLabeling:
+def build_state_labeling(model: Model) -> "stormpy.storage.StateLabeling":
     """
     Takes a model and creates a state labelling object that determines which states get which labels in the stormpy representation
     """
     assert stormpy is not None
 
     # we first initialize all labels
-    state_labeling = stormpy.storage.StateLabeling(len(model.states.keys()))
+    state_labeling = stormpy.storage.StateLabeling(len(model.states))
     for label in model.state_labels:
         state_labeling.add_label(label)
 
@@ -195,7 +200,7 @@ def build_state_labeling(model: Model) -> stormpy.storage.StateLabeling:
 
 def build_reward_models(
     model: Model,
-) -> dict[str, stormpy.SparseRewardModel]:
+) -> "dict[str, stormpy.SparseRewardModel]":
     """
     Takes a model and creates a dictionary of all the stormpy representations of reward models
     """
@@ -203,14 +208,18 @@ def build_reward_models(
 
     reward_models = {}
     for rewardmodel in model.rewards:
-        reward_models[rewardmodel.name] = stormpy.SparseRewardModel(
-            optional_state_action_reward_vector=rewardmodel.get_reward_vector()
-        )
-
+        if model.supports_actions():
+            reward_models[rewardmodel.name] = stormpy.SparseRewardModel(
+                optional_state_action_reward_vector=rewardmodel.get_reward_vector()
+            )
+        else:
+            reward_models[rewardmodel.name] = stormpy.SparseRewardModel(
+                optional_state_reward_vector=rewardmodel.get_reward_vector()
+            )
     return reward_models
 
 
-def build_state_valuations(model: Model) -> stormpy.storage.StateValuation:
+def build_state_valuations(model: Model) -> "stormpy.storage.StateValuation":
     """
     Helps to add the valuations to the sparsemodel using a statevaluation object
     """
@@ -244,33 +253,47 @@ def build_observations(model: Model) -> list[int]:
     Builds the observation mapping for POMDPs
     """
     observations = []
+    known_aliases = []
     for state in model.states:
-        if isinstance(state.observation, Distribution):
-            raise NotImplementedError(
-                "Strompy does not support probabilistic observations in POMDPs."
-            )
-
-        if (
-            model.observations is None
-            or model.observation not in model.observations
-            or state.observation is None
-        ):
+        obs = state.observation
+        if obs is None:
             raise RuntimeError(
-                f"State {state} has an observation {state.observation} that is not in the model's observations."
+                f"State {state} does not have an observation. Please assign an observation to each state."
             )
+        if isinstance(obs, Distribution):
+            raise NotImplementedError(
+                "Stormpy does not support probabilistic observations in POMDPs."
+            )
+        if obs.alias not in known_aliases:
+            known_aliases.append(obs.alias)
 
-        observations.append(model.observations.index(state.observation))
+    # If the aliases happen to be integer strings (like from a prism file or map_pomdp)
+    # we want to ensure we order known_aliases by that integer to preserve exact POMDP structure
+    all_ints = True
+    for a in known_aliases:
+        try:
+            int(a)
+        except ValueError:
+            all_ints = False
+            break
+    if all_ints:
+        max_int = max(int(a) for a in known_aliases)
+        # Fill missing intermediate ones to be safe
+        known_aliases = [str(i) for i in range(max_int + 1)]
 
+    for state in model.states:
+        observations.append(known_aliases.index(state.observation.alias))
+
+    model.observations = [model.observation(a) for a in known_aliases]
     return observations
 
-
-def build_markovian_states_bitvector(model: Model) -> stormpy.BitVector:
+def build_markovian_states_bitvector(model: Model) -> "stormpy.BitVector":
     assert stormpy is not None
 
     if model.markovian_states is None:
         raise RuntimeError("Model does not have markovian states defined.")
 
-    markovian_state_ids = [state.stormpy_id for state in model.markovian_states]
+    markovian_state_ids = [model.stormpy_id[state] for state in model.markovian_states]
     if isinstance(markovian_state_ids, list):
         markovian_states_bitvector = stormpy.storage.BitVector(
             max(markovian_state_ids) + 1,
@@ -432,7 +455,6 @@ def build_pomdp(
 
     return pomdp
 
-
 def build_ma(
     model: Model,
     matrix,
@@ -444,6 +466,19 @@ def build_ma(
 ):
     assert stormpy is not None
 
+    # For MA, exit rates are needed for markovian states. We compute them dynamically.
+    exit_rates = []
+    for state in model.states:
+        if state in model.markovian_states:
+            rate_sum = 0.0
+            if state in model.choices:
+                for action in model.choices[state].choices:
+                    for val, tgt in model.choices[state].choices[action].branch:
+                        rate_sum += float(val)
+            exit_rates.append(rate_sum)
+        else:
+            exit_rates.append(0.0)
+
     if model.is_parametric():
         components = stormpy.SparseParametricModelComponents(
             transition_matrix=matrix,
@@ -451,6 +486,7 @@ def build_ma(
             reward_models=reward_models,
             markovian_states=markovian_states_bitvector,
         )
+        components.exit_rates = exit_rates
         components.state_valuations = state_valuations
         components.choice_labeling = choice_labeling
         ma = stormpy.storage.SparseParametricMA(components)
@@ -461,6 +497,7 @@ def build_ma(
             reward_models=reward_models,
             markovian_states=markovian_states_bitvector,
         )
+        components.exit_rates = exit_rates
         components.state_valuations = state_valuations
         components.choice_labeling = choice_labeling
         ma = stormpy.storage.SparseIntervalMA(components)
@@ -471,6 +508,7 @@ def build_ma(
             reward_models=reward_models,
             markovian_states=markovian_states_bitvector,
         )
+        components.exit_rates = exit_rates
         components.state_valuations = state_valuations
         components.choice_labeling = choice_labeling
         ma = stormpy.storage.SparseMA(components)
@@ -480,9 +518,8 @@ def build_ma(
 
 def stormvogel_to_stormpy(
     model: Model,
-) -> stormpy.model.SparseModel:
+):
     assert stormpy is not None
-
     # we throw the neccessary errors first
     if not model.all_states_outgoing_transition():
         raise RuntimeError(
@@ -491,11 +528,22 @@ def stormvogel_to_stormpy(
 
     if model.unassigned_variables():
         raise RuntimeError("Each state should have a value for each variable")
+    if not model.all_non_init_states_incoming_transition():
+        raise RuntimeError(
+            "There is more than one state in this model without incoming transitions."
+        )
+
 
     if model.has_zero_transition() and not model.supports_rates():
         raise RuntimeError(
             "This model has transitions with probability=0. Stormpy assumes that these do not explicitly exist."
         )
+
+    # we make a mapping between stormvogel and stormpy ids in case they are out of order.
+    stormpy_id = {}
+    for index, state in enumerate(model.states):
+        stormpy_id[state] = index
+    model.stormpy_id = stormpy_id
 
     # we store the pycarl parameters of a model
     stormpy.pycarl.clear_variable_pool()
@@ -514,7 +562,7 @@ def stormvogel_to_stormpy(
     else:
         observations = None
 
-    matrix = build_matrix(model, choice_labeling)
+    matrix = build_matrix(model, choice_labeling, variables)
     state_labeling = build_state_labeling(model)
     reward_models = build_reward_models(model)
     state_valuations = build_state_valuations(model)
@@ -549,7 +597,15 @@ def stormvogel_to_stormpy(
         )
     elif model.type == ModelType.MA:
         markovian_states_bitvector = build_markovian_states_bitvector(model)
-        pass
+        return build_ma(
+            model,
+            matrix,
+            choice_labeling,
+            state_labeling,
+            markovian_states_bitvector,
+            reward_models,
+            state_valuations,
+        )
     else:
         raise NotImplementedError(
             "Converting this type of model to stormpy is not yet supported"

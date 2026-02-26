@@ -17,7 +17,7 @@ class Branches[ValueType: Value]:
         branch: The distribution over successors.
     """
 
-    branches: "Distribution[ValueType, State[ValueType]]"
+    branch: "Distribution[ValueType, State[ValueType]]"
 
     def __init__(self, *args):
         if len(args) == 1 and isinstance(args[0], list):
@@ -32,18 +32,22 @@ class Branches[ValueType: Value]:
     @property
     def successors(self) -> set["State[ValueType]"]:
         """Returns the set of successor states."""
-        return self.branches.support
+        return set(s for _, s in self.branch)
 
     def __str__(self):
         parts = []
-        for prob, state in self.branches:
+        for prob, state in self.branch:
             parts.append(f"{prob} -> {state}")
         return ", ".join(parts)
 
     def __add__(self, other):
         if not isinstance(other, Branches):
             raise TypeError("Can only add Branches to Branches")
-        return Branches(self.branches + other.branches)
+        return Branches(self.branch + other.branch)
 
     def __iter__(self):
         return iter(self.branch)
+
+    def sort_states(self):
+        """Sorts the branch list by the state's position in model.states."""
+        self.branch.sort(key=lambda t: t[1].model.states.index(t[1]))

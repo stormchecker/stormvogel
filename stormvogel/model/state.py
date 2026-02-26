@@ -13,7 +13,7 @@ from stormvogel.model.observation import Observation
 from stormvogel.model.value import Value
 from stormvogel.model.action import Action, EmptyAction
 
-@dataclass(order=True)
+@dataclass(order=False, eq=False)
 class State[ValueType: Value]:
     """Represents a state in a Model.
 
@@ -51,16 +51,16 @@ class State[ValueType: Value]:
     
     def set_labels(self, labels: set[str]):
         for label in self.model.state_labels:
-            if label in labels and self.state_id not in self.model.state_labels[label]:
+            if label in labels and self not in self.model.state_labels[label]:
                 self.model.state_labels[label].add(self)
-            elif label not in labels and self.state_id in self.model.state_labels[label]:
+            elif label not in labels and self in self.model.state_labels[label]:
                 self.model.state_labels[label].remove(self)
     
     def has_label(self, label: str):
         """Returns whether this state has this label."""
         if label not in self.model.state_labels:
             return False
-        return self.state_id in self.model.state_labels[label]
+        return self in self.model.state_labels[label]
 
     def add_label(self, label: str):
         """Adds a new label to the state."""
@@ -101,17 +101,28 @@ class State[ValueType: Value]:
 
     def has_choices(self) -> bool:
         """Returns whether this state has choices."""
+        if self not in self.model.choices:
+            return False
         return len(self.choices.choices) != 0
 
     @property
     def nr_choices(self) -> int:
         """The number of choices in this state."""
-        return len(self.choices) if self.choices is not None else 1
+        try:
+            choices = self.choices
+            n = len(choices)
+            return n if n > 0 else 1
+        except RuntimeError:
+            return 1
 
     @property
     def valuations(self) -> dict[str, Any]:
         """The valuations of this state."""
         return self.model.state_valuations[self]
+
+    @valuations.setter
+    def valuations(self, value: dict[str, Any]):
+        self.model.state_valuations[self] = value
 
     def add_valuation(self, variable: str, value: Any):
         """Adds a valuation to the state."""
@@ -162,6 +173,11 @@ class State[ValueType: Value]:
     def is_initial(self):
         """Returns whether this state is initial."""
         return self.has_label("init")
+
+    def __eq__(self, other):
+        if not isinstance(other, State):
+            return NotImplemented
+        return self.state_id == other.state_id
 
     def __hash__(self):
         return hash(self.state_id)

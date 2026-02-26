@@ -219,8 +219,7 @@ class VisualizationBase:
         for reward_model in self.model.rewards:
             if self.model.supports_actions():
                 if a in s.available_actions():
-                    reward = reward_model.get_state_action_reward(s, a)
-                else:
+                    reward = reward_model.get_state_reward(s)
                     reward = None
             else:
                 reward = reward_model.get_state_reward(s)

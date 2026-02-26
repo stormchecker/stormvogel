@@ -13,9 +13,10 @@ def convert_scheduler_to_stormvogel(
 ):
     """Converts a stormpy scheduler to a stormvogel scheduler"""
     taken_actions = {}
-    for state in model.states.values():
+    for state in model.states:
         av_act = state.available_actions()
-        choice = stormpy_scheduler.get_choice(state)
+        stormpy_state_id = model.states.index(state)
+        choice = stormpy_scheduler.get_choice(stormpy_state_id)
         action_index = choice.get_deterministic_choice()
         taken_actions[state] = av_act[action_index]
 
@@ -43,10 +44,10 @@ def convert_model_checking_result(
         or type(stormpy_result) == stormpy.ExplicitParametricQuantitativeCheckResult
     ):
         values = {
-            index: value for (index, value) in enumerate(stormpy_result.get_values())
+            model.states[index]: value for (index, value) in enumerate(stormpy_result.get_values())
         }
     elif type(stormpy_result) == stormpy.ExplicitQualitativeCheckResult:
-        values = {i: stormpy_result.at(i) for i in range(0, len(model.states))}
+        values = {model.states[i]: stormpy_result.at(i) for i in range(0, len(model.states))}
     else:
         raise RuntimeError("Unsupported result type")
 

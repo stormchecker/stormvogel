@@ -191,7 +191,16 @@ def build_bird[ValueType: stormvogel.model.Value](
                     )
 
                 if s not in state_lookup:
-                    new_state = model.new_state()
+                    obs_kwarg = {}
+                    if model.supports_observations() and observations is not None:
+                        given_obs = observations(s)
+                        if isinstance(given_obs, int):
+                            obs_kwarg['observation'] = model.observation(str(given_obs))
+                        elif isinstance(given_obs, list):
+                            obs_kwarg['observation'] = [
+                                (prob, model.observation(str(o))) for prob, o in given_obs
+                            ]
+                    new_state = model.new_state(**obs_kwarg)
                     state_lookup[s] = new_state
                     branch.append((val, new_state))
                     states_to_be_visited.append(s)
@@ -217,7 +226,16 @@ def build_bird[ValueType: stormvogel.model.Value](
 
     # we create the model with the given type and initial state
     model = stormvogel.model.new_model(modeltype=modeltype, create_initial_state=False)
-    init_state = model.new_state(labels=["init"])
+    obs_kwarg = {}
+    if model.supports_observations() and observations is not None:
+        given_obs = observations(init)
+        if isinstance(given_obs, int):
+            obs_kwarg['observation'] = model.observation(str(given_obs))
+        elif isinstance(given_obs, list):
+            obs_kwarg['observation'] = [
+                (prob, model.observation(str(o))) for prob, o in given_obs
+            ]
+    init_state = model.new_state(labels=['init'], **obs_kwarg)
 
     # we continue calling delta and adding new states until no states are
     # left to be visited
@@ -296,36 +314,64 @@ def build_bird[ValueType: stormvogel.model.Value](
 
     # we add the rewards
     if rewards is not None:
-        # we first create the right number of reward models
-        rewards = cast(Callable[[Any], dict[str, ValueType]], rewards)
-        for reward in rewards(init).items():
-            model.new_reward_model(reward[0])
+        if model.supports_actions():
+            assert available_actions is not None
+            rewards_2 = cast(Callable[[Any, Action], dict[str, ValueType]], rewards)
+            # discover reward model names using first state and its first action
+            sample_action = available_actions(init)[0]
+            for name in rewards_2(init, sample_action).keys():
+                model.new_reward_model(name)
 
-        initial_state_rewards = rewards(init)
-        for state, s in state_lookup.items():
-            rewarddict = rewards(state)
+            initial_state_rewards = rewards_2(init, sample_action)
+            for state, s in state_lookup.items():
+                for action_str in available_actions(state):
+                    rewarddict = rewards_2(state, action_str)
 
-            # we check for the rewards when the function does not return a dict object
-            # or the length is not always the same
-            if rewarddict is None:
-                raise ValueError(
-                    f"On input {state}, the rewards function does not have a return value"
-                )
+                    if rewarddict is None:
+                        raise ValueError(
+                            f"On input {state}, {action_str}, the rewards function does not have a return value"
+                        )
+                    if not isinstance(rewarddict, dict):
+                        raise ValueError(
+                            f"On input {state}, {action_str}, the rewards function does not return a dictionary. Make sure to change it to the format {{<rewardmodel name>:<reward>,...}}"
+                        )
+                    if rewarddict.keys() != initial_state_rewards.keys():
+                        raise ValueError(
+                            "Make sure that the rewards function returns a dictionary with the same keys on each return"
+                        )
 
-            if not isinstance(rewarddict, dict):
-                raise ValueError(
-                    f"On input {state}, the rewards function does not return a dictionary. Make sure to change it to the format {{<rewardmodel name>:<reward>,...}}"
-                )
-            if rewarddict.keys() != initial_state_rewards.keys():
-                raise ValueError(
-                    "Make sure that the rewards function returns a dictionary with the same keys on each return"
-                )
+                    s = state_lookup[state]
+                    assert s is not None
+                    action_label = None if action_str == "" else action_str
+                    stormvogel_action = model.action(action_label)
+                    for index, reward in enumerate(rewarddict.items()):
+                        model.rewards[index].set_state_reward(s, reward[1])
+        else:
+            rewards_1 = cast(Callable[[Any], dict[str, ValueType]], rewards)
+            for name in rewards_1(init).keys():
+                model.new_reward_model(name)
 
-            s = state_lookup[state]
-            assert s is not None
-            for index, reward in enumerate(rewarddict.items()):
-                model.rewards[index].set_state_reward(s, reward[1])
+            initial_state_rewards = rewards_1(init)
+            for state, s in state_lookup.items():
+                rewarddict = rewards_1(state)
 
+                if rewarddict is None:
+                    raise ValueError(
+                        f"On input {state}, the rewards function does not have a return value"
+                    )
+                if not isinstance(rewarddict, dict):
+                    raise ValueError(
+                        f"On input {state}, the rewards function does not return a dictionary. Make sure to change it to the format {{<rewardmodel name>:<reward>,...}}"
+                    )
+                if rewarddict.keys() != initial_state_rewards.keys():
+                    raise ValueError(
+                        "Make sure that the rewards function returns a dictionary with the same keys on each return"
+                    )
+
+                s = state_lookup[state]
+                assert s is not None
+                for index, reward in enumerate(rewarddict.items()):
+                    model.rewards[index].set_state_reward(s, reward[1])
     # we add the observations
     if observations is not None:
         for state, s in state_lookup.items():
@@ -337,13 +383,13 @@ def build_bird[ValueType: stormvogel.model.Value](
                 )
 
             if isinstance(given_obs, int):
-                obs = model.observation(observation_id=given_obs)
-                s.set_observation(obs)
+                obs = model.observation(str(given_obs))
+                s.observation = obs
             elif isinstance(given_obs, list):
                 obs_distribution = [
-                    (prob, model.observation(observation_id=o)) for prob, o in given_obs
+                    (prob, model.observation(str(o))) for prob, o in given_obs
                 ]
-                s.set_observation(obs_distribution)
+                s.observation = obs_distribution
             else:
                 raise ValueError(
                     f"On input {state}, the observations function does not return an integer or a distribution"
@@ -390,8 +436,15 @@ def build_bird[ValueType: stormvogel.model.Value](
                 raise ValueError(
                     f"On input {state}, the rates function does not return a number"
                 )
-            model.set_rate(s, r)
-
+            if model.model_type.name == "CTMC":
+                if s in model.choices:
+                    for a in model.choices[s].choices:
+                        new_branch = [
+                            (v * r, t) for v, t in model.choices[s].choices[a].branch
+                        ]
+                        model.choices[s].choices[a].branch = new_branch
+            else:
+                pass
     # we add the valuations
     if valuations is not None:
         initial_state_valuations = valuations(init)

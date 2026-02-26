@@ -28,36 +28,44 @@ class Scheduler:
         self, state: stormvogel.model.State
     ) -> stormvogel.model.Action:
         """returns the action in the scheduler for the given state if present in the model"""
-        if state in self.model.states.values():
+        if state in self.model.states:
             return self.taken_actions[state]
         else:
             raise RuntimeError("This state is not a part of the model")
 
     def generate_induced_dtmc(self) -> stormvogel.model.Model | None:
         """This function resolves the nondeterminacy of the mdp and returns the scheduler induced dtmc"""
-        if self.model.type == stormvogel.model.ModelType.MDP:
+        if self.model.model_type == stormvogel.model.ModelType.MDP:
             induced_dtmc = stormvogel.model.new_dtmc(create_initial_state=False)
 
             # we initialize the reward models
             for reward_model in self.model.rewards:
                 induced_dtmc.new_reward_model(reward_model.name)
 
-            # we add all the states and transitions according to the chosen actions
+            # build a mapping from old states to new states
+            state_map: dict[stormvogel.model.State, stormvogel.model.State] = {}
             for state in self.model:
-                induced_dtmc.new_state(
+                new_state = induced_dtmc.new_state(
                     labels=list(state.labels), valuations=state.valuations
                 )
+                state_map[state] = new_state
+
+            # add transitions with remapped state references
+            for state in self.model:
+                new_state = state_map[state]
                 action = self.get_action_at_state(state)
-                choice = state.get_outgoing_transitions(action)
-                assert choice is not None
-                induced_dtmc.add_choices(s=state, choices=choice)
+                transitions = state.get_outgoing_transitions(action)
+                assert transitions is not None
+                # remap branch targets from MDP states to induced DTMC states
+                remapped = [(prob, state_map[target]) for prob, target in transitions]
+                induced_dtmc.set_choices(new_state, remapped)
 
                 # we also add the rewards
                 for reward_model in self.model.rewards:
                     induced_reward_model = induced_dtmc.get_rewards(reward_model.name)
-                    reward = reward_model.get_state_action_reward(state, action)
-                    assert reward is not None
-                    induced_reward_model.set_state_reward(state, reward)
+                    reward = reward_model.get_state_reward(state)
+                    if reward is not None:
+                        induced_reward_model.set_state_reward(new_state, reward)
 
             return induced_dtmc
 
@@ -73,7 +81,7 @@ class Scheduler:
 
 def random_scheduler(model: stormvogel.model.Model) -> Scheduler:
     """Create a random scheduler for the provided model."""
-    choices = {state: random.choice(state.available_actions()) for state in model}
+    choices = {state: random.choice(state.available_actions()) for state in model if state.available_actions()}
     return Scheduler(model, taken_actions=choices)
 
 
@@ -146,7 +154,30 @@ class Result:
         if not isinstance(other, Result):
             return False
 
-        return self.values == other.values and self.scheduler == other.scheduler
+        if len(self.values) != len(other.values):
+            return False
+
+        for s1, v1 in self.values.items():
+            index = s1.model.states.index(s1)
+            s2 = other.model.states[index]
+            if s2 not in other.values:
+                return False
+            v2 = other.values[s2]
+            if abs(float(v1) - float(v2)) > 1e-6:
+                return False
+
+        if (self.scheduler is None) != (other.scheduler is None):
+            return False
+
+        if self.scheduler is not None:
+            if self.scheduler.taken_actions != other.scheduler.taken_actions:
+                for s1, a1 in self.scheduler.taken_actions.items():
+                    index = s1.model.states.index(s1)
+                    s2 = other.model.states[index]
+                    if s2 not in other.scheduler.taken_actions or other.scheduler.taken_actions[s2] != a1:
+                        return False
+
+        return True
 
     def __iter__(self):
         return iter(self.values.items())

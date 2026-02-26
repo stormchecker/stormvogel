@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from stormvogel.model.value import Value
 from stormvogel.model.state import State
+from stormvogel.model.action import Action
 
 from typing import TYPE_CHECKING
 
@@ -32,29 +33,50 @@ class RewardModel[ValueType: Value]:
         self.model = model
 
     def set_from_rewards_vector(self, vector: list[ValueType]) -> None:
-        """Set the rewards of this model according to a (stormpy) rewards vector."""
+        """Set the rewards of this model according to a (stormpy) state rewards vector."""
         combined_id = 0
         self.rewards = dict()
         for s in self.model:
-            self.rewards[s] = vector[combined_id]
+            if combined_id < len(vector):
+                self.rewards[s] = vector[combined_id]
+            combined_id += 1
 
     def get_state_reward(self, state: State) -> ValueType | None:
-        """Gets the reward at said state or state action pair. Return None if no reward is present."""
+        """Gets the reward at said state. Return None if no reward is present."""
         if state not in self.rewards:
             return None
         return self.rewards[state]
 
     def set_state_reward(self, state: State, value: ValueType):
-        """Sets the reward at said state. If the model has actions, try to use the empty state."""
+        """Sets the reward at said state."""
         self.rewards[state] = value
 
+    def set_state_action_reward(self, state: State, action: Action, value: ValueType):
+        """Backward-compatibility shim. Sets the state reward."""
+        self.rewards[state] = value
+
+    def get_state_action_reward(self, state: State, action: Action) -> ValueType | None:
+        """Backward-compatibility shim. Gets the state reward."""
+        return self.get_state_reward(state)
+
     def set_unset_rewards(self, value: ValueType):
-        """Fills up rewards that were not set yet with the specified value.
-        Use this if converting (to stormpy) doesn't work because the reward vector does not have the expected length.
-        """
+        """Fills up rewards that were not set yet with the specified value."""
         for s in self.model:
             if s not in self.rewards:
                 self.rewards[s] = value
 
     def __iter__(self):
         return iter(self.rewards.items())
+
+    def get_reward_vector(self) -> list[float]:
+        """Returns a list of all rewards ordered appropriately."""
+        vector = []
+        for state in self.model:
+            val = self.get_state_reward(state)
+            val_float = float(val) if val is not None else 0.0
+            if self.model.supports_actions() and state in self.model.choices:
+                for _ in state.available_actions():
+                    vector.append(val_float)
+            else:
+                vector.append(val_float)
+        return vector
