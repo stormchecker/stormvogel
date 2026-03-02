@@ -1,6 +1,6 @@
 """A distribution object."""
 
-from stormvogel.model.value import Value
+from stormvogel.model.value import Number, Value
 from dataclasses import dataclass
 
 
@@ -22,7 +22,12 @@ class Distribution[ValueType: Value, SupportType]:
 
     def is_stochastic(self, precision=1e-6) -> bool:
         """Returns whether this distribution is probabilistic (i.e., sums to 1)."""
-        total = sum(v.as_number() for v, _ in self.distribution)
+        total = 0.0
+        for v, _ in self.distribution:
+            if isinstance(v, Number):
+                total += float(v)
+            else:
+                return True  # Cannot check Interval or Parametric values numerically
         return abs(total - 1) < precision
 
     def __str__(self):
