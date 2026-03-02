@@ -90,7 +90,7 @@ def policy_iteration(
 
             # arg_max evaluates the functions over the arguments, so we pass a list of lambdas
             lambdas = [
-                eval("lambda a: compute_val(a)", {"compute_val": compute_val})
+                (lambda a, compute_val=compute_val: compute_val(a))
                 for _ in s1.available_actions()
             ]
             best_action = arg_max(lambdas, s1.available_actions())
