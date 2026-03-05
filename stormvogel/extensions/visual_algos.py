@@ -21,8 +21,6 @@ def naive_value_iteration(
     """
     if epsilon <= 0:
         raise RuntimeError("The algorithm will not terminate if epsilon is zero.")
-    if epsilon <= 0:
-        raise RuntimeError("The algorithm will not terminate if epsilon is zero.")
 
     # Create a dynamic list of dicts to store the result.
     values_matrix: list[dict[stormvogel.model.State, float]] = [
@@ -63,7 +61,6 @@ def naive_value_iteration(
     return [
         [step_values[state] for state in model.states] for step_values in values_matrix
     ]  # type: ignore
-    return values_matrix  # type: ignore
 
 
 def dtmc_evolution(model: stormvogel.model.Model, steps: int) -> list[list[float]]:

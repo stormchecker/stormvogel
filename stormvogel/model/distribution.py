@@ -22,7 +22,19 @@ class Distribution[ValueType: Value, SupportType]:
 
     def is_stochastic(self, precision=1e-6) -> bool:
         """Returns whether this distribution is probabilistic (i.e., sums to 1)."""
-        total = sum(v.as_number() for v, _ in self.distribution)
+        from stormvogel.model.value import Interval
+        from stormvogel.parametric import Parametric
+
+        if any(isinstance(v, (Interval, Parametric)) for v, _ in self.distribution):
+            return True
+
+        from fractions import Fraction
+
+        total = sum(
+            float(v)
+            for v, _ in self.distribution
+            if isinstance(v, (int, float, Fraction))
+        )
         return abs(total - 1) < precision
 
     def sort(self):
