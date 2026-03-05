@@ -720,7 +720,7 @@ class Model[ValueType: Value]:
 
         for state in list(self.states):
             observation = state.observation
-            if isinstance(observation, list):
+            if isinstance(observation, Distribution):
                 # from stormvogel.model.value import ValueType
                 new_states_distribution = []
 
