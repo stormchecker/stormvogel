@@ -51,6 +51,11 @@ def test_is_absorbing():
     assert state1.is_absorbing()
     assert not state0.is_absorbing()
 
+    # A state with literally no choices in the model
+    empty_dtmc = stormvogel.model.new_dtmc()
+    empty_state = empty_dtmc.new_state()
+    assert empty_state.is_absorbing()
+
 
 def test_choices_from_shorthand():
     # First we test it for a model without actions

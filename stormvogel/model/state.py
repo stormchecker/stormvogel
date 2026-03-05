@@ -192,10 +192,9 @@ class State[ValueType: Value]:
         """returns whether the state has a nonzero transition going to another state or not"""
 
         # if the state has no choice it is trivially true
-        choice = self.choices
-        if choice is None:
+        if self not in self.model.choices:
             return True
-
+        choice = self.choices
         # for all actions we check if the state has outgoing transitions to a different state with value != 0
         for _, branch in choice:
             for transition in branch:
