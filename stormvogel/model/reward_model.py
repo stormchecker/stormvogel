@@ -22,9 +22,6 @@ class RewardModel[ValueType: Value]:
     name: str
     model: "Model"
     rewards: dict[State, ValueType]
-    """Rewards dict. Hashed by state id and Action.
-    The function update_rewards can be called to update rewards. After this, rewards will correspond to intermediate_rewards.
-    Note that in models without actions, EmptyAction will be used here."""
 
     def __init__(self, name: str, model: "Model", rewards: dict[State, ValueType]):
         self.name = name

@@ -20,8 +20,7 @@ class Observation:
 
     def format(self):
         """Formats the observation for visualizations."""
-        #  TODO: add a good valuations format for visualizations
-        return self.alias
+        return f"{self.alias} {self.valuations if self.valuations is not None else ''}"
 
     def __str__(self):
         return f"Obs: {self.alias} ({self.observation_id})"
