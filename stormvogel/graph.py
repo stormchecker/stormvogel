@@ -85,11 +85,11 @@ class ModelGraph(networkx.DiGraph):
                 or if the action node is missing (for non-empty actions).
         """
 
-        assert state in self.nodes, "State {state} not in graph."
+        assert state in self.nodes, f"State {state} not in graph."
         assert (
             action == EmptyAction or (state, action) in self.nodes
-        ), "Action node for action {action} in state {state} not in graph."
-        assert next_state in self.nodes, "Next state {next_state} not in graph."
+        ), f"Action node for action {action} in state {state} not in graph."
+        assert next_state in self.nodes, f"Next state {next_state} not in graph."
 
         if action == EmptyAction:
             self.add_edge(state, next_state, probability=probability, **attr)

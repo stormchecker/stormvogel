@@ -563,7 +563,6 @@ def test_bird_ctmc():
                 return [(1.0, "eating")]
             case "eating":
                 return [(1.0, "hungry")]
-                return [(3.0, "hungry")]
 
     def rates(s) -> float:
         match s:
