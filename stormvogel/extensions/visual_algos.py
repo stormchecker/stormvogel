@@ -99,7 +99,6 @@ def dtmc_evolution(model: stormvogel.model.Model, steps: int) -> list[list[float
         [step_values[state] for state in model.states]
         for step_values in matrix_steps_states
     ]
-    return matrix_steps_states
 
 
 def invert_2d_list(li: list[list[Any]]) -> list[list[Any]]:
@@ -184,8 +183,13 @@ def policy_iteration(
                 [
                     lambda a: sum(
                         [
-                            (p * dtmc_result.get_result_of_state(s2.id))  # type: ignore
-                            for p, s2 in s1.get_outgoing_choice(a)  # type: ignore
+                            (
+                                p
+                                * dtmc_result.get_result_of_state(  # type: ignore
+                                    dtmc.states[model.get_state_index(target)]
+                                )
+                            )  # type: ignore
+                            for (p, target) in s1.get_outgoing_transitions(a)  # type: ignore
                         ]
                     )
                     for _ in s1.available_actions()

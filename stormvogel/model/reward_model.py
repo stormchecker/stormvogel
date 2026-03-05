@@ -16,7 +16,7 @@ class RewardModel[ValueType: Value]:
     Args:
         name: Name of the reward model.
         model: The model this rewardmodel belongs to.
-        rewards: The rewards, the keys state action pairs.
+        rewards: The rewards, the keys states.
     """
 
     name: str

@@ -24,10 +24,9 @@ class Choices[ValueType: Value]:
     choices: dict[Action, Branches[ValueType]]
 
     def __init__(self, choices: dict[Action, Branches[ValueType]]):
-        # Input validation, see RuntimeError.
         if len(choices) > 1 and EmptyAction in choices:
             raise RuntimeError(
-                "It is impossible to create a choice that contains more than one action, and an emtpy action"
+                "It is impossible to create a choice that contains more than one action, and an empty action"
             )
         self.choices = choices
 
