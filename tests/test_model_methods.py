@@ -205,7 +205,7 @@ def test_normalize():
 def test_remove_state():
     # we make a normal ctmc and remove a state
     ctmc = stormvogel.examples.nuclear_fusion_ctmc.create_nuclear_fusion_ctmc()
-    ctmc.remove_state(ctmc.states[3], reassign_ids=True)
+    ctmc.remove_state(ctmc.states[3])
 
     # we make a ctmc with the state already missing
     new_ctmc = stormvogel.model.new_ctmc()
@@ -240,7 +240,7 @@ def test_remove_state():
     mdp.set_choices(mdp.initial_state, transition)
 
     # we remove a state
-    mdp.remove_state(mdp.states[0], reassign_ids=True)
+    mdp.remove_state(mdp.states[0])
 
     # we make the mdp with the state already missing
     new_mdp = stormvogel.model.new_mdp(create_initial_state=False)
@@ -257,21 +257,16 @@ def test_remove_state():
     # this should fail:
     new_dtmc = stormvogel.examples.die.create_die_dtmc()
     state0 = new_dtmc.states[0]
-    new_dtmc.remove_state(new_dtmc.initial_state, reassign_ids=True)
+    new_dtmc.remove_state(new_dtmc.initial_state)
     state1 = new_dtmc.states[0]
 
     assert state0 != state1
 
 
-def test_reassign_ids_removed_states():
-    # we test if reassigning ids works after states are removed
-
-    # we first make the die dtmc, remove one state and reassign ids
+def test_remove_state_ids():
     dtmc = stormvogel.examples.die.create_die_dtmc()
     dtmc.remove_state(dtmc.initial_state)
-    dtmc.reassign_ids()
 
-    # we make the dtmc with the state already removed and ids already reassigned
     other_dtmc = stormvogel.model.new_dtmc(create_initial_state=False)
     for i in range(6):
         other_dtmc.new_state(labels=[f"rolled{i + 1}"], valuations={"rolled": i + 1})

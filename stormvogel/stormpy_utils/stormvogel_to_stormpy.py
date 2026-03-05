@@ -527,6 +527,17 @@ def build_ma(
     return ma
 
 
+def _all_non_init_states_incoming_transition(model) -> bool:
+    """Checks if all states except the initial state have an incoming transition."""
+    remaining_states = set(model.states)
+    for transition in model.iterate_transitions():
+        remaining_states.discard(transition[1])
+    for s in remaining_states:
+        if not s.is_initial():
+            return False
+    return True
+
+
 def stormvogel_to_stormpy(
     model: Model,
 ):
@@ -539,7 +550,8 @@ def stormvogel_to_stormpy(
 
     if next(model.unassigned_variables(), None) is not None:
         raise RuntimeError("Each state should have a value for each variable")
-    if not model.all_non_init_states_incoming_transition():
+
+    if not _all_non_init_states_incoming_transition(model):
         raise RuntimeError(
             "There is more than one state in this model without incoming transitions."
         )

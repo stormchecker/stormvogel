@@ -92,8 +92,6 @@ def create_monty_hall_pomdp():
     # we set the value -1 to all unassigned variables in the states
     pomdp.add_valuation_at_remaining_states(value=-1)
 
-    # we add the observations TODO: let it make sense
-
     return pomdp
 
 

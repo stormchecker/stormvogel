@@ -232,7 +232,7 @@ def test_pmc_valuations():
     # we add self loops to all states with no outgoing choices
     pmc.add_self_loops()
 
-    induced_pmc = pmc.parameter_valuation({"x": 1, "y": 2, "w": 1, "z": 5})
+    induced_pmc = pmc.get_instantiated_model({"x": 1, "y": 2, "w": 1, "z": 5})
 
     # we build what the induced pmc is supposed to look like
     new_induced_pmc = stormvogel.model.new_dtmc()

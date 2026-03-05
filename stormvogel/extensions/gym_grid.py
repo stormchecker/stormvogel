@@ -80,11 +80,17 @@ def gymnasium_grid_to_stormvogel(
             labels.append("done")
         return labels
 
+    def valuations(s: bird.State) -> dict[str, int | float | bool]:
+        if s.proxy_action is not None:
+            return {"env_id": -1}
+        return {"env_id": int(s.n)}
+
     return bird.build_bird(
         delta=delta,
         init=init,
         available_actions=available_actions,
         labels=labels,
+        valuations=valuations,
         rewards=rewards,
         modeltype=stormvogel.model.ModelType.MDP,
     )

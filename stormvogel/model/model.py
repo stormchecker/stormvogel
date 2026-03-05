@@ -67,8 +67,8 @@ class Model[ValueType: Value]:
         self.state_valuations = dict()
         self.state_labels = dict()
         self.rewards = []
-        self.parametric: bool | None = None
-        self.interval: bool | None = None
+        self._is_parametric: bool | None = None
+        self._is_interval: bool | None = None
         self._state_index_cache: dict[State, int] | None = None
 
         # Initialize observations if those are supported by the model type (pomdps)
@@ -136,15 +136,15 @@ class Model[ValueType: Value]:
 
     def is_interval_model(self) -> bool:
         """Returns whether this model is an interval model, i.e., containts interval values)"""
-        if self.interval is None:
+        if self._is_interval is None:
             for _, choice in self.choices.items():
                 for _, branch in choice:
                     for value, _ in branch:
                         if issubclass(type(value), Interval):
-                            self.interval = True
-                            return self.interval
-            self.interval = False
-        return self.interval
+                            self._is_interval = True
+                            return self._is_interval
+            self._is_interval = False
+        return self._is_interval
 
     @property
     def parameters(self) -> set[str]:
@@ -159,15 +159,15 @@ class Model[ValueType: Value]:
 
     def is_parametric(self) -> bool:
         """Returns whether this model contains parametric transition values"""
-        if self.parametric is None:
+        if self._is_parametric is None:
             for _, choice in self.choices.items():
                 for _, branch in choice:
                     for value, _ in branch:
                         if issubclass(type(value), Parametric):
-                            self.parametric = True
-                            return self.parametric
-            self.parametric = False
-        return self.parametric
+                            self._is_parametric = True
+                            return self._is_parametric
+            self._is_parametric = False
+        return self._is_parametric
 
     def is_stochastic(self, epsilon=1e-6) -> bool | None:
         """For discrete models: Checks if all sums of outgoing transition probabilities for all states equal 1, with at most epsilon rounding error.
@@ -236,8 +236,8 @@ class Model[ValueType: Value]:
             sub_model.normalize()
         return sub_model
 
-    def parameter_valuation(self, values: dict[str, Number]) -> "Model":
-        """evaluates all parametric transitions with the given values and returns the induced model"""
+    def get_instantiated_model(self, values: dict[str, Number]) -> "Model":
+        """evaluates all parametric transitions with the given values and returns the instantiated model"""
         evaluated_model = deepcopy(self)
         for state, transition in evaluated_model.choices.items():
             for action, branch in transition:
@@ -294,16 +294,6 @@ class Model[ValueType: Value]:
             for _action, branch in choice:
                 for transition in branch:
                     yield transition
-
-    def all_non_init_states_incoming_transition(self) -> bool:
-        """Checks if all states except the initial state have an incoming transition."""
-        remaining_states = set(self.states)
-        for transition in self.iterate_transitions():
-            remaining_states.discard(transition[1])
-        for s in remaining_states:
-            if not s.is_initial():
-                return False
-        return True
 
     def has_zero_transition(self) -> bool:
         """checks if the model has transitions with probability zero"""
@@ -374,7 +364,6 @@ class Model[ValueType: Value]:
         self,
         state: State,
         normalize: bool = True,
-        reassign_ids: bool = False,
         suppress_warning: bool = False,
     ):
         """Properly removes a state, it can optionally normalize the model and reassign ids automatically."""
@@ -436,13 +425,6 @@ class Model[ValueType: Value]:
 
         if normalize:
             self.normalize()
-        if reassign_ids:
-            self.reassign_ids()
-
-    def reassign_ids(self):
-        """Reassigns the ids of states, choices and rates to be in order again.
-        Mainly useful to keep consistent with storm."""
-        pass  # no longer needed, using UUIDs
 
     def get_state_index(self, state: State) -> int:
         """Returns the index of the given state in the model, with O(1) amortized lookup."""
@@ -726,7 +708,7 @@ class Model[ValueType: Value]:
                 return False
         return True
 
-    def make_observations_deterministic(self, reassign_ids: bool = False):
+    def make_observations_deterministic(self):
         """
         In case of POMDPs or HMMs, makes the observations deterministic by splitting states with
         multiple observations into multiple states with single observations.
@@ -776,8 +758,6 @@ class Model[ValueType: Value]:
                 # Remove labels for this state
                 for label in state.labels:
                     self.state_labels[label].remove(state)
-
-        return True
 
 
 def new_dtmc(create_initial_state: bool = True) -> Model:

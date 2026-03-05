@@ -409,7 +409,6 @@ def test_id_mapping():
         assert new_stormvogel_dtmc == stormvogel_dtmc
 
         # we reassign ids of original model and compare again (should be equal now)
-        stormvogel_dtmc.reassign_ids()
         assert new_stormvogel_dtmc == stormvogel_dtmc
 
 
