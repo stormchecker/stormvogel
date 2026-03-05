@@ -2,6 +2,7 @@ import stormvogel.stormpy_utils.convert_results as convert_results
 import pytest
 import stormvogel.examples.monty_hall
 from typing import cast
+from model_testing import assert_models_equal
 
 try:
     import stormpy
@@ -989,10 +990,10 @@ def test_induced_dtmc():
     # and the rewards of the induced dtmc
     rewardmodel = other_dtmc.new_reward_model("r1")
     rewardmodel.set_state_reward(other_dtmc.states[0], 0)
-    rewardmodel.set_state_reward(other_dtmc.states[1], 2)
-    rewardmodel.set_state_reward(other_dtmc.states[2], 3)
+    rewardmodel.set_state_reward(other_dtmc.states[1], 1)
+    rewardmodel.set_state_reward(other_dtmc.states[2], 2)
 
-    assert dtmc == other_dtmc
+    assert_models_equal(dtmc, other_dtmc)
 
 
 def test_random_scheduler():

@@ -226,9 +226,9 @@ class Model[ValueType: Value]:
     def get_sub_model(self, states: Iterable[State], normalize: bool = True) -> "Model":
         """Returns a submodel of the model based on a collection of states.
         The states in the collection are the states that stay in the model."""
+        keep_ids = {s.state_id for s in states}
         sub_model = deepcopy(self)
-        states_set = set(states)
-        remove = [state for state in sub_model if state not in states_set]
+        remove = [state for state in sub_model if state.state_id not in keep_ids]
         for state in remove:
             sub_model.remove_state(state, normalize=False)
 
@@ -654,59 +654,6 @@ class Model[ValueType: Value]:
 
     def __iter__(self):
         return iter(self.states)
-
-    def __eq__(self, other):
-        if not isinstance(other, Model):
-            return NotImplemented
-        if self.model_type != other.model_type:
-            return False
-        if len(self.states) != len(other.states):
-            return False
-        # Build identity-based index maps to avoid calling State.__eq__
-        # (which only compares state_id and cannot match cross-model states).
-        self_idx = {id(s): i for i, s in enumerate(self.states)}
-        other_idx = {id(s): i for i, s in enumerate(other.states)}
-
-        def _branches_eq(b1: Branches, b2: Branches) -> bool:
-            if len(b1.branches) != len(b2.branches):
-                return False
-            for (v1, st1), (v2, st2) in zip(
-                sorted(b1.branches, key=lambda t: self_idx[id(t[1])]),
-                sorted(b2.branches, key=lambda t: other_idx[id(t[1])]),
-            ):
-                if v1 != v2:
-                    return False
-                if self_idx[id(st1)] != other_idx[id(st2)]:
-                    return False
-            return True
-
-        def _choices_eq(c1: Choices, c2: Choices) -> bool:
-            if len(c1.choices) != len(c2.choices):
-                return False
-            for a1, a2 in zip(sorted(c1.choices.keys()), sorted(c2.choices.keys())):
-                if a1 != a2:
-                    return False
-                if not _branches_eq(c1.choices[a1], c2.choices[a2]):
-                    return False
-            return True
-
-        for s1, s2 in zip(self.states, other.states):
-            if s1 not in self.choices or s2 not in other.choices:
-                if (s1 in self.choices) != (s2 in other.choices):
-                    return False
-                continue
-            if not _choices_eq(self.choices[s1], other.choices[s2]):
-                return False
-        self_labels = {k: v for k, v in self.state_labels.items() if len(v) > 0}
-        other_labels = {k: v for k, v in other.state_labels.items() if len(v) > 0}
-        if set(self_labels.keys()) != set(other_labels.keys()):
-            return False
-        for label in self_labels:
-            self_indices = {self_idx[id(s)] for s in self_labels[label]}
-            other_indices = {other_idx[id(s)] for s in other_labels[label]}
-            if self_indices != other_indices:
-                return False
-        return True
 
     def make_observations_deterministic(self):
         """

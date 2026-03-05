@@ -206,14 +206,6 @@ class State[ValueType: Value]:
         """Returns whether this state is initial."""
         return self.has_label("init")
 
-    def __eq__(self, other):
-        if not isinstance(other, State):
-            return NotImplemented
-        return self.state_id == other.state_id
-
-    def __hash__(self):
-        return hash(self.state_id)
-
     def __str__(self):
         res = f"id: {self.state_id}, labels: {list(self.labels)}, valuations: {self.valuations}"
         if self.model.supports_observations() and self.observation is not None:

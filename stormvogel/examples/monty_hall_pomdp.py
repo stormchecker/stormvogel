@@ -15,7 +15,7 @@ def create_monty_hall_pomdp():
                 pomdp.new_state(
                     "carchosen",
                     {"car_pos": i},
-                    observation=stormvogel.model.Observation("carchosen"),
+                    observation=pomdp.observation("carchosen"),
                 ),
             )
             for i in range(3)
@@ -31,7 +31,7 @@ def create_monty_hall_pomdp():
                     pomdp.new_state(
                         "open",
                         s.valuations | {"chosen_pos": i},
-                        observation=stormvogel.model.Observation("open"),
+                        observation=pomdp.observation("open"),
                     ),
                 )
                 for i in range(3)
@@ -51,7 +51,7 @@ def create_monty_hall_pomdp():
                     pomdp.new_state(
                         "goatrevealed",
                         s.valuations | {"reveal_pos": i},
-                        observation=stormvogel.model.Observation(f"goatrevealed{i}"),
+                        observation=pomdp.observation(f"goatrevealed{i}"),
                     ),
                 )
                 for i in other_pos
@@ -72,7 +72,7 @@ def create_monty_hall_pomdp():
                     pomdp.new_state(
                         ["done"] + (["target"] if chosen_pos == car_pos else []),
                         s.valuations | {"chosen_pos": chosen_pos},
-                        observation=stormvogel.model.Observation("stay"),
+                        observation=pomdp.observation("stay"),
                     ),
                 ),
                 (
@@ -80,7 +80,7 @@ def create_monty_hall_pomdp():
                     pomdp.new_state(
                         ["done"] + (["target"] if other_pos == car_pos else []),
                         s.valuations | {"chosen_pos": other_pos},
-                        observation=stormvogel.model.Observation("switch"),
+                        observation=pomdp.observation("switch"),
                     ),
                 ),
             ]

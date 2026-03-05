@@ -1,6 +1,7 @@
 import stormvogel.stormpy_utils.mapping as mapping
 import stormvogel.model
 import pytest
+from model_testing import assert_models_equal
 
 try:
     import stormpy
@@ -36,7 +37,7 @@ def test_convert_imc():
     stormpy_imc = mapping.stormvogel_to_stormpy(imc)
     new_imc = mapping.stormpy_to_stormvogel(stormpy_imc)
 
-    assert imc == new_imc
+    assert_models_equal(imc, new_imc)
 
 
 # TODO test the other way around

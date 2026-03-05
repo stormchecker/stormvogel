@@ -12,6 +12,7 @@ import stormvogel.examples.stormpy_examples.stormpy_ma
 import pytest
 import re
 from typing import Union
+from model_testing import assert_models_equal
 
 try:
     import stormpy
@@ -139,7 +140,7 @@ def test_stormvogel_to_stormpy_and_back_dtmc():
         new_stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
         # print(new_stormvogel_dtmc)
 
-        assert new_stormvogel_dtmc == stormvogel_dtmc
+        assert_models_equal(new_stormvogel_dtmc, stormvogel_dtmc)
 
 
 def test_stormpy_to_stormvogel_and_back_mdp():
@@ -193,7 +194,7 @@ def test_stormvogel_to_stormpy_and_back_mdp():
         # print(new_stormvogel_mdp == stormvogel_mdp)
         # quit()
 
-        assert new_stormvogel_mdp == stormvogel_mdp
+        assert_models_equal(new_stormvogel_mdp, stormvogel_mdp)
 
 
 def test_stormvogel_to_stormpy_and_back_ctmc():
@@ -208,7 +209,7 @@ def test_stormvogel_to_stormpy_and_back_ctmc():
         new_stormvogel_ctmc = mapping.stormpy_to_stormvogel(stormpy_ctmc)
         # print(new_stormvogel_ctmc)
 
-        assert new_stormvogel_ctmc == stormvogel_ctmc
+        assert_models_equal(new_stormvogel_ctmc, stormvogel_ctmc)
 
 
 def test_stormpy_to_stormvogel_and_back_ctmc():
@@ -234,7 +235,7 @@ def test_stormvogel_to_stormpy_and_back_pomdp():
         stormpy_pomdp = mapping.stormvogel_to_stormpy(stormvogel_pomdp)
         new_stormvogel_pomdp = mapping.stormpy_to_stormvogel(stormpy_pomdp)
 
-        assert new_stormvogel_pomdp == stormvogel_pomdp
+        assert_models_equal(new_stormvogel_pomdp, stormvogel_pomdp)
 
 
 def test_stormpy_to_stormvogel_and_back_pomdp():
@@ -406,10 +407,10 @@ def test_id_mapping():
         new_stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
 
         # we compare (should be equal since we compare structure, not UUIDs)
-        assert new_stormvogel_dtmc == stormvogel_dtmc
+        assert_models_equal(new_stormvogel_dtmc, stormvogel_dtmc)
 
         # we reassign ids of original model and compare again (should be equal now)
-        assert new_stormvogel_dtmc == stormvogel_dtmc
+        assert_models_equal(new_stormvogel_dtmc, stormvogel_dtmc)
 
 
 # we test if a model with multiple states without incoming transitions (>2) gives an error

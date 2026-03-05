@@ -48,23 +48,6 @@ class Choices[ValueType: Value]:
         # Note that we don't have to deal with the corner case where there are both empty and non-empty choices. This is dealt with at __init__.
         return self.choices.keys() == {EmptyAction}
 
-    def __eq__(self, other):
-        if not isinstance(other, Choices):
-            return False
-
-        if len(self.choices) != len(other.choices):
-            return False
-
-        for action, other_action in zip(
-            sorted(self.choices.keys()), sorted(other.choices.keys())
-        ):
-            if not (
-                action == other_action and self.choices[action] == other.choices[action]
-            ):
-                return False
-
-        return True
-
     def is_stochastic(self, epsilon: Number) -> bool:
         """Returns whether the probabilities in the branches sum to 1"""
         for a in self.choices:

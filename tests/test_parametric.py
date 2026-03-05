@@ -2,6 +2,7 @@ import stormvogel.stormpy_utils.mapping as mapping
 import stormvogel.parametric
 import stormvogel.model
 import pytest
+from model_testing import assert_models_equal
 
 
 try:
@@ -181,7 +182,7 @@ def test_pmdp_conversion():
 
     new_pmdp = mapping.stormpy_to_stormvogel(stormpy_pmdp)
 
-    assert pmdp == new_pmdp
+    assert_models_equal(pmdp, new_pmdp)
 
 
 @pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
@@ -252,4 +253,4 @@ def test_pmc_valuations():
     # we add self loops to all states with no outgoing choices
     new_induced_pmc.add_self_loops()
 
-    assert induced_pmc == new_induced_pmc
+    assert_models_equal(induced_pmc, new_induced_pmc)

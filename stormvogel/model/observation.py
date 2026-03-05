@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 from typing import Any
 
 
-@dataclass
+@dataclass(eq=False)
 class Observation:
     """Represents an observation of a state (for POMDPs and HMMs)
 

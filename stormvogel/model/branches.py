@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from stormvogel.model.state import State
 
 
-@dataclass(order=True, eq=True)
+@dataclass(eq=False)
 class Branches[ValueType: Value]:
     """Represents branches, which is a distribution over states.
     Args:

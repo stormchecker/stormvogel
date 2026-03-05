@@ -4,6 +4,7 @@ import stormvogel.examples.die
 import stormvogel.examples.nuclear_fusion_ctmc
 import pytest
 from typing import cast
+from model_testing import assert_models_equal, assert_choices_equal
 
 
 def test_available_actions():
@@ -71,14 +72,14 @@ def test_choices_from_shorthand():
     action = stormvogel.model.EmptyAction
     transition = stormvogel.model.Choices({action: branch})
 
-    assert (
+    assert_choices_equal(
         stormvogel.model.choices_from_shorthand(
             cast(
                 list[tuple[stormvogel.model.Value, stormvogel.model.State]],
                 transition_shorthand,
             )
-        )
-        == transition
+        ),
+        transition,
     )
 
     # Then we test it for a model with actions
@@ -91,14 +92,14 @@ def test_choices_from_shorthand():
     )
     transition = stormvogel.model.Choices({action: branch})
 
-    assert (
+    assert_choices_equal(
         stormvogel.model.choices_from_shorthand(
             cast(
                 list[tuple[stormvogel.model.Action, stormvogel.model.State]],
                 transition_shorthand,
             )
-        )
-        == transition
+        ),
+        transition,
     )
 
 
@@ -133,7 +134,7 @@ def test_choices_from_shorthand_dict_state():
     )
     transition = stormvogel.model.Choices({action0: branch, action1: branch})
 
-    assert (
+    assert_choices_equal(
         stormvogel.model.choices_from_shorthand(
             cast(
                 dict[
@@ -142,8 +143,8 @@ def test_choices_from_shorthand_dict_state():
                 ],
                 transition_shorthand,
             )
-        )
-        == transition
+        ),
+        transition,
     )
 
 
@@ -199,7 +200,7 @@ def test_normalize():
 
     # TODO test for mdps as well
 
-    assert dtmc0 == dtmc1
+    assert_models_equal(dtmc0, dtmc1)
 
 
 def test_remove_state():
@@ -216,7 +217,7 @@ def test_remove_state():
 
     new_ctmc.add_self_loops()
 
-    assert ctmc == new_ctmc
+    assert_models_equal(ctmc, new_ctmc)
 
     # we also test if it works for a model that has nontrivial actions:
     mdp = stormvogel.model.new_mdp()
@@ -252,7 +253,7 @@ def test_remove_state():
         "1"
     )  # TODO are the models the same? the choices don't look the same
 
-    assert mdp == new_mdp
+    assert_models_equal(mdp, new_mdp)
 
     # this should fail:
     new_dtmc = stormvogel.examples.die.create_die_dtmc()
@@ -272,7 +273,7 @@ def test_remove_state_ids():
         other_dtmc.new_state(labels=[f"rolled{i + 1}"], valuations={"rolled": i + 1})
     other_dtmc.add_self_loops()
 
-    assert dtmc == other_dtmc
+    assert_models_equal(dtmc, other_dtmc)
 
 
 def test_add_choices():
@@ -302,7 +303,7 @@ def test_add_choices():
         mdp2.initial_state,
         [(0.5, state2)],
     )
-    assert mdp == mdp2
+    assert_models_equal(mdp, mdp2)
 
     # Fail to add a real action to an empty action.
     mdp3 = stormvogel.model.new_mdp()
@@ -372,7 +373,7 @@ def test_get_sub_model():
         ]
     )
     new_dtmc.normalize()
-    assert sub_model == new_dtmc
+    assert_models_equal(sub_model, new_dtmc)
 
 
 def test_get_state_reward():

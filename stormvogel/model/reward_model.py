@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from stormvogel.model.model import Model
 
 
-@dataclass(eq=True, order=True)
+@dataclass(eq=False)
 class RewardModel[ValueType: Value]:
     """Represents a state-exit reward model.
     Args:
@@ -28,14 +28,29 @@ class RewardModel[ValueType: Value]:
         self.rewards = rewards
         self.model = model
 
-    def set_from_rewards_vector(self, vector: list[ValueType]) -> None:
-        """Set the rewards of this model according to a (stormpy) state rewards vector."""
+    def set_from_rewards_vector(
+        self, vector: list[ValueType], state_action: bool = False
+    ) -> None:
+        """Set the rewards of this model according to a (stormpy) rewards vector.
+
+        Args:
+            vector: The reward values.
+            state_action: If True, the vector has one entry per (state, action)
+                pair; only the first entry for each state is used.
+        """
         combined_id = 0
         self.rewards = dict()
         for s in self.model:
             if combined_id < len(vector):
                 self.rewards[s] = vector[combined_id]
-            combined_id += 1
+            if (
+                state_action
+                and self.model.supports_actions()
+                and s in self.model.choices
+            ):
+                combined_id += len(list(s.available_actions()))
+            else:
+                combined_id += 1
 
     def get_state_reward(self, state: State) -> ValueType | None:
         """Gets the reward at said state. Return None if no reward is present."""

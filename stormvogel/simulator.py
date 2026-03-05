@@ -99,26 +99,6 @@ class Path:
                 path += f" --> state: {state}"
         return path
 
-    def __eq__(self, other):
-        if not isinstance(other, Path):
-            return False
-
-        if len(self.path) != len(other.path):
-            return False
-
-        if self.model.supports_actions():
-            for tuple, other_tuple in zip(self.path, other.path):
-                assert not (
-                    isinstance(tuple, stormvogel.model.State)
-                    or isinstance(other_tuple, stormvogel.model.State)
-                )
-                if not (tuple[0] == other_tuple[0] or tuple[1] == other_tuple[1]):
-                    return False
-
-            return self.model == other.model
-        else:
-            return self.path == other.path and self.model == other.model
-
     def __len__(self):
         return len(self.path)
 

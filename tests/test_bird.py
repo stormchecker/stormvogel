@@ -2,6 +2,7 @@ from stormvogel import bird, model
 import math
 import pytest
 import re
+from model_testing import assert_models_equal
 
 
 def test_bird_mdp():
@@ -87,7 +88,7 @@ def test_bird_mdp():
         assert pair is not None
         if pair is not None:
             rewardmodel2.set_state_reward(state, 2)
-    assert regular_model == bird_model
+    assert_models_equal(regular_model, bird_model)
 
 
 def test_bird_mdp_int():
@@ -174,7 +175,7 @@ def test_bird_mdp_int():
         assert pair is not None
         if pair is not None:
             rewardmodel2.set_state_reward(state, 2)
-    assert regular_model == bird_model
+    assert_models_equal(regular_model, bird_model)
 
 
 def test_bird_dtmc():
@@ -327,7 +328,7 @@ def test_bird_dtmc():
     for state in regular_model:
         rewardmodel.set_state_reward(state, 2)
 
-    assert bird_model == regular_model
+    assert_models_equal(bird_model, regular_model)
 
 
 def test_bird_dtmc_arbitrary():
@@ -348,7 +349,7 @@ def test_bird_dtmc_arbitrary():
         regular_model.states[1], [(1, regular_model.initial_state)]
     )
 
-    assert bird_model == regular_model
+    assert_models_equal(bird_model, regular_model)
 
 
 def test_bird_mdp_empty_action():
@@ -378,7 +379,7 @@ def test_bird_mdp_empty_action():
         regular_model.states[1], [(1, regular_model.initial_state)]
     )
 
-    assert bird_model == regular_model
+    assert_models_equal(bird_model, regular_model)
     assert len(bird_model.states) == 2
     assert len(list(bird_model.actions)) == 1
 
@@ -410,7 +411,7 @@ def test_bird_mdp_empty_action_2():
         regular_model.states[1], [(1, regular_model.initial_state)]
     )
 
-    assert bird_model == regular_model
+    assert_models_equal(bird_model, regular_model)
     assert len(bird_model.states) == 2
     assert len(list(bird_model.actions)) == 1
 
@@ -442,7 +443,7 @@ def test_bird_mdp_empty_action_3():
         regular_model.states[1], [(1, regular_model.initial_state)]
     )
 
-    assert bird_model == regular_model
+    assert_models_equal(bird_model, regular_model)
     assert len(bird_model.states) == 2
     assert len(list(bird_model.actions)) == 1
 
@@ -587,7 +588,7 @@ def test_bird_pomdp():
     for state in regular_model.states:
         state.observation = observation
 
-    assert regular_model == bird_model
+    assert_models_equal(regular_model, bird_model)
 
 
 def test_bird_ctmc():
@@ -619,7 +620,7 @@ def test_bird_ctmc():
         regular_model.states[1], [(3, regular_model.initial_state)]
     )
 
-    assert bird_model == regular_model
+    assert_models_equal(bird_model, regular_model)
 
 
 def test_self_loops():
@@ -634,4 +635,4 @@ def test_self_loops():
     regular_model = model.new_dtmc()
     regular_model.add_self_loops()
 
-    assert bird_model == regular_model
+    assert_models_equal(bird_model, regular_model)
