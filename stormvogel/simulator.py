@@ -142,12 +142,45 @@ def get_action_at_state(
     return action
 
 
+def _copy_rewards(
+    model: stormvogel.model.Model,
+    partial_model: stormvogel.model.Model,
+    original_state: stormvogel.model.State,
+    partial_state: stormvogel.model.State,
+) -> None:
+    """Copy rewards from the original model to the partial model for a state.
+    Missing rewards default to 0."""
+    for index, rewardmodel in enumerate(partial_model.rewards):
+        r = model.rewards[index].get_state_reward(original_state)
+        rewardmodel.set_state_reward(partial_state, r if r is not None else 0)
+
+
+def _transition_probability(
+    from_state: stormvogel.model.State,
+    to_state: stormvogel.model.State,
+    action: stormvogel.model.Action | None = None,
+) -> float:
+    """Calculate the total transition probability from from_state to to_state."""
+    transitions = from_state.get_outgoing_transitions(action)
+    assert transitions is not None
+    probability = 0.0
+    for prob, target in transitions:
+        if target == to_state:
+            assert isinstance(prob, (float, int))
+            probability += float(prob)
+    return probability
+
+
 def step(
     state: stormvogel.model.State,
     action: stormvogel.model.Action | None = None,
     seed: int | None = None,
 ) -> tuple[stormvogel.model.State, list[stormvogel.model.Number], list[str]]:
-    """given a state, action and seed we simulate a step and return information on the state we discover"""
+    """Simulate one step: returns (next_state, state-exit rewards, next_state labels).
+
+    Rewards are always the state-exit rewards of the current state.
+    Missing rewards default to 0.
+    """
 
     # we go to the next state according to the probability distribution of the transition
     transitions = state.get_outgoing_transitions(action)
@@ -168,15 +201,12 @@ def step(
     else:
         next_state = random.choices(states, k=1, weights=probability_distribution)[0]
 
-    # we also add the rewards
-    rewards = []
-    if not next_state.model.supports_actions():
-        for rewardmodel in next_state.model.rewards:
-            rewards.append(rewardmodel.get_state_reward(next_state))
-    else:
-        for rewardmodel in next_state.model.rewards:
-            assert action is not None
-            rewards.append(rewardmodel.get_state_reward(state))
+    # State-exit rewards: always from the current state, regardless of model type.
+    rewards: list[stormvogel.model.Number] = []
+    for rewardmodel in state.model.rewards:
+        r = rewardmodel.get_state_reward(state)
+        rewards.append(r if r is not None else 0)
+
     return next_state, rewards, list(next_state.labels)
 
 
@@ -271,90 +301,54 @@ def simulate(
     # we need to set the seed for choosing actions in case no scheduler is provided
     random.seed(seed)
 
-    # we keep track of all discovered states over all runs and add them to the partial model
-    # we also add the discovered rewards and actions to the partial model if present
     partial_model = stormvogel.model.new_model(
         model.model_type, create_initial_state=False
     )
 
-    # we create the initial state ourselves because we want to force the name to be 0
     init = partial_model.new_state(labels="init")
     init.valuations = model.initial_state.valuations
 
-    # we add each (empty) rewardmodel to the partial model
-    if model.rewards:
-        for index, reward in enumerate(model.rewards):
-            reward_model = partial_model.new_reward_model(model.rewards[index].name)
+    for reward in model.rewards:
+        partial_model.new_reward_model(reward.name)
 
-            # we already set the rewards for the initial state/stateaction
-            if model.supports_actions():
-                try:
-                    r = model.rewards[index].get_state_reward(model.initial_state)
-                    assert r is not None
-                    reward_model.set_state_reward(
-                        partial_model.initial_state,
-                        r,
-                    )
-                except RuntimeError:
-                    pass
-            else:
-                r = model.rewards[index].get_state_reward(model.initial_state)
-                assert r is not None
-                reward_model.set_state_reward(
-                    partial_model.initial_state,
-                    r,
-                )
-
-    # we keep track of all discovered states over all runs
+    # Track discovered states and map original -> partial
     discovered_states: set[stormvogel.model.State] = {model.states[0]}
     discovered_transitions: set[tuple] = set()
-    # map from original model states to partial model states
     state_map: dict[stormvogel.model.State, stormvogel.model.State] = {
         model.states[0]: init
     }
 
-    # we distinguish between models with and without actions
+    _copy_rewards(model, partial_model, model.initial_state, init)
+
+    def discover_state(
+        original_state: stormvogel.model.State,
+    ) -> stormvogel.model.State:
+        """Register original_state if new; return its partial model counterpart."""
+        if original_state not in discovered_states:
+            discovered_states.add(original_state)
+            new = partial_model.new_state(
+                list(original_state.labels),
+                valuations=original_state.valuations,
+            )
+            state_map[original_state] = new
+            _copy_rewards(model, partial_model, original_state, new)
+        return state_map[original_state]
+
     if not partial_model.supports_actions():
         discovered_states_before_transitions: set[stormvogel.model.State] = set()
-        # now we start stepping through the model for the given number of runs
         for i in range(runs):
-            # we start at state 0 and we begin taking steps
             last_state = model.states[0]
             for j in range(steps):
-                # we make a step
-                next_state, reward, labels = step(
+                next_state, _, _ = step(
                     last_state,
                     seed=seed + i + j if seed is not None else None,
                 )
 
-                # we add to the partial model what we discovered (if new)
-                if next_state not in discovered_states:
-                    discovered_states.add(next_state)
-                    new_state = partial_model.new_state(
-                        list(labels),
-                        valuations=next_state.valuations,
-                    )
-                    state_map[next_state] = new_state
+                new_state = discover_state(next_state)
 
-                    # we add the rewards
-                    for index, rewardmodel in enumerate(partial_model.rewards):
-                        rewardmodel.set_state_reward(new_state, reward[index])
-                else:
-                    new_state = state_map[next_state]
-
-                # we also add the transitions that we travelled through, so we need to keep track of the last state
-                # and of the discovered transitions so that we don't add duplicates
                 if (last_state, next_state) not in discovered_transitions:
                     discovered_transitions.add((last_state, next_state))
-                    assert new_state is not None
-
-                    # calculate the transition probability
-                    choice = last_state.choices
-                    probability = 0
-                    for t in choice.choices[stormvogel.model.EmptyAction].branches:
-                        if t[1] == next_state:
-                            assert isinstance(t[0], (float, int))
-                            probability += float(t[0])
+                    probability = _transition_probability(last_state, next_state)
 
                     s = state_map[last_state]
                     if last_state in discovered_states_before_transitions:
@@ -368,58 +362,34 @@ def simulate(
 
                 last_state = next_state
     else:
-        # we additionally keep track of actions
         discovered_actions: set[tuple] = set()
-        # now we start stepping through the model for the given number of runs
         for i in range(runs):
-            # we start at state 0 and we begin taking steps
             last_state = model.states[0]
             for j in range(steps):
-                # we first choose an action
                 action = (
                     get_action_at_state(last_state, scheduler)
                     if scheduler
                     else random.choice(last_state.available_actions())
                 )
 
-                # we add the action to the partial model (if new)
                 assert partial_model.actions is not None
                 if action not in partial_model.actions:
                     partial_model.new_action(action.label)
 
-                # we get the new discovery
-                next_state, reward, labels = step(
+                next_state, _, _ = step(
                     last_state,
                     action,
                     seed=seed + i + j if seed is not None else None,
                 )
 
-                # we add the state to the model
-                if next_state not in discovered_states:
-                    discovered_states.add(next_state)
-                    new_state = partial_model.new_state(
-                        list(labels),
-                        valuations=next_state.valuations,
-                    )
-                    state_map[next_state] = new_state
-                else:
-                    new_state = state_map[next_state]
+                new_state = discover_state(next_state)
 
-                # we also add the transitions that we travelled through, so we need to keep track of the last state
-                # and of the discovered transitions so that we don't add duplicates
                 if (last_state, next_state, action) not in discovered_transitions:
-                    transitions = last_state.get_outgoing_transitions(action)
                     discovered_transitions.add((last_state, next_state, action))
+                    probability = _transition_probability(
+                        last_state, next_state, action
+                    )
 
-                    # calculate the transition probability
-                    probability = 0
-                    assert transitions is not None
-                    for t in transitions:
-                        if t[1] == next_state:
-                            assert isinstance(t[0], (float, int))
-                            probability += float(t[0])
-
-                    assert new_state is not None
                     s = state_map[last_state]
                     if (last_state, action) in discovered_actions:
                         branch = partial_model.choices[s].choices[action]
@@ -427,11 +397,6 @@ def simulate(
                     else:
                         discovered_actions.add((last_state, action))
                         s.add_choices({action: [(probability, new_state)]})
-                        # set the rewards now that the action is available
-                        for index, rewardmodel in enumerate(partial_model.rewards):
-                            r = model.rewards[index].get_state_reward(last_state)
-                            if r is not None:
-                                rewardmodel.set_state_reward(s, r)
 
                 last_state = next_state
 
