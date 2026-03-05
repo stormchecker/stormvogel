@@ -361,7 +361,7 @@ def simulate(
                         branch = partial_model.choices[s].choices[
                             stormvogel.model.EmptyAction
                         ]
-                        branch.branches.append((probability, new_state))
+                        branch.branches.distribution.append((probability, new_state))
                     else:
                         discovered_states_before_transitions.add(last_state)
                         s.add_choices([(probability, new_state)])
@@ -423,7 +423,7 @@ def simulate(
                     s = state_map[last_state]
                     if (last_state, action) in discovered_actions:
                         branch = partial_model.choices[s].choices[action]
-                        branch.branches.append((probability, new_state))
+                        branch.branches.distribution.append((probability, new_state))
                     else:
                         discovered_actions.add((last_state, action))
                         s.add_choices({action: [(probability, new_state)]})

@@ -25,6 +25,10 @@ class Distribution[ValueType: Value, SupportType]:
         total = sum(v.as_number() for v, _ in self.distribution)
         return abs(total - 1) < precision
 
+    def sort(self):
+        """Sorts the distribution by the support's position in the model's states."""
+        self.distribution.sort(key=lambda t: t[1].model.states.index(t[1]))
+
     def __str__(self):
         parts = []
         for value, support in self.distribution:
@@ -40,7 +44,7 @@ class Distribution[ValueType: Value, SupportType]:
                 combined[support] += value
             else:
                 combined[support] = value
-        return Distribution(list(combined.items()))
+        return Distribution([(v, k) for k, v in combined.items()])
 
     def __iter__(self):
         return iter(self.distribution)

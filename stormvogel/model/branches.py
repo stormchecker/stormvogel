@@ -21,9 +21,11 @@ class Branches[ValueType: Value]:
 
     def __init__(self, *args):
         if len(args) == 1 and isinstance(args[0], list):
+            self.branches = Distribution(args[0])
+        elif len(args) == 1 and isinstance(args[0], Distribution):
             self.branches = args[0]
         elif len(args) == 2:
-            self.branches = [(args[0], args[1])]
+            self.branches = Distribution([(args[0], args[1])])
         else:
             raise TypeError(
                 "expects either (list of (value,state) tuples) or (value, state)"
@@ -49,5 +51,5 @@ class Branches[ValueType: Value]:
         return iter(self.branches)
 
     def sort_states(self):
-        """Sorts the branch list by the state's position in model.states."""
-        self.branches.sort(key=lambda t: t[1].model.states.index(t[1]))
+        """Sorts the distribution by the state's position in model.states."""
+        self.branches.sort()
