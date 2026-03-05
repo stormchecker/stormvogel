@@ -215,9 +215,7 @@ class State[ValueType: Value]:
         return hash(self.state_id)
 
     def __str__(self):
-        res = (
-            f"id: {self.state_id}, labels: {self.labels}, valuations: {self.valuations}"
-        )
+        res = f"id: {self.state_id}, labels: {list(self.labels)}, valuations: {self.valuations}"
         if self.model.supports_observations() and self.observation is not None:
             res += f", observation: {str(self.observation)}"
         return res

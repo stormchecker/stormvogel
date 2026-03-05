@@ -101,6 +101,17 @@ def test_choices_from_shorthand():
         == transition
     )
 
+
+def test_state_str():
+    dtmc = stormvogel.model.new_dtmc()
+    state = dtmc.new_state()
+    state.set_labels({"a", "b"})
+    s1 = str(state)
+    s2 = str(state)
+    assert s1 == s2
+    assert s1.startswith(f"id: {state.state_id}, labels: ")
+    assert "['" in s1 or '["' in s1 or "[]" in s1
+    assert ", valuations: " in s1
     # we test it for nontrivial action transitions
 
 

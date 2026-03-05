@@ -38,7 +38,7 @@ def naive_value_iteration(
         list[list[float]]: The result is a 2D list where result[n][m] is the value of state m at iteration n.
     """
     if epsilon <= 0:
-        RuntimeError("The algorithm will not terminate if epsilon is zero.")
+        raise RuntimeError("The algorithm will not terminate if epsilon is zero.")
 
     # Map state objects to their integer index to avoid slow lookup
     state_to_index = {state: i for i, state in enumerate(model.states)}
@@ -117,9 +117,9 @@ def dtmc_evolution(model: stormvogel.model.Model, steps: int) -> list[list[float
         list[list[float]]: The result is a 2D list where result[n][m] is the probability to be in state m at step n.
     """
     if steps < 2:
-        RuntimeError("Need at least two steps")
+        raise RuntimeError("Need at least two steps")
     if model.model_type != stormvogel.model.ModelType.DTMC:
-        RuntimeError("Only works for DTMC")
+        raise RuntimeError("Only works for DTMC")
 
     # Create a matrix and set the value for the starting state to 1 on the first step.
     matrix_steps_states = [[0.0 for s in model.states] for x in range(steps)]
