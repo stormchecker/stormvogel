@@ -70,12 +70,6 @@ def policy_iteration(
             if clear:
                 vis.clear()
 
-        # We need a state mapping from the induced DTMC back to the original model.
-        # generate_induced_dtmc creates states that correspond 1-to-1 to the original model.
-        # Wait, the indices are exactly the same! Let's just use indices.
-
-        state_to_index = {state: idx for idx, state in enumerate(model.states)}
-
         choices = {}
         for i, s1 in enumerate(model.states):
 
@@ -83,7 +77,7 @@ def policy_iteration(
                 val = 0
                 for p, s2 in s1.get_outgoing_transitions(a):
                     # We get the state index in the original model, and look up in DTMC
-                    s2_idx = state_to_index[s2]
+                    s2_idx = model.get_state_index(s2)
                     dtmc_s2 = dtmc.states[s2_idx]
                     val += p * dtmc_result.get_result_of_state(dtmc_s2)
                 return val
@@ -111,7 +105,7 @@ def policy_iteration(
 # %%
 lion = examples.create_lion_mdp()
 prop = 'P=?[F "full"]'
-res = policy_iteration(lion, prop, layout=Layout("layouts/lion_policy.json"))
+res = policy_iteration(lion, prop, layout=Layout("layouts/lion.json"))
 
 # %% [markdown]
 # Policy iteration is also available under `stormvogel.extensions.visual_algos`.
