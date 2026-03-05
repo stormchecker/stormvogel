@@ -46,10 +46,10 @@ def gymnasium_grid_to_stormvogel(
         trans = TRANSITIONS[s.n][action_numer_map(a)]
         return list(map(lambda x: (x[0], bird.State(n=int(x[1]), done=x[3])), trans))
 
-    def rewards(s: bird.State, a: bird.Action) -> dict[str, stormvogel.model.Value]:
+    def rewards(s: bird.State) -> dict[str, stormvogel.model.Value]:
         if s.n == -1:
             return {"R": 0}
-        reward = list(map(lambda x: x[2], TRANSITIONS[s.n][action_numer_map(a)]))[0]
+        reward = list(map(lambda x: x[2], TRANSITIONS[s.n][0]))[0]
         return {"R": reward}
 
     def labels(s: bird.State):
