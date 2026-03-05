@@ -131,7 +131,7 @@ def test_stormvogel_to_stormpy_and_back_dtmc():
             rewardmodel.rewards[(state.state_id, stormvogel.model.EmptyAction)] = 1
         rewardmodel2 = stormvogel_dtmc.new_reward_model("rewardmodel2")
         for state in stormvogel_dtmc:
-            rewardmodel2.rewards[(state.state_id, stormvogel.model.EmptyAction)] = 2
+            rewardmodel2.set_state_reward(state, 1)
 
         # print(stormvogel_dtmc)
         stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
