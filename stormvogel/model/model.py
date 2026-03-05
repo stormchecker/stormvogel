@@ -218,7 +218,7 @@ class Model[ValueType: Value]:
                                 t[1],
                             )
                             new_transitions.append(normalized_transition)
-                    self.choices[state].choices[action].branch = new_transitions
+                    self.choices[state].choices[action].branches = new_transitions
         else:
             # for ctmcs and mas we currently only add self loops
             self.add_self_loops()
@@ -246,7 +246,7 @@ class Model[ValueType: Value]:
                     if isinstance(tup[0], Parametric):
                         tup = (tup[0].evaluate(values), tup[1])
                     new_branch.append(tup)
-                evaluated_model.choices[state][action].branch = new_branch
+                evaluated_model.choices[state][action].branches = new_branch
         return evaluated_model
 
     def add_self_loops(self):
@@ -394,11 +394,13 @@ class Model[ValueType: Value]:
             for action, branch in transition.choices.items():
                 # filter out the tuple referencing the state
                 new_branch = [
-                    (prob, target) for prob, target in branch.branch if target != state
+                    (prob, target)
+                    for prob, target in branch.branches
+                    if target != state
                 ]
-                branch.branch = new_branch
+                branch.branches = new_branch
                 # if branch is empty, we must remove the action
-                if len(branch.branch) == 0:
+                if len(branch.branches) == 0:
                     actions_to_remove.append(action)
 
             for action in actions_to_remove:
@@ -684,11 +686,11 @@ class Model[ValueType: Value]:
         other_idx = {id(s): i for i, s in enumerate(other.states)}
 
         def _branches_eq(b1: Branches, b2: Branches) -> bool:
-            if len(b1.branch) != len(b2.branch):
+            if len(b1.branches) != len(b2.branches):
                 return False
             for (v1, st1), (v2, st2) in zip(
-                sorted(b1.branch, key=lambda t: self_idx[id(t[1])]),
-                sorted(b2.branch, key=lambda t: other_idx[id(t[1])]),
+                sorted(b1.branches, key=lambda t: self_idx[id(t[1])]),
+                sorted(b2.branches, key=lambda t: other_idx[id(t[1])]),
             ):
                 if v1 != v2:
                     return False

@@ -44,7 +44,7 @@ def naive_value_iteration(
                 branch_value = sum(
                     [
                         prob * old_values[target_state_in_branch]
-                        for (prob, target_state_in_branch) in branch.branch
+                        for (prob, target_state_in_branch) in branch.branches
                     ]  # type: ignore
                 )
                 action_values[action] = (
@@ -89,7 +89,7 @@ def dtmc_evolution(model: stormvogel.model.Model, steps: int) -> list[list[float
     for current_step in range(steps - 1):
         next_step = current_step + 1
         for s in model.states:
-            branch = model.choices[s].choices[stormvogel.model.EmptyAction].branch
+            branch = model.choices[s].choices[stormvogel.model.EmptyAction].branches
             for transition_prob, target in branch:
                 current_prob = matrix_steps_states[current_step][s]
                 assert isinstance(transition_prob, (int, float))

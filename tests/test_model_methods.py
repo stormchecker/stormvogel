@@ -328,7 +328,7 @@ def test_add_choices():
     state5 = mdp5.new_state()
     mdp5.set_choices(mdp5.initial_state, [(0.4, state5)])
     mdp5.add_choices(mdp5.initial_state, [(0.6, state5)])
-    assert mdp5.get_branches(mdp5.initial_state).branch == [
+    assert mdp5.get_branches(mdp5.initial_state).branches == [
         (0.4, state5),
         (0.6, state5),
     ]

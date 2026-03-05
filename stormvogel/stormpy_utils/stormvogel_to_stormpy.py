@@ -146,7 +146,7 @@ def build_matrix(
         if nondeterministic:
             builder.new_row_group(row_index)
         for action in transition[1]:
-            action[1].branch.sort(key=lambda t: model.stormpy_id[t[1]])
+            action[1].branches.sort(key=lambda t: model.stormpy_id[t[1]])
             for tuple in action[1]:
                 val = value_to_stormpy(tuple[0], variables, model)
                 builder.add_next_value(
@@ -484,7 +484,7 @@ def build_ma(
             rate_sum = 0.0
             if state in model.choices:
                 for action in model.choices[state].choices:
-                    for val, tgt in model.choices[state].choices[action].branch:
+                    for val, tgt in model.choices[state].choices[action].branches:
                         rate_sum += float(val)
             exit_rates.append(rate_sum)
         else:

@@ -70,7 +70,7 @@ class Choices[ValueType: Value]:
         """Returns whether the probabilities in the branches sum to 1"""
         for a in self.choices:
             total = sum(
-                v for v, _ in self.choices[a].branch if isinstance(v, (int, float))
+                v for v, _ in self.choices[a].branches if isinstance(v, (int, float))
             )
             if abs(total - 1) > epsilon:
                 return False

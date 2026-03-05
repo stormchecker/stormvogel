@@ -17,13 +17,13 @@ class Branches[ValueType: Value]:
         branch: The distribution over successors.
     """
 
-    branch: "Distribution[ValueType, State[ValueType]]"
+    branches: "Distribution[ValueType, State[ValueType]]"
 
     def __init__(self, *args):
         if len(args) == 1 and isinstance(args[0], list):
-            self.branch = args[0]
+            self.branches = args[0]
         elif len(args) == 2:
-            self.branch = [(args[0], args[1])]
+            self.branches = [(args[0], args[1])]
         else:
             raise TypeError(
                 "expects either (list of (value,state) tuples) or (value, state)"
@@ -32,22 +32,22 @@ class Branches[ValueType: Value]:
     @property
     def successors(self) -> set["State[ValueType]"]:
         """Returns the set of successor states."""
-        return set(s for _, s in self.branch)
+        return set(s for _, s in self.branches)
 
     def __str__(self):
         parts = []
-        for prob, state in self.branch:
+        for prob, state in self.branches:
             parts.append(f"{prob} -> {state}")
         return ", ".join(parts)
 
     def __add__(self, other):
         if not isinstance(other, Branches):
             raise TypeError("Can only add Branches to Branches")
-        return Branches(self.branch + other.branch)
+        return Branches(self.branches + other.branches)
 
     def __iter__(self):
-        return iter(self.branch)
+        return iter(self.branches)
 
     def sort_states(self):
         """Sorts the branch list by the state's position in model.states."""
-        self.branch.sort(key=lambda t: t[1].model.states.index(t[1]))
+        self.branches.sort(key=lambda t: t[1].model.states.index(t[1]))

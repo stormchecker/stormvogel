@@ -163,12 +163,12 @@ class State[ValueType: Value]:
         # if the model supports actions we need to provide an action
         if action and self.model.supports_actions():
             if self in self.model.choices:
-                return choice.choices[action].branch
+                return choice.choices[action].branches
         elif not action and self.model.supports_actions():
             raise RuntimeError("You need to provide a specific action")
         else:
             if self in self.model.choices:
-                return choice.choices[EmptyAction].branch
+                return choice.choices[EmptyAction].branches
         return None
 
     def is_absorbing(self) -> bool:

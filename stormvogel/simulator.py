@@ -351,7 +351,7 @@ def simulate(
                     # calculate the transition probability
                     choice = last_state.choices
                     probability = 0
-                    for t in choice.choices[stormvogel.model.EmptyAction].branch:
+                    for t in choice.choices[stormvogel.model.EmptyAction].branches:
                         if t[1] == next_state:
                             assert isinstance(t[0], (float, int))
                             probability += float(t[0])
@@ -361,7 +361,7 @@ def simulate(
                         branch = partial_model.choices[s].choices[
                             stormvogel.model.EmptyAction
                         ]
-                        branch.branch.append((probability, new_state))
+                        branch.branches.append((probability, new_state))
                     else:
                         discovered_states_before_transitions.add(last_state)
                         s.add_choices([(probability, new_state)])
@@ -423,7 +423,7 @@ def simulate(
                     s = state_map[last_state]
                     if (last_state, action) in discovered_actions:
                         branch = partial_model.choices[s].choices[action]
-                        branch.branch.append((probability, new_state))
+                        branch.branches.append((probability, new_state))
                     else:
                         discovered_actions.add((last_state, action))
                         s.add_choices({action: [(probability, new_state)]})

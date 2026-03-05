@@ -394,9 +394,9 @@ def build_bird[ValueType: stormvogel.model.Value](
                 if s in model.choices:
                     for a in model.choices[s].choices:
                         new_branch = [
-                            (v * r, t) for v, t in model.choices[s].choices[a].branch
+                            (v * r, t) for v, t in model.choices[s].choices[a].branches
                         ]
-                        model.choices[s].choices[a].branch = new_branch
+                        model.choices[s].choices[a].branches = new_branch
             else:
                 pass
     # we add the valuations
