@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 if TYPE_CHECKING:
     from stormvogel.model.model import Model
 
+from stormvogel.model.branches import Branches
 from stormvogel.model.choices import Choices, ChoicesShorthand
 from stormvogel.model.distribution import Distribution
 from stormvogel.model.observation import Observation
@@ -151,6 +152,22 @@ class State[ValueType: Value]:
         if self.model.supports_actions():
             return self.choices.actions
         return [EmptyAction]
+
+    def get_branches(self, action: Action | None = None) -> Branches[ValueType] | None:
+        """Gets the branches of this state (after a specific action). For a model without actions, action should be None."""
+        choices = self.choices
+        assert choices is not None
+
+        # if the model supports actions we need to provide an action
+        if action and self.model.supports_actions():
+            if self in self.model.choices:
+                return choices.choices[action]
+        elif not action and self.model.supports_actions():
+            raise RuntimeError("You need to provide a specific action")
+        else:
+            if self in self.model.choices:
+                return choices.choices[EmptyAction]
+        return None
 
     def get_outgoing_transitions(
         self, action: Action | None = None
