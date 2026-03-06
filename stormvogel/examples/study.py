@@ -33,8 +33,8 @@ def create_study_mdp():
     reward_model = mdp.new_reward_model("R")
     reward_model.set_state_reward(pass_test, 100)
     reward_model.set_state_reward(fail_test, 0)
-    reward_model.set_state_reward(did_study, 15)
-    reward_model.set_state_reward(did_not_study, 0)
+    reward_model.set_state_reward(did_study, 0)
+    reward_model.set_state_reward(did_not_study, 15)
     reward_model.set_unset_rewards(0)
 
     return mdp

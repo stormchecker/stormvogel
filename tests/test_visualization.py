@@ -134,13 +134,40 @@ def test_node_key_state():
 
 
 def test_node_key_action_tuple():
-    """node_key of (State, Action) encodes the state UUID and action label."""
+    """node_key of (State, Action) base64url-encodes the action label."""
+    from base64 import urlsafe_b64decode
+
     m = model.new_mdp()
     a = m.new_action("go")
     key = node_key((m.initial_state, a))
-    assert str(m.initial_state.state_id) in key
-    assert "go" in key
-    assert " " not in key
+    uuid_part, encoded_label = key.split("__", 1)
+    assert uuid_part == str(m.initial_state.state_id)
+    assert urlsafe_b64decode(encoded_label).decode() == "go"
+    # Key must be safe inside JS double-quoted strings
+    assert '"' not in key
+    assert "\\" not in key
+    assert "\n" not in key
+
+
+def test_node_key_special_chars():
+    """Action labels with special chars produce safe, collision-free keys."""
+    m = model.new_mdp()
+    a1 = m.new_action('say "hello"')
+    a2 = m.new_action("back\\slash")
+    a3 = m.new_action("has__separator")
+
+    k1 = node_key((m.initial_state, a1))
+    k2 = node_key((m.initial_state, a2))
+    k3 = node_key((m.initial_state, a3))
+
+    # All keys must be JS-safe: no double-quotes, backslashes, or newlines
+    for k in (k1, k2, k3):
+        assert '"' not in k
+        assert "\\" not in k
+        assert "\n" not in k
+
+    # All keys must be distinct
+    assert len({k1, k2, k3}) == 3
 
 
 # ── Core JS execution test ───────────────────────────────────────────

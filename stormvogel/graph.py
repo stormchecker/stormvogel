@@ -1,5 +1,6 @@
 """Contains the code responsible for representing the structure of a model as a graph."""
 
+from base64 import urlsafe_b64encode
 from collections.abc import Callable
 from enum import Enum
 from typing import Any, Self
@@ -12,13 +13,21 @@ def node_key(node: State | tuple[State, Action]) -> str:
     """Convert a graph node to a unique, JS/JSON-safe string key.
 
     State nodes map to their UUID string.
-    Action (State, Action) tuple nodes map to "{state_uuid}__{action_label}".
+    Action (State, Action) tuple nodes map to
+    ``{state_uuid}__{base64url(action_label)}``.
+
+    The action label is base64url-encoded so that the result is safe for
+    embedding inside JS/JSON double-quoted strings and free of separator
+    collisions (the UUID hex+hyphen alphabet and the base64url alphabet never
+    produce the ``__`` bigram).
     """
     if isinstance(node, State):
         return str(node.state_id)
     elif isinstance(node, tuple) and len(node) == 2:
         state, action = node
-        return f"{state.state_id}__{action.label or ''}"
+        raw_label = action.label or ""
+        encoded = urlsafe_b64encode(raw_label.encode()).decode()
+        return f"{state.state_id}__{encoded}"
     raise TypeError(f"node_key expects State or (State, Action), got {type(node)}")
 
 

@@ -636,3 +636,143 @@ def test_self_loops():
     regular_model.add_self_loops()
 
     assert_models_equal(bird_model, regular_model)
+
+
+def test_bird_stochastic_observations():
+    """Test that bird builder wraps stochastic observations in Distribution."""
+    from stormvogel.model.distribution import Distribution
+    from stormvogel.model.observation import Observation
+
+    initial_state = bird.State(x=0)
+
+    def available_actions(s: bird.State):
+        return ["a"]
+
+    def delta(s: bird.State, action: bird.Action):
+        if s.x == 0:
+            return [(1, bird.State(x=1))]
+        return []
+
+    def observations(s: bird.State):
+        if s.x == 0:
+            return [(0.6, 0), (0.4, 1)]
+        else:
+            return 2
+
+    bird_model = bird.build_bird(
+        delta=delta,
+        available_actions=available_actions,
+        init=initial_state,
+        observations=observations,
+        modeltype=model.ModelType.POMDP,
+    )
+
+    # The initial state (x=0) has stochastic observations, so its
+    # observation must be a Distribution, not a raw list.
+    init_s = bird_model.initial_state
+    assert isinstance(
+        init_s.observation, Distribution
+    ), f"Expected Distribution, got {type(init_s.observation)}"
+
+    # Verify the distribution contents
+    obs_aliases = {obs.alias for _, obs in init_s.observation}
+    assert obs_aliases == {"0", "1"}
+    probs = {obs.alias: float(p) for p, obs in init_s.observation}
+    assert abs(probs["0"] - 0.6) < 1e-9
+    assert abs(probs["1"] - 0.4) < 1e-9
+
+    # The second state (x=1) has a deterministic observation.
+    other_states = [s for s in bird_model.states if s != init_s]
+    assert len(other_states) == 1
+    assert isinstance(other_states[0].observation, Observation)
+    assert other_states[0].observation.alias == "2"
+
+
+def test_bird_stochastic_observations_make_deterministic():
+    """Stochastic observations from bird must work with make_observations_deterministic."""
+    from stormvogel.model.distribution import Distribution
+
+    initial_state = bird.State(x=0)
+
+    def available_actions(s: bird.State):
+        return ["a"]
+
+    def delta(s: bird.State, action: bird.Action):
+        if s.x == 0:
+            return [(1, bird.State(x=1))]
+        return []
+
+    def observations(s: bird.State):
+        if s.x == 0:
+            return [(0.3, 0), (0.7, 1)]
+        else:
+            return 2
+
+    bird_model = bird.build_bird(
+        delta=delta,
+        available_actions=available_actions,
+        init=initial_state,
+        observations=observations,
+        modeltype=model.ModelType.POMDP,
+    )
+
+    # Precondition: initial state has a Distribution observation
+    assert isinstance(bird_model.initial_state.observation, Distribution)
+
+    # This should succeed now that we have proper Distribution objects.
+    # Before the fix, isinstance(..., Distribution) was False and this
+    # method would skip the state entirely, producing wrong results.
+    bird_model.make_observations_deterministic()
+
+    # After determinization, no state should have a Distribution observation.
+    for s in bird_model.states:
+        assert not isinstance(
+            s.observation, Distribution
+        ), f"State still has Distribution observation after determinization: {s}"
+
+
+def test_bird_ctmc_rates_preserve_distribution():
+    """CTMC rate multiplication must keep Branches.branches as a Distribution."""
+    from stormvogel.model.distribution import Distribution
+
+    def delta(current_state):
+        match current_state:
+            case "a":
+                return [(0.4, "b"), (0.6, "c")]
+            case "b":
+                return [(1.0, "a")]
+            case "c":
+                return [(1.0, "a")]
+
+    def rates(s) -> float:
+        match s:
+            case "a":
+                return 10
+            case "b":
+                return 5
+            case "c":
+                return 3
+            case _:
+                return 0
+
+    bird_model = bird.build_bird(
+        delta, init="a", rates=rates, modeltype=model.ModelType.CTMC
+    )
+
+    # Every branch's .branches must remain a Distribution, not a plain list.
+    for s in bird_model.states:
+        for action, branches in bird_model.choices[s]:
+            assert isinstance(
+                branches.branches, Distribution
+            ), f"branches.branches is {type(branches.branches)}, expected Distribution"
+
+    # Verify the rates were multiplied into the transition values.
+    # State "a" had transitions (0.4, b) and (0.6, c) with rate 10,
+    # so the resulting distribution should be (4.0, b) and (6.0, c).
+    state_a = bird_model.initial_state
+    outgoing = state_a.get_outgoing_transitions()
+    assert outgoing is not None
+    transitions = list(outgoing)
+    vals = sorted(float(v) for v, _ in transitions)
+    assert abs(vals[0] - 4.0) < 1e-9
+    assert abs(vals[1] - 6.0) < 1e-9

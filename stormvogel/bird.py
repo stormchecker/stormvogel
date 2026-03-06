@@ -183,10 +183,12 @@ def build_bird[ValueType: stormvogel.model.Value](
                         if isinstance(given_obs, int):
                             obs_kwarg["observation"] = model.observation(str(given_obs))
                         elif isinstance(given_obs, list):
-                            obs_kwarg["observation"] = [
-                                (prob, model.observation(str(o)))
-                                for prob, o in given_obs
-                            ]
+                            obs_kwarg["observation"] = stormvogel.model.Distribution(
+                                [
+                                    (prob, model.observation(str(o)))
+                                    for prob, o in given_obs
+                                ]
+                            )
                     new_state = model.new_state(**obs_kwarg)
                     state_lookup[s] = new_state
                     branch.append((val, new_state))
@@ -219,9 +221,9 @@ def build_bird[ValueType: stormvogel.model.Value](
         if isinstance(given_obs, int):
             obs_kwarg["observation"] = model.observation(str(given_obs))
         elif isinstance(given_obs, list):
-            obs_kwarg["observation"] = [
-                (prob, model.observation(str(o))) for prob, o in given_obs
-            ]
+            obs_kwarg["observation"] = stormvogel.model.Distribution(
+                [(prob, model.observation(str(o))) for prob, o in given_obs]
+            )
     init_state = model.new_state(labels=["init"], **obs_kwarg)
 
     # we continue calling delta and adding new states until no states are
@@ -340,9 +342,9 @@ def build_bird[ValueType: stormvogel.model.Value](
                 obs = model.observation(str(given_obs))
                 s.observation = obs
             elif isinstance(given_obs, list):
-                obs_distribution = [
-                    (prob, model.observation(str(o))) for prob, o in given_obs
-                ]
+                obs_distribution = stormvogel.model.Distribution(
+                    [(prob, model.observation(str(o))) for prob, o in given_obs]
+                )
                 s.observation = obs_distribution
             else:
                 raise ValueError(
@@ -393,10 +395,12 @@ def build_bird[ValueType: stormvogel.model.Value](
             if model.model_type.name == "CTMC":
                 if s in model.choices:
                     for a in model.choices[s].choices:
-                        new_branch = [
-                            (v * r, t) for v, t in model.choices[s].choices[a].branches
-                        ]
-                        model.choices[s].choices[a].branches = new_branch
+                        model.choices[s].choices[a] = stormvogel.model.Branches(
+                            [
+                                (v * r, t)
+                                for v, t in model.choices[s].choices[a].branches
+                            ]
+                        )
             else:
                 pass
     # we add the valuations
