@@ -276,8 +276,9 @@ class Model[ValueType: Value]:
 
     def unassigned_variables(self) -> Iterator[tuple[State, str]]:
         """Yield tuples of state variable pairs that are unassigned."""
+        variables = self.variables
         for state in self:
-            for variable in self.variables:
+            for variable in variables:
                 if variable not in state.valuations:
                     yield (state, variable)
 

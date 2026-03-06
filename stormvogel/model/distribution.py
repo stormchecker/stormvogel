@@ -39,7 +39,7 @@ class Distribution[ValueType: Value, SupportType]:
 
     def sort(self):
         """Sorts the distribution by the support's position in the model's states."""
-        self.distribution.sort(key=lambda t: t[1].model.states.index(t[1]))
+        self.distribution.sort(key=lambda t: t[1].model.get_state_index(t[1]))
 
     def __str__(self):
         parts = []
