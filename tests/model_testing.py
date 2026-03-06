@@ -69,6 +69,10 @@ def models_equal(a: Model, b: Model) -> tuple[bool, str]:
             if nc1 != nc2:
                 return False, f"state[{i}] choices differ:\n  {nc1}\n  {nc2}"
 
+    # sort rewards by name
+    a.rewards = sorted(a.rewards, key=lambda rm: rm.name)
+    b.rewards = sorted(b.rewards, key=lambda rm: rm.name)
+
     if len(a.rewards) != len(b.rewards):
         return False, f"reward model count: {len(a.rewards)} != {len(b.rewards)}"
     for ri, (rm1, rm2) in enumerate(zip(a.rewards, b.rewards)):
