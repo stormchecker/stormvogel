@@ -63,3 +63,7 @@ fix = true
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
+
+
+[tool.pytest.ini_options]
+pythonpath = ["tests"]

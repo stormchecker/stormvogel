@@ -46,7 +46,7 @@ vis = show(study, layout=Layout("layouts/pinkgreen.json"), result=result)
 study2 = examples.create_study_mdp()
 
 reward_model = study2.get_rewards("R")
-pass_test = study2.get_states_with_label("pass test")[0]
+pass_test = next(iter(study2.get_states_with_label("pass test")))
 reward_model.set_state_reward(pass_test, 20)
 result3 = model_checking(study2, 'Rmax=? [F "end"]')
 vis3 = show(study2, layout=Layout("layouts/pinkgreen.json"), result=result3)

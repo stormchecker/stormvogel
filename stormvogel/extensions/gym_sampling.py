@@ -99,34 +99,56 @@ def sample_to_stormvogel(
     INV_MAP = {a: no for no, a in enumerate(ALL_ACTIONS)}
 
     if len(initial_states) == 1:
-        (init,) = initial_states
+        init_obs, init_done = list(initial_states.keys())[0]
+        init = (init_obs, init_done, None)
     else:
         init = NEW_INITIAL_STATE
 
     def available_actions(s):
         if s is NEW_INITIAL_STATE:
             return [""]
-        elif s[1]:
+        # s is now (obs, done, proxy_action)
+        if s[1] or s[2] is not None:
             return [""]
-        return [a for a in ALL_ACTIONS if transition_counts[(s, INV_MAP[a])]]
+        return [a for a in ALL_ACTIONS if transition_counts[((s[0], s[1]), INV_MAP[a])]]
 
     def delta(s, a):
         if s is NEW_INITIAL_STATE:
-            return [(count / no_samples, s_) for s_, count in initial_states.items()]
+            return [
+                (count / no_samples, (s_[0], s_[1], None))
+                for s_, count in initial_states.items()
+            ]
         elif s[1]:
             return [(1, s)]
-        return [
-            (count / transition_samples[(s, INV_MAP[a])], s_)
-            for s_, count in transition_counts[(s, INV_MAP[a])].items()
-        ]
+        elif s[2] is not None:
+            # Proxy state: transition to the next state
+            proxy_action = s[2]
+            return [
+                (
+                    count / transition_samples[((s[0], s[1]), proxy_action)],
+                    (s_[0], s_[1], None),
+                )
+                for s_, count in transition_counts[((s[0], s[1]), proxy_action)].items()
+            ]
+        else:
+            # Normal state: transition to proxy state with probability 1
+            return [(1.0, (s[0], s[1], INV_MAP[a]))]
 
-    def rewards(s, a) -> dict[str, stormvogel.model.Value]:
-        if s is NEW_INITIAL_STATE or s[1]:
-            return {"R": 0}
-        return {"R": reward_sums[s, INV_MAP[a]] / transition_samples[(s, INV_MAP[a])]}
+    def rewards(s) -> dict[str, stormvogel.model.Value]:
+        if s is NEW_INITIAL_STATE or s[1] or s[2] is None:
+            return {"R": 0.0}
+
+        proxy_action = s[2]
+        if transition_samples[((s[0], s[1]), proxy_action)] == 0:
+            return {"R": 0.0}
+
+        return {
+            "R": reward_sums[((s[0], s[1]), proxy_action)]
+            / transition_samples[((s[0], s[1]), proxy_action)]
+        }
 
     def labels(s):
-        if s is NEW_INITIAL_STATE:
+        if s is NEW_INITIAL_STATE or s[2] is not None:
             return []
         done = ["done"] if s[1] else []
         return [str(s[0])] + done

@@ -20,6 +20,7 @@ parts/
 sdist/
 var/
 wheels/
+stubs/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
@@ -182,3 +183,5 @@ nbconvert.sh
 
 
 .idea/
+
+tests/saved_test_layout.json

@@ -25,11 +25,9 @@ def gymnasium_grid_to_stormvogel(
 
     if "taxi" in env.spec.id.lower():
         # For Taxi, we need a special initial state that goes to every state. This is to account for the randomized starting position.
-        init = bird.State(n=-1, done=False)
+        init = bird.State(n=-1, done=False, proxy_action=None)
     else:
-        init = bird.State(
-            n=0, done=False
-        )  # Otherwise, it's just 0 (Cliffwalking and FrozenLake).
+        init = bird.State(n=0, done=False, proxy_action=None)
 
     def available_actions(s: bird.State):
         if s.n == -1:
@@ -37,35 +35,62 @@ def gymnasium_grid_to_stormvogel(
         return ALL_ACTIONS[:NO_ACTIONS]
 
     def delta(s: bird.State, a: bird.Action):
-        if (
-            s.n == -1
-        ):  # Special taxi init state. It goes to every location that a passenger could spawn in. This should explore all states.
-            # state = ((taxi_row * 5 + taxi_col) * 5 + passenger_location) * 4 + destination
-            PLS = 4  # Number of passenger locations.
-            return [(1 / PLS, bird.State(n=x, done=False)) for x in range(PLS)]
-        trans = TRANSITIONS[s.n][action_numer_map(a)]
-        return list(map(lambda x: (x[0], bird.State(n=int(x[1]), done=x[3])), trans))
-
-    def rewards(s: bird.State, a: bird.Action) -> dict[str, stormvogel.model.Value]:
         if s.n == -1:
-            return {"R": 0}
-        reward = list(map(lambda x: x[2], TRANSITIONS[s.n][action_numer_map(a)]))[0]
+            # Special taxi init state.
+            PLS = 4
+            return [
+                (1 / PLS, bird.State(n=x, done=False, proxy_action=None))
+                for x in range(PLS)
+            ]
+
+        if s.proxy_action is not None:
+            # This is a proxy state, transition to the actual next states
+            trans = TRANSITIONS[s.n][s.proxy_action]
+            return list(
+                map(
+                    lambda x: (
+                        x[0],
+                        bird.State(n=int(x[1]), done=x[3], proxy_action=None),
+                    ),
+                    trans,
+                )
+            )
+        else:
+            # This is a normal state, transition to the proxy state for the chosen action
+            # with probability 1.
+            return [
+                (1.0, bird.State(n=s.n, done=s.done, proxy_action=action_numer_map(a)))
+            ]
+
+    def rewards(s: bird.State) -> dict[str, stormvogel.model.Value]:
+        if s.n == -1 or s.proxy_action is None:
+            return {"R": 0.0}
+
+        # In a proxy state, we collect the reward for the action that led here.
+        reward = list(map(lambda x: x[2], TRANSITIONS[s.n][s.proxy_action]))[0]
         return {"R": reward}
 
     def labels(s: bird.State):
+        if s.proxy_action is not None:
+            return []
         labels = [str(s.n), str(to_coordinate(s.n, env))]
         if s.n == get_target_state(env):
             labels.append("target")
         if s.done:
             labels.append("done")
-        # labels.append("always")
         return labels
+
+    def valuations(s: bird.State) -> dict[str, int | float | bool]:
+        if s.proxy_action is not None:
+            return {"env_id": -1}
+        return {"env_id": int(s.n)}
 
     return bird.build_bird(
         delta=delta,
         init=init,
         available_actions=available_actions,
         labels=labels,
+        valuations=valuations,
         rewards=rewards,
         modeltype=stormvogel.model.ModelType.MDP,
     )
@@ -110,7 +135,7 @@ def to_gymnasium_scheduler(
 
     def gymnasium_scheduler(env_sid: int):
         # TODO change this once bird API features are a thing.
-        model_state = model.get_states_with_label(str(int(env_sid)))[0]
+        model_state = next(iter(model.get_states_with_label(str(int(env_sid)))))
         if isinstance(scheduler, stormvogel.result.Scheduler):
             choice = scheduler.get_action_at_state(model_state)
         elif callable(scheduler):

@@ -118,7 +118,7 @@ def show(
 def show_bird() -> JSVisualization:
     """Show a simple model with a bird state."""
     m = stormvogel.model.new_dtmc(create_initial_state=False)
-    m.new_state("🐦")
+    m.new_state(labels=["init", "🐦"])
     m.add_self_loops()
     vis = show(m, show_editor=False, do_init_server=False, layout=SV())
     assert isinstance(vis, JSVisualization)
