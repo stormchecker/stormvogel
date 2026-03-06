@@ -1,8 +1,12 @@
 import pytest
-import stormpy
 
 from stormvogel import extensions
 from stormvogel.examples import create_die_dtmc, create_end_components_mdp
+
+try:
+    import stormpy
+except ImportError:
+    stormpy = None
 
 
 def test_naive_value_iteration():

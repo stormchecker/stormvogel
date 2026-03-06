@@ -350,7 +350,9 @@ def test_modified_stormpy_to_stormvogel_and_back():
 
         # we modify the model
         assert stormvogel_dtmc is not None
-        stormvogel_dtmc.remove_state(stormvogel_dtmc.initial_state)
+        stormvogel_dtmc.remove_state(
+            stormvogel_dtmc.initial_state, suppress_warning=True
+        )
         stormvogel_dtmc.new_state(labels=["three"])
         stormvogel_dtmc.add_self_loops()
 
@@ -400,8 +402,10 @@ def test_id_mapping():
         # make stormvogel model of dtmc
         stormvogel_dtmc = stormvogel.examples.die.create_die_dtmc()
         # remove states without reassigning ids
-        stormvogel_dtmc.remove_state(stormvogel_dtmc.initial_state)
-        stormvogel_dtmc.remove_state(stormvogel_dtmc.states[2])
+        stormvogel_dtmc.remove_state(
+            stormvogel_dtmc.initial_state, suppress_warning=True
+        )
+        stormvogel_dtmc.remove_state(stormvogel_dtmc.states[2], suppress_warning=True)
         # map to stormpy and back
         stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
         new_stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)

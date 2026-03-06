@@ -230,7 +230,7 @@ class Model[ValueType: Value]:
         sub_model = deepcopy(self)
         remove = [state for state in sub_model if state.state_id not in keep_ids]
         for state in remove:
-            sub_model.remove_state(state, normalize=False)
+            sub_model.remove_state(state, normalize=False, suppress_warning=True)
 
         if normalize:
             sub_model.normalize()
