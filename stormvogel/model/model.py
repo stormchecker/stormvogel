@@ -37,7 +37,7 @@ class Model[ValueType: Value]:
         states: The states of the model. The keys are the state's ids.
         choices: The choices of this model. The keys are the state ids.
         actions: The actions of the model, if this is a model that supports actions.
-        rewards: The rewardsmodels of this model.
+        rewards: The reward models of this model.
         markovian_states: list of markovian states in the case of a ma.
     """
 
@@ -540,7 +540,7 @@ class Model[ValueType: Value]:
         self.rewards.append(reward_model)
         return reward_model
 
-    @deprecated(version="0.10.0", reason="use type instead.")
+    @deprecated(version="0.10.0", reason="use model_type instead.")
     def get_type(self) -> ModelType:
         """Gets the type of this model"""
         return self.model_type
