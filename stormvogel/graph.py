@@ -8,6 +8,20 @@ import networkx
 from stormvogel.model import Action, EmptyAction, Model, State, Value
 
 
+def node_key(node: State | tuple[State, Action]) -> str:
+    """Convert a graph node to a unique, JS/JSON-safe string key.
+
+    State nodes map to their UUID string.
+    Action (State, Action) tuple nodes map to "{state_uuid}__{action_label}".
+    """
+    if isinstance(node, State):
+        return str(node.state_id)
+    elif isinstance(node, tuple) and len(node) == 2:
+        state, action = node
+        return f"{state.state_id}__{action.label or ''}"
+    raise TypeError(f"node_key expects State or (State, Action), got {type(node)}")
+
+
 class NodeType(Enum):
     STATE = 0
     ACTION = 1

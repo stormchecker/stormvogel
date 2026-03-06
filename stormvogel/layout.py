@@ -5,7 +5,6 @@ The Layout object also provides methods to manipulate the layout and the schema,
 
 from typing import Any, Self
 
-import numpy.typing as npt
 import stormvogel.rdict
 
 import os
@@ -140,19 +139,21 @@ class Layout:
         """
         self.layout["physics"] = self.layout["misc"]["enable_physics"]
 
-    def set_nx_pos(self, pos: dict[int, npt.NDArray], scale: float = 500) -> Self:
+    def set_nx_pos(self, pos: dict, scale: float = 500) -> Self:
         """Apply NetworkX layout positions to this layout and set physics to false.
 
         Args:
-            pos (dict[int, NDArray]): A dictionary of node positions from a NetworkX graph.
+            pos (dict): A dictionary of node positions from a NetworkX graph.
             scale (float): Scaling factor for the positions. Defaults to 500.
         """
+        from stormvogel.graph import node_key
+
         self.set_value(["misc", "enable_physics"], False)
         self.set_value(["physics"], False)
         self.set_value(
             ["positions"],
             {
-                str(k): {"x": float(x * scale), "y": float(y * scale)}
+                node_key(k): {"x": float(x * scale), "y": float(y * scale)}
                 for k, (x, y) in pos.items()
             },
         )

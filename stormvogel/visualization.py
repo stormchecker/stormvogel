@@ -21,6 +21,21 @@ if TYPE_CHECKING:
     from . import simulator
 
 
+def _escape_js_template(s: str) -> str:
+    """Escape a Python string for safe embedding inside a JS template literal (backticks)."""
+    return s.replace("\\", "\\\\").replace("`", "\\`").replace("${", "\\${")
+
+
+def _escape_js_dquote(s: str) -> str:
+    """Escape a Python string for safe embedding inside a JS double-quoted string."""
+    return (
+        s.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+    )
+
+
 class VisualizationBase:
     """Base class for visualizing a Stormvogel MDP model.
 
@@ -417,7 +432,7 @@ class JSVisualization(VisualizationBase):
 
     def _generate_node_js(self) -> str:
         """Generate the required js script for node definition"""
-        from .graph import NodeType
+        from .graph import NodeType, node_key
 
         node_js = ""
         for node in self.G.nodes():
@@ -446,15 +461,16 @@ class JSVisualization(VisualizationBase):
             #     # and should not be here
             #     color = None
             # TODO ask Ossmoss what this code was supposed to do exactly. It only seems to waste time?
-            current = "{ id: " + str(node)
+            key = node_key(node)
+            current = f'{{ id: "{key}"'
             if label is not None:
-                current += f", label: `{label}`"
+                current += f", label: `{_escape_js_template(label)}`"
             if group is not None:
                 current += f', group: "{group}"'
-            if node in self.layout.layout["positions"]:
+            if key in self.layout.layout["positions"]:
                 current += (
-                    f", x: {self.layout.layout['positions'][node]['x']}, "
-                    f"y: {self.layout.layout['positions'][node]['y']}"
+                    f", x: {self.layout.layout['positions'][key]['x']}, "
+                    f"y: {self.layout.layout['positions'][key]['y']}"
                 )
             if self.layout.layout["misc"]["explore"] and node != self.initial_state:
                 current += ", hidden: true"
@@ -467,7 +483,7 @@ class JSVisualization(VisualizationBase):
 
     def _generate_edge_js(self) -> str:
         """Generate the required js script for edge definition"""
-        from .graph import NodeType
+        from .graph import NodeType, node_key
 
         edge_js = ""
         # preprocess scheduled actions
@@ -500,9 +516,9 @@ class JSVisualization(VisualizationBase):
                     if from_ in scheduled_action_nodes:
                         color = scheduled_color
             label = edge_attr.get("label", None)
-            current = "{ from: " + str(from_) + ", to: " + str(to)
+            current = f'{{ from: "{node_key(from_)}", to: "{node_key(to)}"'
             if label is not None:
-                current += f', label: "{label}"'
+                current += f', label: "{_escape_js_dquote(label)}"'
             if color is not None:
                 current += f', color: "{color}"'
             if self.layout.layout["misc"]["explore"]:
@@ -590,9 +606,9 @@ class JSVisualization(VisualizationBase):
         self.initial_state = initial_state
         self.layout.set_value(["misc", "explore"], True)
 
-    def get_positions(self) -> dict[int, dict[str, int]]:
+    def get_positions(self) -> dict[str, dict[str, int]]:
         """Get the current positions of the nodes on the canvas. Returns empty dict if unsuccessful.
-        Example result: {0: {"x": 5, "y": 10}}"""
+        Example result: {"uuid-string": {"x": 5, "y": 10}}"""
         import json
         import logging
 
@@ -608,7 +624,7 @@ class JSVisualization(VisualizationBase):
                     f"""RETURN({self.network_wrapper}.network.getPositions())"""
                 )
             )
-            return {int(k): v for k, v in positions.items()}
+            return positions
         except TimeoutError:
             with self.debug_output:
                 logging.warning("Timed out. Could not retrieve position data.")
@@ -684,14 +700,15 @@ class JSVisualization(VisualizationBase):
             This function requires that the visualization is already rendered
             (i.e., `show()` has been called and completed asynchronously).
         """
+        from .graph import node_key
         import IPython.display as ipd
 
         if color is None:
             color = "null"
         else:
-            color = f'"{color}"'
+            color = f'"{ color }"'
 
-        js = f"""{self.network_wrapper}.setNodeColor({hash(obj)}, {color});"""
+        js = f"""{self.network_wrapper}.setNodeColor("{node_key(obj)}", {color});"""
         ipd.display(ipd.Javascript(js))
         ipd.clear_output()
 
@@ -1087,7 +1104,7 @@ class MplVisualization(VisualizationBase):
         """
         import numpy as np
         import networkx as nx
-        from .graph import NodeType
+        from .graph import NodeType, node_key
 
         if node_kwargs is None:
             node_kwargs = dict()
@@ -1138,8 +1155,9 @@ class MplVisualization(VisualizationBase):
 
         pos = {}
         for nx_node in self.G.nodes:
-            if str(nx_node) in self.layout.layout["positions"]:
-                node_pos = self.layout.layout["positions"][str(nx_node)]
+            key = node_key(nx_node)
+            if key in self.layout.layout["positions"]:
+                node_pos = self.layout.layout["positions"][key]
                 pos[nx_node] = np.array((node_pos["x"], node_pos["y"]))
         if len(pos) != len(self.G.nodes):
             pos = nx.random_layout(self.G)

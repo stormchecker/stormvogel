@@ -29,6 +29,7 @@ jobs:
           apt-get -y install curl
           apt-get -y install git
           apt-get -y install libcairo2-dev
+          apt-get -y install nodejs
 
       - name: Configure Python
         uses: actions/setup-python@v5
