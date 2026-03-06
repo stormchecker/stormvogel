@@ -130,7 +130,7 @@ def stormpy_to_stormvogel(
         "stormpy.storage.SparsePomdp",
         "stormpy.storage.SparseMA",
     ],
-) -> Model | None:
+) -> Model:
     assert stormpy is not None
 
     def add_states(

@@ -92,7 +92,6 @@ def pmc_equal(m0, m1) -> bool:
 
 
 @pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
-@pytest.mark.tags("stormpy")
 def test_pmc_conversion():
     # Create a new model
     pmc = stormvogel.model.new_dtmc()
@@ -137,7 +136,6 @@ def test_pmc_conversion():
 
 
 @pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
-@pytest.mark.tags("stormpy")
 def test_pmdp_conversion():
     # Create a new model
     pmdp = stormvogel.model.new_mdp()
@@ -186,7 +184,6 @@ def test_pmdp_conversion():
 
 
 @pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
-@pytest.mark.tags("stormpy")
 def test_pmc_conversion_from_stormpy():
     import stormvogel.examples.stormpy_examples.stormpy_pmc
 

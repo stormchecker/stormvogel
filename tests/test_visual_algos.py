@@ -1,3 +1,6 @@
+import pytest
+import stormpy
+
 from stormvogel import extensions
 from stormvogel.examples import create_die_dtmc, create_end_components_mdp
 
@@ -16,6 +19,7 @@ def test_dtmc_evolution():
     assert len(res) == 5
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_policy_iteration():
     m = create_end_components_mdp()
     extensions.policy_iteration(m, prop='P=? [F "mec1"]', visualize=False)

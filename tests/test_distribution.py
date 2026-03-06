@@ -80,6 +80,9 @@ def test_distribution_sort():
         def __init__(self, states):
             self.states = states
 
+        def get_state_index(self, state):
+            return self.states.index(state)
+
     class MockState:
         def __init__(self, name, model):
             self.name = name

@@ -264,7 +264,7 @@ def simulate(
         | None
     ) = None,
     seed: int | None = None,
-) -> stormvogel.model.Model | None:
+) -> stormvogel.model.Model:
     """
     Simulates the model.
     Args:
