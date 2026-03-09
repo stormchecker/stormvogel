@@ -12,13 +12,12 @@ class Displayable:
         debug_output: widgets.Output = widgets.Output(),
         spam: widgets.Output = widgets.Output(),
     ) -> None:
-        """Abstract class for displaying something.
+        """Initialize the displayable.
 
-        Args:
-            output (widgets.Output, optional): Output window. Defaults to widgets.Output().
-            do_display (bool, optional): Controls if it should display. Defaults to True.
-            debug_output (widgets.Output, optional): Useful for debugging. Defaults to widgets.Output().
-            spam (widgets.Output, optional): Used for side-effect displays. Defaults to widgets.Output().
+        :param output: Output window. If ``None``, a new ``widgets.Output()`` is created.
+        :param do_display: Control whether output is displayed.
+        :param debug_output: Output widget useful for debugging.
+        :param spam: Output widget used for side-effect displays.
         """
         if output is None:
             self.output = widgets.Output()

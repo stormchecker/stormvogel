@@ -9,19 +9,19 @@ def generate_html(
 ) -> str:
     """Generate HTML that renders the network.
 
-    Args:
-        nodes_js (str): JS code that generates the nodes DataSet.
-        edges_js (str): JS code that generates the edges DataSet.
-        options_js (str): JS code that generates the options object.
-        name (str): The name of the network. Used to create a unique variable name.
-        width (int): Width of the network div in pixels.
-        height (int): Height of the network div in pixels.
-
-    We generate two scripts:
+    Two scripts are generated:
         1. One that defines the NetworkWrapper class.
         2. One that initializes a NetworkWrapper object with the specified nodes, edges, and options.
-           This NetworkWrapper object is  stored as a global variable nw_{name}.
-           nw_{name}.network is the visjs network.
+           This NetworkWrapper object is stored as a global variable ``nw_{name}``.
+           ``nw_{name}.network`` is the vis.js network.
+
+    :param nodes_js: JS code that generates the nodes DataSet.
+    :param edges_js: JS code that generates the edges DataSet.
+    :param options_js: JS code that generates the options object.
+    :param name: The name of the network. Used to create a unique variable name.
+    :param width: Width of the network div in pixels.
+    :param height: Height of the network div in pixels.
+    :returns: An HTML string that renders the network.
     """
 
     with open(PACKAGE_ROOT_DIR + "/vis-network-9.1.9-patched.js") as f:
@@ -58,13 +58,14 @@ def generate_html(
 
 
 def generate_init_js(nodes_js: str, edges_js: str, options_js: str, name: str) -> str:
-    """Generate JS code that initializes a NetworkWrapper object, and stores it in nw_{name}.
+    """Generate JS code that initializes a NetworkWrapper object, and store it in ``nw_{name}``.
 
-    Args:
-        nodes_js (str): JS code that generates the nodes DataSet.
-        edges_js (str): JS code that generates the edges DataSet.
-        options_js (str): JS code that generates the options object.
-        name (str): The name of the network. Used to create a unique variable name."""
+    :param nodes_js: JS code that generates the nodes DataSet.
+    :param edges_js: JS code that generates the edges DataSet.
+    :param options_js: JS code that generates the options object.
+    :param name: The name of the network. Used to create a unique variable name.
+    :returns: A JS code string that initializes a NetworkWrapper object.
+    """
     return f"""//js
     var nodes_local = new vis.DataSet([{nodes_js}]);
     var edges_local = new vis.DataSet([{edges_js}]);
@@ -75,7 +76,10 @@ def generate_init_js(nodes_js: str, edges_js: str, options_js: str, name: str) -
 
 
 def generate_network_wrapper_js() -> str:
-    """Generate JS code that defines the NetworkWrapper class."""
+    """Generate JS code that defines the NetworkWrapper class.
+
+    :returns: A JS code string defining the NetworkWrapper class.
+    """
     return """//js
 class NetworkWrapper {
   constructor(nodes, edges, options, container) {

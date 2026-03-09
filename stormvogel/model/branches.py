@@ -12,9 +12,9 @@ if TYPE_CHECKING:
 
 @dataclass(eq=False)
 class Branches[ValueType: Value]:
-    """Represents branches, which is a distribution over states.
-    Args:
-        branch: The distribution over successors.
+    """Represent branches, which is a distribution over states.
+
+    :param branches: The distribution over successors.
     """
 
     branches: "Distribution[ValueType, State[ValueType]]"
@@ -33,7 +33,7 @@ class Branches[ValueType: Value]:
 
     @property
     def successors(self) -> set["State[ValueType]"]:
-        """Returns the set of successor states."""
+        """Return the set of successor states."""
         return set(s for _, s in self.branches)
 
     def __str__(self):
@@ -51,5 +51,5 @@ class Branches[ValueType: Value]:
         return iter(self.branches)
 
     def sort_states(self):
-        """Sorts the distribution by the state's position in model.states."""
+        """Sort the distribution by the state's position in model.states."""
         self.branches.sort()

@@ -26,34 +26,31 @@ def show(
     max_states: int = 1000,
     max_physics_states: int = 500,
 ) -> JSVisualization | MplVisualization | None:
-    """Create and show a visualization of a Model using a visjs Network
+    """Create and show a visualization of a Model using a visjs Network.
 
-    Args:
-        model (Model): The stormvogel model to be displayed.
-        engine (str): The engine that should be used for the visualization.
-            Can be either "js" for the interactive html/JavaScript visualization, or "mpl" for matplotlib.
-        pos_function (Callable | None): Function that takes a ModelGraph and maps it to a dictionary of node positions.
-            It is often useful to import these from networkx, see https://networkx.org/documentation/stable/_modules/networkx/drawing/layout.html for some examples.
-            In particular, nx.nx.bfs_layout seems to work great for models with a directed acyclic graph structure.
-            Defaults to None.
-        pos_function_scaling (int): Scaling factor for the positions when using networkx positions. Defaults to 500.
-        result (Result, optional): A result associatied with the model.
-            The results are displayed as numbers on a state. Enable the layout editor for options.
-            If this result has a scheduler, then the scheduled actions will have a different color etc. based on the layout
-        scheduler (Scheduler, optional): The scheduled actions will have a different color etc. based on the layout
-            If both result and scheduler are set, then scheduler takes precedence.
-        layout (Layout): Layout used for the visualization.
-        show_editor (bool): For interactive visualizaiton. Show an interactive layout editor.
-        debug_output (widgets.Output): For interactive visualization. Output widget that can be used to debug interactive features.
-        use_iframe(bool): For interactive visualziation. Wrap the generated html inside of an IFrame.
-            In some environments, the visualization works better with this enabled.
-        do_init_server(bool): For interactive visualization. Initialize a local server that is used for communication between Javascript and Python.
-            If this is set to False, then exporting network node positions and svg/pdf/latex is impossible.
-        max_states (int): If the model has more states, then the network is not displayed.
-        max_physics_states (int): If the model has more states, then physics are disabled.
-
-    Returns:
-        JSVisualization or MlpVisualzition object.
+    :param model: The stormvogel model to be displayed.
+    :param result: A result associated with the model.
+        The results are displayed as numbers on a state. Enable the layout editor for options.
+        If this result has a scheduler, then the scheduled actions will have a different color etc. based on the layout.
+    :param engine: The engine that should be used for the visualization.
+        Can be either ``"js"`` for the interactive HTML/JavaScript visualization, or ``"mpl"`` for matplotlib.
+    :param pos_function: Function that takes a ModelGraph and maps it to a dictionary of node positions.
+        It is often useful to import these from networkx, see https://networkx.org/documentation/stable/_modules/networkx/drawing/layout.html for some examples.
+        In particular, ``nx.bfs_layout`` seems to work great for models with a directed acyclic graph structure.
+    :param pos_function_scaling: Scaling factor for the positions when using networkx positions.
+    :param scheduler: The scheduled actions will have a different color etc. based on the layout.
+        If both result and scheduler are set, then scheduler takes precedence.
+    :param layout: Layout used for the visualization.
+    :param show_editor: For interactive visualization. Show an interactive layout editor.
+    :param debug_output: For interactive visualization. Output widget that can be used to debug interactive features.
+    :param use_iframe: For interactive visualization. Wrap the generated HTML inside of an IFrame.
+        In some environments, the visualization works better with this enabled.
+    :param do_init_server: For interactive visualization. Initialize a local server that is used for communication between JavaScript and Python.
+        If this is set to ``False``, then exporting network node positions and SVG/PDF/LaTeX is impossible.
+    :param max_states: If the model has more states, then the network is not displayed.
+    :param max_physics_states: If the model has more states, then physics are disabled.
+    :returns: A :class:`JSVisualization` or :class:`MplVisualization` object, or ``None`` on error.
+    :raises ValueError: If the engine is not recognized.
     """
     import ipywidgets as widgets
     import IPython.display as ipd

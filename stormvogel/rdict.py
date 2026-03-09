@@ -6,22 +6,27 @@ from typing import Any
 
 
 def rget(d: dict, path: list) -> Any:
-    """Recursively get dict value. Throws KeyError if (nested) key not present.
+    """Recursively get a dict value.
 
-    Example: rget(d, ['a', 'b', 'c']) is equivalent to d['a']['b']['c']"""
+    :param d: The dictionary to query.
+    :param path: A list of keys forming the path to the desired value.
+    :returns: The value at the given path.
+    :raises KeyError: If a key along the path is not present.
+
+    Example: ``rget(d, ['a', 'b', 'c'])`` is equivalent to ``d['a']['b']['c']``.
+    """
     return reduce(lambda c, k: c.__getitem__(k), path, d)
 
 
 def rset(d: dict, path: list[str], value: Any, create_new_keys: bool = False) -> dict:
-    """Recursively set dict value.
+    """Recursively set a dict value.
 
-    Args:
-        d (dict): dictionary to modify.
-        path (list[str]): A list of keys that lead to the value you want to set. The first key is the first key in the path, the second key is the second key in the path, etc.
-        value (Any): Target value.
-        create_new_keys (bool): If a key that is on the path does not exist yet, create it. Defaults to False.
+    :param d: The dictionary to modify.
+    :param path: A list of keys that lead to the value to set.
+    :param value: The target value.
+    :param create_new_keys: If a key on the path does not exist yet, create it.
 
-    Example: rset(d, ['a', 'b', 'c'], 5) is equivalent to d['a']['b']['c'] = 5
+    Example: ``rset(d, ['a', 'b', 'c'], 5)`` is equivalent to ``d['a']['b']['c'] = 5``.
     """
     if len(path) == 0:
         return d
@@ -40,17 +45,19 @@ def rset(d: dict, path: list[str], value: Any, create_new_keys: bool = False) ->
 
 
 def merge_dict(dict1: dict, dict2: dict) -> dict:
-    """Merge two nested dictionaries recursively. Note that dict1 is modified by reference and also returned.
+    """Merge two nested dictionaries recursively.
 
-    Args:
-        dict1 (dict):
-        dict2 (dict):
+    Note that *dict1* is modified by reference and also returned.
 
-    In general, dict2 gets priority!
-    If dict2 has a value that dict1 does not have, then the value in dict2 is chosen.
-    If dict1 and dict2 have the same key, and both are VALUES, then dict2 is chosen.
-    If dict1 and dict2 have the same key, and both are DICTIONARIES, then the two dictionaries are merged recursively.
-    If dict1 has a DICTIONARY and dict2 has a VALUE with the same key, then dict1 gets priority.
+    :param dict1: The base dictionary (modified in place).
+    :param dict2: The dictionary to merge in. Gets priority in most cases.
+
+    In general, *dict2* gets priority:
+
+    - If *dict2* has a value that *dict1* does not have, the value in *dict2* is chosen.
+    - If both have the same key and both are values, *dict2* is chosen.
+    - If both have the same key and both are dictionaries, they are merged recursively.
+    - If *dict1* has a dictionary and *dict2* has a value with the same key, *dict1* gets priority.
 
     Taken from StackOverflow user Anatoliy R on July 2 2024.
     https://stackoverflow.com/questions/43797333/how-to-merge-two-nested-dict-in-python

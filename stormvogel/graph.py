@@ -13,13 +13,17 @@ def node_key(node: State | tuple[State, Action]) -> str:
     """Convert a graph node to a unique, JS/JSON-safe string key.
 
     State nodes map to their UUID string.
-    Action (State, Action) tuple nodes map to
+    Action ``(State, Action)`` tuple nodes map to
     ``{state_uuid}__{base64url(action_label)}``.
 
     The action label is base64url-encoded so that the result is safe for
     embedding inside JS/JSON double-quoted strings and free of separator
     collisions (the UUID hex+hyphen alphabet and the base64url alphabet never
     produce the ``__`` bigram).
+
+    :param node: A state or ``(State, Action)`` tuple to convert.
+    :returns: A unique string key for the node.
+    :raises TypeError: If *node* is not a ``State`` or ``(State, Action)`` tuple.
     """
     if isinstance(node, State):
         return str(node.state_id)
@@ -47,33 +51,23 @@ class ModelGraph(networkx.DiGraph):
     """
 
     def add_state(self, state: State, **attr):
-        """
-        Adds a state node to the graph.
+        """Add a state node to the graph.
 
-        If a `State` object is provided, its `id` is used as the node identifier.
-        Additional attributes can be assigned to the state node via keyword arguments.
-
-        Args:
-            state (State | int): The state to add, either as a `State` object or its ID.
-            **attr: Arbitrary keyword arguments representing attributes to associate with the state node.
+        :param state: The state to add.
+        :param \\**attr: Arbitrary keyword arguments representing attributes to associate with the state node.
         """
         self.add_node(state, type=NodeType.STATE, **attr)
 
     def add_action(self, state: State, action: Action, **action_attr):
-        """
-        Adds an action node to the graph and connects it to a given state.
+        """Add an action node to the graph and connect it to a given state.
 
         The action node is uniquely identified and linked from the source state.
-        The action is skipped if it is an `EmptyAction`. Additional attributes
-        can be assigned to the action node via keyword arguments.
+        The action is skipped if it is an ``EmptyAction``.
 
-        Args:
-            state (State | int): The source state (either a `State` object or its ID) from which the action originates.
-            action (Action): The action to add.
-            **action_attr: Arbitrary keyword arguments representing attributes to associate with the action node.
-
-        Raises:
-            AssertionError: If the source state is not already in the graph.
+        :param state: The source state from which the action originates.
+        :param action: The action to add.
+        :param \\**action_attr: Arbitrary keyword arguments representing attributes to associate with the action node.
+        :raises AssertionError: If the source state is not already in the graph.
         """
         assert state in self.nodes, f"State {state} not in graph yet"
         if action == EmptyAction:
@@ -89,23 +83,19 @@ class ModelGraph(networkx.DiGraph):
         probability: Value,
         **attr,
     ) -> None:
-        """
-        Adds a transition to the graph with an associated probability.
+        """Add a transition to the graph with an associated probability.
 
-        For non-empty actions, this adds an edge from the action node to the target state.
-        For `EmptyAction`, the edge is added directly from the source state to the target state.
-        Additional attributes can be provided for the transition edge.
+        For non-empty actions, this adds an edge from the action node to the target
+        state. For ``EmptyAction``, the edge is added directly from the source state
+        to the target state.
 
-        Args:
-            state (State | int): The source state (either a `State` object or its ID).
-            action (Action): The action that causes the transition.
-            next_state (int | State): The target state reached by the transition.
-            probability (Value): The probability associated with the transition.
-            **attr: Arbitrary keyword arguments representing attributes to associate with the transition edge.
-
-        Raises:
-            AssertionError: If the source state or target state is not in the graph,
-                or if the action node is missing (for non-empty actions).
+        :param state: The source state.
+        :param action: The action that causes the transition.
+        :param next_state: The target state reached by the transition.
+        :param probability: The probability associated with the transition.
+        :param \\**attr: Arbitrary keyword arguments representing attributes to associate with the transition edge.
+        :raises AssertionError: If the source state or target state is not in the graph,
+            or if the action node is missing (for non-empty actions).
         """
 
         assert state in self.nodes, f"State {state} not in graph."
@@ -129,26 +119,24 @@ class ModelGraph(networkx.DiGraph):
             Callable[[State, Action, State], dict[str, Any]] | None
         ) = None,
     ) -> Self:
-        """
-        Constructs a directed graph representation of a Markov Decision Process (MDP) from a model instance.
+        """Construct a directed graph representation of a model.
 
-        This method initializes the graph from the provided `model` by adding all states, actions, and choices.
-        Optional callbacks allow customization of properties for states, actions, and choices.
+        Initialize the graph from the provided *model* by adding all states,
+        actions, and transitions. Optional callbacks allow customization of
+        properties for states, actions, and transitions.
 
-        Args:
-            model (Model): The MDP model containing states and choices.
-            state_properties (Callable[[State], dict[str, Any]], optional): A callable that returns a dictionary
-                of properties for a given state. Defaults to None.
-            action_properties (Callable[[State, Action], dict[str, Any]], optional): A callable that returns a
-                dictionary of properties for a given action from a state. Defaults to None.
-            transition_properties (Callable[[State, Action, State], dict[str, Any]], optional): A callable that
-                returns a dictionary of properties for a transition from a source state via an action to a target
-                state. Defaults to None.
+        :param model: The model containing states and choices.
+        :param state_properties: A callable that returns a dictionary of properties
+            for a given state.
+        :param action_properties: A callable that returns a dictionary of properties
+            for a given action from a state.
+        :param transition_properties: A callable that returns a dictionary of properties
+            for a transition from a source state via an action to a target state.
+        :returns: An instance of the graph populated with states, actions, and
+            transitions from the model.
 
-        Returns:
-            Self: An instance of the graph populated with the states, actions, and choices from the model.
+        .. doctest::
 
-        Examples:
             >>> import stormvogel.examples as examples
             >>> mdp = examples.create_lion_mdp()
             >>> G = ModelGraph.from_model(mdp, state_properties = lambda s: {"labels": s.labels})

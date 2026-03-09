@@ -14,25 +14,22 @@ def sample_gym(
     gymnasium_scheduler: Callable[[Any], int] | None = None,
     convert_obs: Callable[[Any], Any] = lambda x: x,
 ) -> Tuple:
-    """Sample the gym environment. In reality, gym environments are POMDPs, and gymnasium only allows us to access the observation.
-    States that are different in gym, but have the same observation and termination will be considered the same state in the result.
+    """Sample the gym environment.
 
-    Args:
-        env (gym.Env): Gymnasium env.
-        no_samples (int): Total number of samples (starting at an initial state).
-            To resolve multiple initial states, a new, single initial state is added if necessary.
-        sample_length (int): The maximum length of a single sample.
-        gymnasium_scheduler (Callable[[any], int] | None): A function from states to action numbers.
-        convert_obs (Callable[[any], any]): Converts the observations to a hashable type. You can also apply rounding here.
+    Gym environments are POMDPs; gymnasium only exposes observations.
+    States that differ in gym but share the same observation and termination
+    are considered the same state in the result.
 
-    Returns:
-        A 6-tuple consiting of four defaultdicts and one integer.
-        * initial_states (defaultdict[state, int]): The initial state in gym may be non-deterministic. This maps the initial states to the amount of times they were observed as the initial state.
-        * states (defaultdict[state, int]): Maps states to the amount of times they were observed.
-        * transition_counts (defaultdict[(state,action), defaultdict[state, int]]): Counts how many times the transition between this state-action pair and state was observed.
-        * transition_samples (defaultdict[(state,action), int]): Counts how many times this state-action pair was observed.
-        * reward_sums (defaultdict[(state,action), int]): The sum of the rewards for this state-action pair.
-        * no_actions (int): The number of different actions observed.
+    :param env: Gymnasium environment.
+    :param no_samples: Total number of samples (starting at an initial state).
+        To resolve multiple initial states, a new single initial state is added
+        if necessary.
+    :param sample_length: Maximum length of a single sample.
+    :param gymnasium_scheduler: Function mapping states to action numbers.
+    :param convert_obs: Convert observations to a hashable type. Rounding can
+        also be applied here.
+    :returns: A 6-tuple ``(initial_states, states, transition_counts,
+        transition_samples, reward_sums, no_actions)``.
     """
     initial_states = defaultdict(lambda: 0)
     states = defaultdict(lambda: 0)
@@ -80,19 +77,22 @@ def sample_to_stormvogel(
     no_samples: int,
     max_size: int = 10000,
 ) -> stormvogel.model.Model:
-    """Create a Stormvogel mdp from a sampling (see sample_gym to obtain a sample from gym).
-    Probablities are frequentist estimates. Their accuracy depends on how often each "state" is visited.
+    """Create a stormvogel MDP from a sampling.
 
-    Args:
-        initial_states (defaultdict[state, int]): The initial state in gym may be non-deterministic.
-            This maps the initial states to the amount of times they were observed as the initial state.
-        transition_counts (defaultdict[(state,action), defaultdict[state, int]]):
-            Counts how many times the transition between this state-action pair and state was observed.
-        transition_samples (defaultdict[(state,action), int]): Counts how many times this state-action pair was observed.
-        reward_sums (defaultdict[(state,action), int]): The sum of the rewards for this state-action pair.
-        no_actions (int): The number of different actions observed.
-        no_samples (int): The number of samples that were used to obtain this sampling.
-        max_size (int): The maximum number of states in the resulting model. Defaults to 10000.
+    Use :func:`sample_gym` to obtain a sample from gym.
+    Probabilities are frequentist estimates whose accuracy depends on how
+    often each state is visited.
+
+    :param initial_states: Mapping from initial states to observation counts.
+    :param transition_counts: Counts how many times each ``(state, action)``
+        to state transition was observed.
+    :param transition_samples: Counts how many times each ``(state, action)``
+        pair was observed.
+    :param reward_sums: Sum of rewards for each ``(state, action)`` pair.
+    :param no_actions: Number of different actions observed.
+    :param no_samples: Number of samples used to obtain this sampling.
+    :param max_size: Maximum number of states in the resulting model.
+    :returns: Stormvogel MDP model.
     """
     NEW_INITIAL_STATE = "GYM_SAMPLE_INIT"
     ALL_ACTIONS = [str(x) for x in range(no_actions)]
@@ -172,19 +172,23 @@ def sample_gym_to_stormvogel(
     convert_obs: Callable[[Any], Any] = lambda x: x,
     max_size: int = 10000,
 ):
-    """Sample the gym environment and convert it to a Stormvogel MDP.
-    In reality, gym environments are POMDPs, and gymnasium only allows us to access the observation.
-    The result is an MDP where states with the same observations (and termination) are lumped together.
-    Probablities are frequentist estimates. Their accuracy depends on how often each "state" is visited.
+    """Sample the gym environment and convert it to a stormvogel MDP.
 
-    Args:
-        env (gym.Env): Gymnasium env.
-        no_samples (int): Total number of samples (starting at an initial state).
-            To resolve multiple initial states, a new, single initial state is added if necessary.
-        sample_length (int): The maximum length of a single sample.
-        gymnasium_scheduler (Callable[[any], int] | None): A function from states to action numbers.
-        convert_obs (Callable[[any], any]): Converts the observations to a hashable type. You can also apply rounding here.
-        max_size (int): The maximum number of states in the resulting model. Defaults to 10000.
+    Gym environments are POMDPs; gymnasium only exposes observations.
+    The result is an MDP where states with the same observations (and
+    termination) are lumped together. Probabilities are frequentist estimates
+    whose accuracy depends on how often each state is visited.
+
+    :param env: Gymnasium environment.
+    :param no_samples: Total number of samples (starting at an initial state).
+        To resolve multiple initial states, a new single initial state is added
+        if necessary.
+    :param sample_length: Maximum length of a single sample.
+    :param gymnasium_scheduler: Function mapping states to action numbers.
+    :param convert_obs: Convert observations to a hashable type. Rounding can
+        also be applied here.
+    :param max_size: Maximum number of states in the resulting model.
+    :returns: Stormvogel MDP model.
     """
     (
         initial_states,
