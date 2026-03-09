@@ -1001,3 +1001,85 @@ def test_random_scheduler():
     sched = stormvogel.result.random_scheduler(lion)
     for state in lion:
         sched.get_action_at_state(state)
+
+
+def test_random_scheduler_raises_on_no_actions():
+    """random_scheduler must raise ValueError when a state has no available actions."""
+    mdp = stormvogel.model.new_mdp()
+    # initial_state exists but has no choices set -> no available actions
+    with pytest.raises(ValueError, match="no available actions"):
+        stormvogel.result.random_scheduler(mdp)
+
+
+def test_random_scheduler_covers_all_states():
+    """random_scheduler must map every state, not just those with actions."""
+    mdp = stormvogel.model.new_mdp()
+    s1 = mdp.new_state()
+    action = mdp.new_action("go")
+    mdp.set_choices(
+        mdp.initial_state,
+        {action: [(1.0, s1)]},
+    )
+    mdp.add_self_loops()
+
+    sched = stormvogel.result.random_scheduler(mdp)
+    for state in mdp:
+        # Must not raise KeyError
+        sched.get_action_at_state(state)
+
+
+def test_result_eq_different_state_count():
+    """Result.__eq__ must return False, not raise IndexError, when models differ in state count."""
+    # Model A: 3 states
+    model_a = stormvogel.model.new_dtmc()
+    sa1 = model_a.new_state()
+    sa2 = model_a.new_state()
+    model_a.set_choices(model_a.initial_state, [(0.5, sa1), (0.5, sa2)])
+    model_a.add_self_loops()
+
+    # Model B: 2 states (fewer than A)
+    model_b = stormvogel.model.new_dtmc()
+    sb1 = model_b.new_state()
+    model_b.set_choices(model_b.initial_state, [(1.0, sb1)])
+    model_b.add_self_loops()
+
+    # Same number of values to bypass len(values) guard; different state counts
+    values_a: dict[stormvogel.model.State, stormvogel.model.Value] = {
+        model_a.states[0]: 1.0,
+        model_a.states[1]: 2.0,
+    }
+    values_b: dict[stormvogel.model.State, stormvogel.model.Value] = {
+        model_b.states[0]: 1.0,
+        model_b.states[1]: 2.0,
+    }
+
+    result_a = stormvogel.result.Result(model_a, values_a)
+    result_b = stormvogel.result.Result(model_b, values_b)
+
+    # Before the fix this would raise IndexError; now it returns False
+    assert result_a != result_b
+
+
+def test_result_eq_same_models():
+    """Two identical Results must still compare equal."""
+    model_a = stormvogel.model.new_dtmc()
+    s1 = model_a.new_state()
+    model_a.set_choices(model_a.initial_state, [(1.0, s1)])
+    model_a.add_self_loops()
+
+    model_b = stormvogel.model.new_dtmc()
+    s1b = model_b.new_state()
+    model_b.set_choices(model_b.initial_state, [(1.0, s1b)])
+    model_b.add_self_loops()
+
+    values_a: dict[stormvogel.model.State, stormvogel.model.Value] = {
+        state: float(i) for i, state in enumerate(model_a.states)
+    }
+    values_b: dict[stormvogel.model.State, stormvogel.model.Value] = {
+        state: float(i) for i, state in enumerate(model_b.states)
+    }
+
+    result_a = stormvogel.result.Result(model_a, values_a)
+    result_b = stormvogel.result.Result(model_b, values_b)
+
+    assert result_a == result_b

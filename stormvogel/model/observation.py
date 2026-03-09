@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from uuid import UUID, uuid4
 from typing import Any
 
@@ -12,11 +12,8 @@ class Observation:
     """
 
     alias: str
-    observation_id: UUID = uuid4()
+    observation_id: UUID = field(default_factory=uuid4)
     valuations: dict[str, Any] | None = None
-
-    def __post_init__(self):
-        object.__setattr__(self, "observation_id", uuid4())
 
     def format(self):
         """Formats the observation for visualizations."""

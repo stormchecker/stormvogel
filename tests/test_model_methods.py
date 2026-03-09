@@ -413,3 +413,17 @@ def test_valuation_methods():
     dtmc.add_valuation_at_remaining_states()
 
     assert not list(dtmc.unassigned_variables())
+
+
+def test_choices_from_shorthand_empty_list():
+    """An empty list shorthand must raise ValueError, not IndexError."""
+    import pytest
+
+    with pytest.raises(ValueError, match="empty list shorthand"):
+        stormvogel.model.choices_from_shorthand([])
+
+
+def test_choices_from_shorthand_empty_dict():
+    """An empty dict shorthand is valid and produces an empty Choices."""
+    choices = stormvogel.model.choices_from_shorthand({})
+    assert len(choices) == 0

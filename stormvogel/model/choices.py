@@ -139,6 +139,12 @@ def choices_from_shorthand[ValueType: Value](
             transition_content[action] = Branches(branch)
         return Choices(transition_content)
     else:
+        if not shorthand:
+            raise ValueError(
+                "Cannot create Choices from an empty list shorthand. "
+                "Provide at least one (value, state) or (action, state) tuple."
+            )
+
         # We convert the shorthand so that we have states instead of ids
         converted_shorthand = []
         for value_or_action, state in shorthand:

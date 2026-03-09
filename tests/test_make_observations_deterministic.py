@@ -50,3 +50,19 @@ def test_make_observations_deterministic():
 
     assert abs(float(prob_obs1) - 0.3) < 1e-6
     assert abs(float(prob_obs2) - 0.7) < 1e-6
+
+
+def test_observation_id_distinct():
+    """Each Observation instance must get its own UUID, not a shared one."""
+    obs_a = Observation(alias="a")
+    obs_b = Observation(alias="b")
+    assert obs_a.observation_id != obs_b.observation_id
+
+
+def test_observation_id_explicit_preserved():
+    """An explicitly supplied observation_id must not be overwritten."""
+    from uuid import uuid4
+
+    explicit = uuid4()
+    obs = Observation(alias="x", observation_id=explicit)
+    assert obs.observation_id == explicit

@@ -80,12 +80,19 @@ class Scheduler:
 
 
 def random_scheduler(model: stormvogel.model.Model) -> Scheduler:
-    """Create a random scheduler for the provided model."""
-    choices = {
-        state: random.choice(state.available_actions())
-        for state in model
-        if state.available_actions()
-    }
+    """Create a random scheduler for the provided model.
+
+    Raises:
+        ValueError: If any state in the model has no available actions.
+    """
+    choices = {}
+    for state in model:
+        actions = state.available_actions()
+        if not actions:
+            raise ValueError(
+                f"State {state} has no available actions and cannot be scheduled."
+            )
+        choices[state] = random.choice(actions)
     return Scheduler(model, taken_actions=choices)
 
 
@@ -158,6 +165,9 @@ class Result:
         if len(self.values) != len(other.values):
             return False
 
+        if len(self.model.states) != len(other.model.states):
+            return False
+
         for index, s1 in enumerate(self.model.states):
             if s1 not in self.values:
                 continue
@@ -180,6 +190,8 @@ class Result:
                 for index, s1 in enumerate(self.model.states):
                     if s1 in self.scheduler.taken_actions:
                         a1 = self.scheduler.taken_actions[s1]
+                        if index >= len(other.model.states):
+                            return False
                         s2 = other.model.states[index]
                         if (
                             s2 not in other.scheduler.taken_actions
