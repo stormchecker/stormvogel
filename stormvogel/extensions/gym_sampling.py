@@ -98,6 +98,26 @@ def sample_to_stormvogel(
     ALL_ACTIONS = [str(x) for x in range(no_actions)]
     INV_MAP = {a: no for no, a in enumerate(ALL_ACTIONS)}
 
+    # Precompute which base states need proxy states (rewards differ by action).
+    # Group sampled (state, action) pairs by base state.
+    base_states: set[Any] = set()
+    for obs_done, action in transition_samples:
+        base_states.add(obs_done)
+
+    needs_proxy: dict[Any, bool] = {}
+    uniform_reward: dict[Any, float] = {}
+    for bs in base_states:
+        avg_rewards: set[float] = set()
+        for a_n in range(no_actions):
+            samples = transition_samples[(bs, a_n)]
+            if samples > 0:
+                avg_rewards.add(reward_sums[(bs, a_n)] / samples)
+        if len(avg_rewards) <= 1:
+            needs_proxy[bs] = False
+            uniform_reward[bs] = avg_rewards.pop() if avg_rewards else 0.0
+        else:
+            needs_proxy[bs] = True
+
     if len(initial_states) == 1:
         init_obs, init_done = list(initial_states.keys())[0]
         init = (init_obs, init_done, None)
@@ -108,7 +128,10 @@ def sample_to_stormvogel(
         if s is NEW_INITIAL_STATE:
             return [""]
         # s is now (obs, done, proxy_action)
-        if s[1] or s[2] is not None:
+        if s[1]:
+            return [""]
+        if s[2] is not None:
+            # Proxy state: single deterministic transition.
             return [""]
         return [a for a in ALL_ACTIONS if transition_counts[((s[0], s[1]), INV_MAP[a])]]
 
@@ -121,7 +144,7 @@ def sample_to_stormvogel(
         elif s[1]:
             return [(1, s)]
         elif s[2] is not None:
-            # Proxy state: transition to the next state
+            # Proxy state: transition to the next state.
             proxy_action = s[2]
             return [
                 (
@@ -130,25 +153,40 @@ def sample_to_stormvogel(
                 )
                 for s_, count in transition_counts[((s[0], s[1]), proxy_action)].items()
             ]
-        else:
-            # Normal state: transition to proxy state with probability 1
+        elif needs_proxy.get((s[0], s[1]), False):
+            # Rewards differ by action: go through proxy state.
             return [(1.0, (s[0], s[1], INV_MAP[a]))]
+        else:
+            # Rewards are uniform: transition directly.
+            a_n = INV_MAP[a]
+            return [
+                (
+                    count / transition_samples[((s[0], s[1]), a_n)],
+                    (s_[0], s_[1], None),
+                )
+                for s_, count in transition_counts[((s[0], s[1]), a_n)].items()
+            ]
 
     def rewards(s) -> dict[str, stormvogel.model.Value]:
-        if s is NEW_INITIAL_STATE or s[1] or s[2] is None:
+        if s is NEW_INITIAL_STATE or s[1]:
             return {"R": 0.0}
-
-        proxy_action = s[2]
-        if transition_samples[((s[0], s[1]), proxy_action)] == 0:
-            return {"R": 0.0}
-
-        return {
-            "R": reward_sums[((s[0], s[1]), proxy_action)]
-            / transition_samples[((s[0], s[1]), proxy_action)]
-        }
+        if s[2] is not None:
+            # Proxy state: average reward for the action that led here.
+            proxy_action = s[2]
+            if transition_samples[((s[0], s[1]), proxy_action)] == 0:
+                return {"R": 0.0}
+            return {
+                "R": reward_sums[((s[0], s[1]), proxy_action)]
+                / transition_samples[((s[0], s[1]), proxy_action)]
+            }
+        if not needs_proxy.get((s[0], s[1]), False):
+            # Uniform reward: assign directly.
+            return {"R": uniform_reward.get((s[0], s[1]), 0.0)}
+        # State that uses proxy: reward is on the proxy, not here.
+        return {"R": 0.0}
 
     def labels(s):
-        if s is NEW_INITIAL_STATE or s[2] is not None:
+        if s is NEW_INITIAL_STATE or (s[2] is not None):
             return []
         done = ["done"] if s[1] else []
         return [str(s[0])] + done
