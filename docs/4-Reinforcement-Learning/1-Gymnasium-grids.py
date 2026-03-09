@@ -75,7 +75,7 @@ def my_scheduler(s: stormvogel.model.State):
     # "←" "↓" "→" "↑"
     if s.is_initial():
         return Action("→")
-    env_id = int(s.labels[0])
+    env_id = s.get_valuation("env_id")
     x, y = to_coordinate(env_id, env)
     if x < 2 and y == 0:
         return Action("→")

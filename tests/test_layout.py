@@ -49,9 +49,20 @@ def test_layout_saving():
 
 
 def test_nx_pos():
-    pos = {0: np.array([0, 0]), 1: np.array([1, 1])}
+    import stormvogel.model as model
+    from stormvogel.graph import ModelGraph, node_key
+
+    m = model.new_dtmc()
+    s0 = m.initial_state
+    s1 = m.new_state(labels=["end"])
+    m.set_choices(s0, [(1, s1)])
+    m.add_self_loops()
+
+    G = ModelGraph.from_model(m)
+    nodes = list(G.nodes)
+    pos = {nodes[0]: np.array([0, 0]), nodes[1]: np.array([1, 1])}
     layout = Layout("tests/test_layout.json").set_nx_pos(pos, scale=1)
     assert layout.layout["positions"] == {
-        0: {"x": 0.0, "y": 0.0},
-        1: {"x": 1.0, "y": 1.0},
+        node_key(nodes[0]): {"x": 0.0, "y": 0.0},
+        node_key(nodes[1]): {"x": 1.0, "y": 1.0},
     }

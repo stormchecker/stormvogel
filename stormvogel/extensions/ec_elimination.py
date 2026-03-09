@@ -99,7 +99,7 @@ def stormvogel_get_maximal_end_components(
         states = set()
         actions = set()
         for s_id, choices in mec:
-            states.add(s_id)
+            states.add(sv_model.states[s_id])
             actions = actions | set(map(lambda x: f.inverse[x], choices))
         res.append((frozenset(states), frozenset(actions)))
     return res
@@ -111,8 +111,8 @@ def choice_mapping(sv_model, sp_model):
     """
     res = bidict({})
     choice_id = 0
-    for _, s in sv_model:
+    for s in sv_model:
         for a in s.available_actions():
-            res[s.id, a] = choice_id
+            res[s, a] = choice_id
             choice_id += 1
     return res
