@@ -5,12 +5,21 @@ import re
 
 
 def remove_invalid_paths(svg_string: str) -> str:
-    """Remove <path> elements that have no 'd' attribute"""
+    """Remove ``<path>`` elements that have no ``d`` attribute.
+
+    :param svg_string: The raw SVG string to clean.
+    :returns: The SVG string with invalid paths removed.
+    """
     return re.sub(r"<path(?![^>]* d=)[^>]*/>", "", svg_string)
 
 
 def autoscale_svg(raw_svg: str, target_width: float) -> str:
-    """Autoscale an SVG string to the target width while maintaining aspect ratio."""
+    """Autoscale an SVG string to the target width while maintaining aspect ratio.
+
+    :param raw_svg: The raw SVG string to scale.
+    :param target_width: The desired width for the output SVG.
+    :returns: The modified SVG as a string.
+    """
     from lxml import etree
     from svgpathtools import svg2paths2
 

@@ -12,12 +12,16 @@ except ImportError:
 def model_checking(
     model: stormvogel.model.Model, prop: str | None = None, scheduler: bool = True
 ) -> stormvogel.result.Result | None:
-    """
-    Instead of calling this function, the storm model checker can be used.
-    In order to to that, convert this model using the mapping and then do storm model checking.
-    After that, map it back.
+    """Perform model checking on a stormvogel model using stormpy.
 
-    This function just performs this procedure automatically.
+    Convert the model to stormpy, run model checking, and convert the result back.
+    If no property string is provided, a widget for building one is displayed.
+
+    :param model: The stormvogel model to check.
+    :param prop: A property string to check, or ``None`` to display a property builder widget.
+    :param scheduler: Whether to extract a scheduler from the result.
+    :returns: The model checking result, or ``None`` if no property was provided.
+    :raises RuntimeError: If the model is not stochastic.
     """
 
     assert stormpy is not None

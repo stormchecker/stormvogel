@@ -27,14 +27,16 @@ class LayoutEditor(stormvogel.displayable.Displayable):
         do_display: bool = True,
         debug_output: widgets.Output = widgets.Output(),
     ) -> None:
-        """Create an interactive layout editor, according to the schema. Display it using the show() method.
+        """Create an interactive layout editor according to the schema.
 
-        Args:
-            layout (Layout): The layout to be edited.
-            visualization (Visualization, optional): A visualization that uses said layout. Defaults to None. Used to update the layout.
-            output (widgets.Output, optional): An output widget within which the layout editor should be displayed. Defaults to None.
-            do_display (bool, optional): Set to true iff you want the LayoutEditor to display. Defaults to True.
-            debug_output (widgets.Output, optional): Debug information is displayed in this output. Leave to default if that doesn't interest you.
+        Display it using the :meth:`show` method.
+
+        :param layout: The layout to be edited.
+        :param visualization: A visualization that uses said layout. Used to update
+            the layout.
+        :param output: An output widget within which the layout editor should be displayed.
+        :param do_display: Whether to display the layout editor.
+        :param debug_output: Output widget for debug information.
         """
         super().__init__(output, do_display, debug_output)
         self.vis: stormvogel.visualization.JSVisualization | None = visualization

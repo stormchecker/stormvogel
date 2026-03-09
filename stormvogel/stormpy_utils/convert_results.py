@@ -11,7 +11,12 @@ except ImportError:
 def convert_scheduler_to_stormvogel(
     model: stormvogel.model.Model, stormpy_scheduler: "stormpy.storage.Scheduler"
 ):
-    """Converts a stormpy scheduler to a stormvogel scheduler"""
+    """Convert a stormpy scheduler to a stormvogel scheduler.
+
+    :param model: The stormvogel model associated with the scheduler.
+    :param stormpy_scheduler: The stormpy scheduler to convert.
+    :returns: A stormvogel :class:`~stormvogel.result.Scheduler`.
+    """
     taken_actions = {}
     for stormpy_state_id, state in enumerate(model.states):
         av_act = state.available_actions()
@@ -30,8 +35,13 @@ def convert_model_checking_result(
     ],
     with_scheduler: bool = True,
 ) -> stormvogel.result.Result | None:
-    """
-    Takes a model checking result from stormpy and its associated model and converts it to a stormvogel representation
+    """Convert a stormpy model checking result to a stormvogel result.
+
+    :param model: The stormvogel model associated with the result.
+    :param stormpy_result: The stormpy model checking result.
+    :param with_scheduler: Whether to include the scheduler in the result.
+    :returns: The converted stormvogel result, or ``None`` if conversion fails.
+    :raises RuntimeError: If the result type is unsupported.
     """
     assert stormpy is not None
 
@@ -75,9 +85,15 @@ def map_result_to_original_model(
     original_model: stormvogel.model.Model,
     recreated_model: stormvogel.model.Model,
 ) -> stormvogel.result.Result:
-    """
-    Maps a model checking result (which uses reconstructed states) back to the
-    original model states to preserve object identities.
+    """Map a model checking result back to the original model states.
+
+    Remap state references from the recreated model to the original model
+    to preserve object identities.
+
+    :param result: The model checking result using recreated model states.
+    :param original_model: The original stormvogel model.
+    :param recreated_model: The recreated model whose states appear in the result.
+    :returns: A new result with state references mapped to the original model.
     """
     if len(original_model.states) != len(recreated_model.states):
         return result

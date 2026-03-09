@@ -50,22 +50,16 @@ class VisualizationBase:
     the "scheduled_actions" group is activated in the layout; otherwise, it
     is deactivated.
 
-    Attributes:
-        model (stormvogel.model.Model): The MDP model being visualized.
-        layout (stormvogel.layout.Layout): The layout configuration for the visualization.
-        result (stormvogel.result.Result | None): The result of a model checking operation.
-        scheduler (stormvogel.result.Scheduler | None): A scheduler representing a path
-            through the model.
-        G (ModelGraph): The internal graph structure representing the model.
+    :param model: The MDP model to visualize.
+    :param layout: Layout settings for the visualization.
+    :param result: The result of a model checking operation, which may contain a scheduler.
+    :param scheduler: An explicit scheduler defining actions to take in each state.
 
-    Args:
-        model (stormvogel.model.Model): The MDP model to visualize.
-        layout (stormvogel.layout.Layout, optional): Layout settings for the visualization.
-            Defaults to `stormvogel.layout.DEFAULT()`.
-        result (stormvogel.result.Result, optional): The result of a model checking
-            operation, which may contain a scheduler.
-        scheduler (stormvogel.result.Scheduler, optional): An explicit scheduler
-            defining actions to take in each state.
+    :ivar model: The MDP model being visualized.
+    :ivar layout: The layout configuration for the visualization.
+    :ivar result: The result of a model checking operation.
+    :ivar scheduler: A scheduler representing a path through the model.
+    :ivar G: The internal graph structure representing the model.
     """
 
     def __init__(
@@ -98,7 +92,7 @@ class VisualizationBase:
 
     @staticmethod
     def _random_word(k: int) -> str:
-        """Random word of length k"""
+        """Generate a random word of length *k*."""
         import random
         import string
 
@@ -113,11 +107,11 @@ class VisualizationBase:
 
     @staticmethod
     def _blend_colors(c1: str, c2: str, factor: float) -> str:
-        """Blend two colors in HEX format. #RRGGBB.
-        Args:
-            color1 (str): Color 1 in HEX format #RRGGBB
-            color2 (str): Color 2 in HEX format #RRGGBB
-            factor (float): The fraction of the resulting color that should come from color1.
+        """Blend two colors in HEX format (#RRGGBB).
+
+        :param c1: Color 1 in HEX format #RRGGBB.
+        :param c2: Color 2 in HEX format #RRGGBB.
+        :param factor: The fraction of the resulting color that should come from *c1*.
         """
         r1 = int("0x" + c1[1:3], 0)
         g1 = int("0x" + c1[3:5], 0)
@@ -147,7 +141,7 @@ class VisualizationBase:
         self.layout.set_possible_groups(possible_groups)
 
     def _format_number(self, n: stormvogel.model.Value) -> str:
-        """Call number_to_string in model.py while accounting for the settings specified in the layout object."""
+        """Format a number using the settings specified in the layout object."""
         if self.layout.layout["numbers"]["visible"] is False:
             return ""
         return value_to_string(
@@ -158,8 +152,9 @@ class VisualizationBase:
         )
 
     def _format_result(self, s: stormvogel.model.State) -> str:
-        """Create a string that shows the result for this state. Starts with newline.
-        If results are not enabled, then it returns the empty string."""
+        """Create a string that shows the result for this state.
+
+        Start with a newline. If results are not enabled, return the empty string."""
         if self.result is None or not self.layout.layout["results"]["show_results"]:
             return ""
         result_of_state = self.result.get_result_of_state(s)
@@ -173,8 +168,9 @@ class VisualizationBase:
         )
 
     def _format_observations(self, s: stormvogel.model.State) -> str:
-        """Create a String that shows the observation for this state (FOR POMDPs).
-        Starts with newline."""
+        """Create a string that shows the observation for this state (for POMDPs).
+
+        Start with a newline."""
         if (
             not self.model.supports_observations()
             or not self.layout.layout["state_properties"]["show_observations"]
@@ -201,8 +197,10 @@ class VisualizationBase:
             )
 
     def _group_state(self, s: stormvogel.model.State, default: str) -> str:
-        """The user can edit a number of subsets of the states individually, we call these groups.
-        This function determines the group of this state. That is, the label of s that has the highest priority, as specified by the user under edit_groups.
+        """Determine the group of a state.
+
+        The group is the label of *s* that has the highest priority,
+        as specified by the user under edit_groups.
         """
         und_labels = set(map(self._und, s.labels))
         res = list(
@@ -215,7 +213,7 @@ class VisualizationBase:
     def _group_action(
         self, state: stormvogel.model.State, a: stormvogel.model.Action, default: str
     ) -> str:
-        """Return the group of this action. Only relevant for scheduling"""
+        """Return the group of this action. Only relevant for scheduling."""
         # Put the action in the group scheduled_actions if appropriate.
         if self.scheduler is None:
             return default
@@ -246,26 +244,20 @@ class VisualizationBase:
         return res
 
     def _create_state_properties(self, state: stormvogel.model.State) -> dict:
-        """Generates visualization properties for a given state in the model.
+        """Generate visualization properties for a given state in the model.
 
-        That is, the visual representation of a state, including
-        its label, group assignment, color (based on model checking results),
-        and other textual annotations like rewards and observations. These
-        properties are used when constructing the `ModelGraph` for visualization.
+        Create the visual representation of a state, including its label,
+        group assignment, color (based on model checking results), and other
+        textual annotations like rewards and observations. These properties
+        are used when constructing the ``ModelGraph`` for visualization.
 
         If result coloring is enabled and a model checking result is available,
         the state's color is interpolated between two configured colors based
         on the state's result value relative to the maximum result.
 
-        Args:
-            state (stormvogel.model.State): The model state for which to generate properties.
-
-        Returns:
-            dict: A dictionary containing the state's visualization properties with keys:
-                - `"label"`: A string representing the state label, including ID (if enabled),
-                  labels, rewards, result, and observations.
-                - `"group"`: A string identifying the layout group this state belongs to.
-                - `"color"`: A blended RGB color string or None, based on result values.
+        :param state: The model state for which to generate properties.
+        :returns: A dictionary containing the state's visualization properties with keys
+            ``"label"``, ``"group"``, and ``"color"``.
         """
         from fractions import Fraction
 
@@ -304,20 +296,16 @@ class VisualizationBase:
     def _create_action_properties(
         self, state: stormvogel.model.State, action: stormvogel.model.Action
     ) -> dict:
-        """Generates visualization properties for a given action in the model.
+        """Generate visualization properties for a given action in the model.
 
-        This method creates a label for the action, optionally including any
-        associated reward, and includes the original `Action` object for use
-        in the visualization or interaction.
+        Create a label for the action, optionally including any associated
+        reward, and include the original ``Action`` object for use in the
+        visualization or interaction.
 
-        Args:
-            state (stormvogel.model.State): The state from which the action originates.
-            action (stormvogel.model.Action): The action being evaluated.
-
-        Returns:
-            dict: A dictionary containing the action's visualization properties:
-                - `"label"`: A string combining the action's labels and reward.
-                - `"model_action"`: The original `Action` object.
+        :param state: The state from which the action originates.
+        :param action: The action being evaluated.
+        :returns: A dictionary containing the action's visualization properties
+            with keys ``"label"`` and ``"model_action"``.
         """
         reward = self._format_rewards(state, action)
 
@@ -325,21 +313,16 @@ class VisualizationBase:
         return properties
 
     def _create_transition_properties(self, state, action, next_state) -> dict:
-        """Generates visualization properties for a transition between states.
+        """Generate visualization properties for a transition between states.
 
-        This method finds the transition probability for a specific state-action–
-        next-state triplet and formats it as a label. If the transition exists,
-        the formatted probability is included; otherwise, an empty dictionary is returned.
+        Find the transition probability for a specific state-action-next-state
+        triplet and format it as a label. If the transition exists, the
+        formatted probability is included; otherwise, an empty dictionary is returned.
 
-        Args:
-            state (stormvogel.model.State): The source state of the transition.
-            action (stormvogel.model.Action): The action taken from the source state.
-            next_state (stormvogel.model.State): The target state of the transition.
-
-        Returns:
-            dict: A dictionary containing the transition's visualization properties:
-                - `"label"`: The formatted transition probability, if found.
-                  Otherwise, the dictionary will be empty.
+        :param state: The source state of the transition.
+        :param action: The action taken from the source state.
+        :param next_state: The target state of the transition.
+        :returns: A dictionary containing the transition's visualization properties.
         """
         properties = dict()
         transitions = state.get_outgoing_transitions(action)
@@ -371,23 +354,24 @@ class JSVisualization(VisualizationBase):
         max_states: int = 1000,
         max_physics_states: int = 500,
     ) -> None:
-        """Create and show a visualization of a Model using a visjs Network
-        Args:
-            model (Model): The stormvogel model to be displayed.
-            name (str): Used to name the iframe. ONLY SPECIFY IF YOU KNOW WHAT YOU ARE DOING. You should never create two networks with the same name, they might clash.
-            result (Result, optional): A result associatied with the model.
-                The results are displayed as numbers on a state. Enable the layout editor for options.
-                If this result has a scheduler, then the scheduled actions will have a different color etc. based on the layout
-            scheduler (Scheduler, optional): The scheduled actions will have a different color etc. based on the layout
-                If both result and scheduler are set, then scheduler takes precedence.
-            layout (Layout): Layout used for the visualization.
-            output (widgets.Output): The output widget in which the network is rendered.
-                Whether this widget is also displayed automatically depends on do_display.
-            debug_output (widgets.Output): Output widget that can be used to debug interactive features.
-            use_iframe (bool): Set to true iff you want to use an iframe. Defaults to False.
-            do_init_server (bool): Set to true iff you want to initialize the server. Defaults to True.
-            max_states (int): If the model has more states, then the network is not displayed.
-            max_physics_states (int): If the model has more states, then physics are disabled.
+        """Create and show a visualization of a Model using a visjs Network.
+
+        :param model: The stormvogel model to be displayed.
+        :param name: Used to name the iframe. Only specify if you know what you are
+            doing. You should never create two networks with the same name, they might clash.
+        :param result: A result associated with the model. The results are displayed as
+            numbers on a state. Enable the layout editor for options. If this result has a
+            scheduler, then the scheduled actions will have a different color etc. based on
+            the layout.
+        :param scheduler: The scheduled actions will have a different color etc. based on
+            the layout. If both result and scheduler are set, then scheduler takes precedence.
+        :param layout: Layout used for the visualization.
+        :param output: The output widget in which the network is rendered.
+        :param debug_output: Output widget that can be used to debug interactive features.
+        :param use_iframe: Set to ``True`` to use an iframe.
+        :param do_init_server: Set to ``True`` to initialize the server.
+        :param max_states: If the model has more states, the network is not displayed.
+        :param max_physics_states: If the model has more states, physics are disabled.
         """
         import ipywidgets as widgets  # local, heavy
         import os
@@ -431,7 +415,7 @@ class JSVisualization(VisualizationBase):
             self.server = None  # type: ignore[assignment]
 
     def _generate_node_js(self) -> str:
-        """Generate the required js script for node definition"""
+        """Generate the required JS script for node definition."""
         from .graph import NodeType, node_key
 
         node_js = ""
@@ -482,7 +466,7 @@ class JSVisualization(VisualizationBase):
         return node_js
 
     def _generate_edge_js(self) -> str:
-        """Generate the required js script for edge definition"""
+        """Generate the required JS script for edge definition."""
         from .graph import NodeType, node_key
 
         edge_js = ""
@@ -529,27 +513,25 @@ class JSVisualization(VisualizationBase):
         return edge_js
 
     def _get_options(self) -> str:
-        """Returns the current layout configuration as a JSON-formatted string.
+        """Return the current layout configuration as a JSON-formatted string.
 
-        This method serializes the layout dictionary used for visualization
-        into a readable JSON format with indentation for clarity.
+        Serialize the layout dictionary used for visualization into a readable
+        JSON format with indentation for clarity.
 
-        Returns:
-            str: A pretty-printed JSON string representing the current layout configuration.
+        :returns: A pretty-printed JSON string representing the current layout configuration.
         """
         import json
 
         return json.dumps(self.layout.layout, indent=2)
 
     def set_options(self, options: str) -> None:
-        """Sets the layout configuration from a JSON-formatted string.
+        """Set the layout configuration from a JSON-formatted string.
 
-        This method replaces the current layout with a new one defined by the
-        given JSON string. It should be called only before visualization is rendered
-        (i.e., before calling `show()`), as it reinitializes the layout.
+        Replace the current layout with a new one defined by the given JSON
+        string. Call only before visualization is rendered (i.e., before
+        calling ``show()``), as it reinitializes the layout.
 
-        Args:
-            options (str): A JSON-formatted string representing the layout configuration.
+        :param options: A JSON-formatted string representing the layout configuration.
         """
         import json
 
@@ -557,7 +539,7 @@ class JSVisualization(VisualizationBase):
         self.layout = stormvogel.layout.Layout(layout_dict=options_dict)
 
     def generate_html(self) -> str:
-        """Generate an html page representing the current state of the `ModelGraph`"""
+        """Generate an HTML page representing the current state of the ``ModelGraph``."""
         return stormvogel.html_generation.generate_html(
             self._generate_node_js(),
             self._generate_edge_js(),
@@ -568,7 +550,7 @@ class JSVisualization(VisualizationBase):
         )
 
     def generate_iframe(self) -> str:
-        """Generate an iframe for the network, using the html."""
+        """Generate an iframe for the network, using the HTML."""
         import html as _html
 
         return f"""
@@ -584,7 +566,7 @@ class JSVisualization(VisualizationBase):
           ></iframe>"""
 
     def generate_svg(self, width: int = 800) -> str:
-        """Generate an svg rendering for the network."""
+        """Generate an SVG rendering for the network."""
         from stormvogel.autoscale_svg import autoscale_svg
 
         js = f"RETURN({self.network_wrapper}.getSvg());"
@@ -594,21 +576,24 @@ class JSVisualization(VisualizationBase):
         return scaled
 
     def enable_exploration_mode(self, initial_state: stormvogel.model.State):
-        """Enables exploration mode starting from a specified initial state.
+        """Enable exploration mode starting from a specified initial state.
 
-        This method activates interactive exploration mode in the visualization
-        and sets the starting point for exploration to the given state ID.
-        `show()` needs to be called after this method is executed to have an effect.
+        Activate interactive exploration mode in the visualization and set the
+        starting point for exploration to the given state.
+        ``show()`` needs to be called after this method to have an effect.
 
-        Args:
-            initial_state (State): The state from which exploration should begin.
+        :param initial_state: The state from which exploration should begin.
         """
         self.initial_state = initial_state
         self.layout.set_value(["misc", "explore"], True)
 
     def get_positions(self) -> dict[str, dict[str, int]]:
-        """Get the current positions of the nodes on the canvas. Returns empty dict if unsuccessful.
-        Example result: {"uuid-string": {"x": 5, "y": 10}}"""
+        """Get the current positions of the nodes on the canvas.
+
+        :returns: A dict mapping node keys to position dicts, e.g.
+            ``{"uuid-string": {"x": 5, "y": 10}}``. Return empty dict if unsuccessful.
+        :raises TimeoutError: If the server is not initialized or communication times out.
+        """
         import json
         import logging
 
@@ -664,15 +649,15 @@ class JSVisualization(VisualizationBase):
             logging.info("Called show")
 
     def update(self) -> None:
-        """Updates the visualization with the current layout options.
+        """Update the visualization with the current layout options.
 
-        This method sends updated layout configuration to the frontend visualization
-        by injecting JavaScript code. It is typically used to reflect changes made
-        to layout settings after the initial rendering.
+        Send updated layout configuration to the frontend visualization by
+        injecting JavaScript code. Typically used to reflect changes made to
+        layout settings after the initial rendering.
 
-        Note:
-            This should be called after modifying layout properties if the visualization
-            has already been shown, to apply those changes interactively.
+        .. note::
+            Call this after modifying layout properties if the visualization has
+            already been shown, to apply those changes interactively.
         """
         import IPython.display as ipd
 
@@ -685,20 +670,19 @@ class JSVisualization(VisualizationBase):
         | tuple[stormvogel.model.State, stormvogel.model.Action],
         color: str | None,
     ) -> None:
-        """Sets the color of a specific node in the visualization.
+        """Set the color of a specific node in the visualization.
 
-        This method updates the visual appearance of a node by changing its color
-        via JavaScript. It only takes effect once the network has been fully loaded
+        Update the visual appearance of a node by changing its color via
+        JavaScript. Only takes effect once the network has been fully loaded
         in the frontend.
 
-        Args:
-            node_id (int): The ID of the node whose color should be changed.
-            color (str | None): The color to apply (e.g., "#ff0000" for red).
-                If None, the node color is reset or cleared.
+        :param obj: The state or (state, action) pair whose node color should be changed.
+        :param color: The color to apply (e.g., ``"#ff0000"`` for red).
+            If ``None``, the node color is reset.
 
-        Note:
-            This function requires that the visualization is already rendered
-            (i.e., `show()` has been called and completed asynchronously).
+        .. note::
+            This requires that the visualization is already rendered
+            (i.e., ``show()`` has been called and completed asynchronously).
         """
         from .graph import node_key
         import IPython.display as ipd
@@ -713,18 +697,14 @@ class JSVisualization(VisualizationBase):
         ipd.clear_output()
 
     def highlight_state(self, state: stormvogel.model.State, color: str | None = "red"):
-        """Highlights a single state in the model by changing its color.
+        """Highlight a single state in the model by changing its color.
 
-        This method changes the color of the specified state node in the visualization.
-        Pass `None` to reset or clear the highlight.
+        Change the color of the specified state node in the visualization.
+        Pass ``None`` to reset or clear the highlight.
 
-        Args:
-            state_id (int): The ID of the state to highlight.
-            color (str | None, optional): The color to use for highlighting (e.g., "red", "#00ff00").
-                Defaults to "red".
-
-        Raises:
-            AssertionError: If the state ID does not exist in the model graph.
+        :param state: The state to highlight.
+        :param color: The color to use for highlighting (e.g., ``"red"``, ``"#00ff00"``).
+        :raises AssertionError: If the state does not exist in the model graph.
         """
         assert self.G.nodes.get(state) is not None, "State id not in ModelGraph"
         self.set_node_color(state, color)
@@ -735,18 +715,15 @@ class JSVisualization(VisualizationBase):
         action: stormvogel.model.Action,
         color: str | None = "red",
     ):
-        """Highlights a single action in the model by changing its color.
+        """Highlight a single action in the model by changing its color.
 
-        This method changes the color of the node representing a specific action
-        taken from a given state. Pass `None` to remove the highlight.
+        Change the color of the node representing a specific action taken from
+        a given state. Pass ``None`` to remove the highlight.
 
-        Args:
-            state_id (int): The ID of the state from which the action originates.
-            action (stormvogel.model.Action): The action to highlight.
-            color (str | None, optional): The color to use for highlighting. Defaults to "red".
-
-        Warns:
-            UserWarning: If the specified (state, action) pair is not found in the model graph.
+        :param state: The state from which the action originates.
+        :param action: The action to highlight.
+        :param color: The color to use for highlighting.
+        :raises UserWarning: If the specified (state, action) pair is not found in the model graph.
         """
         import warnings
 
@@ -760,14 +737,13 @@ class JSVisualization(VisualizationBase):
     def highlight_state_set(
         self, states: set[stormvogel.model.State], color: str | None = "blue"
     ):
-        """Highlights a set of states in the model by changing their color.
+        """Highlight a set of states in the model by changing their color.
 
-        Iterates over each state ID in the provided set and applies the given
-        color. Pass `None` to clear highlighting for all specified states.
+        Iterate over each state in the provided set and apply the given color.
+        Pass ``None`` to clear highlighting for all specified states.
 
-        Args:
-            state_ids (set[int]): A set of state IDs to highlight.
-            color (str | None, optional): The color to apply. Defaults to "blue".
+        :param states: A set of states to highlight.
+        :param color: The color to apply.
         """
         for state in states:
             self.set_node_color(state, color)
@@ -777,15 +753,13 @@ class JSVisualization(VisualizationBase):
         state_action_set: set[tuple[stormvogel.model.State, stormvogel.model.Action]],
         color: str = "red",
     ):
-        """Highlights a set of actions in the model by changing their color.
+        """Highlight a set of actions in the model by changing their color.
 
-        Applies the specified color to all (state, action) pairs in the given set.
-        Pass `None` as the color to clear the current highlighting.
+        Apply the specified color to all (state, action) pairs in the given set.
+        Pass ``None`` as the color to clear the current highlighting.
 
-        Args:
-            state_action_set (set[tuple[int, stormvogel.model.Action]]): A set of
-                (state ID, action) pairs to highlight.
-            color (str, optional): The color to apply. Defaults to "red".
+        :param state_action_set: A set of (state, action) pairs to highlight.
+        :param color: The color to apply.
         """
         for state, a in state_action_set:
             self.highlight_action(state, a, color)
@@ -801,9 +775,9 @@ class JSVisualization(VisualizationBase):
         colors: list[str] | None = None,
     ):
         """Highlight a set of tuples of (states and actions) in the model by changing their color.
-        Args:
-            decomp: A list of tuples (states, actions)
-            colors (optional): A list of colors for the decompositions. Random colors are picked by default.
+
+        :param decomp: A list of tuples (states, actions).
+        :param colors: A list of colors for the decompositions. Random colors are picked by default.
         """
         for n, v in enumerate(decomp):
             if colors is None:
@@ -814,7 +788,7 @@ class JSVisualization(VisualizationBase):
             self.highlight_action_set(v[1], color)
 
     def clear_highlighting(self):
-        """Clear all highlighting that is currently active, returning all states to their original colors."""
+        """Clear all highlighting that is currently active, returning all nodes to their original colors."""
         for state in self.model:
             self.set_node_color(state, None)
         for a_id in self.G.nodes:
@@ -828,13 +802,14 @@ class JSVisualization(VisualizationBase):
         clear: bool = True,
     ) -> None:
         """Highlight the path that is provided as an argument in the model.
-        Args:
-            path (simulator.Path): The path to highlight.
-            color (str | None): The color that the highlighted states should get (in HTML color standard).
-                Set to None, in order to clear existing highlights on this path.
-            delay (float): If not None, there will be a pause of a specified time before highlighting the next state in the path.
-            clear (bool): Clear the highlighting of a state after it was highlighted. Only works if delay is not None.
-                This is particularly useful for highlighting paths with loops."""
+
+        :param path: The path to highlight.
+        :param color: The color that the highlighted states should get (in HTML color standard).
+            Set to ``None`` to clear existing highlights on this path.
+        :param delay: Pause for the specified time before highlighting the next state in the path.
+        :param clear: Clear the highlighting of a state after it was highlighted. Only works if
+            delay is not ``None``. Particularly useful for highlighting paths with loops.
+        """
         from time import sleep
 
         seq = path.to_state_action_sequence()
@@ -854,20 +829,14 @@ class JSVisualization(VisualizationBase):
                         self.set_node_color(node_id, None)
 
     def export(self, output_format: str, filename: str = "export") -> None:
-        """
-        Export the visualization to your preferred output format.
+        """Export the visualization to the preferred output format.
+
         The appropriate file extension will be added automatically.
 
-        Parameters:
-            output_format (str): Desired export format.
-            filename (str): Base name for the exported file.
-
-        Supported output formats (not case-sensitive):
-
-            "HTML"    → An interactive .html file (e.g., draggable nodes)
-            "IFrame"  → Exports as an <iframe> wrapped HTML in a .html file
-            "PDF"     → Exports to .pdf (via conversion from SVG)
-            "SVG"     → Exports to .svg vector image
+        :param output_format: Desired export format. Supported values (not case-sensitive):
+            ``"HTML"``, ``"IFrame"``, ``"PDF"``, ``"SVG"``, ``"LaTeX"``.
+        :param filename: Base name for the exported file.
+        :raises RuntimeError: If the export format is not supported.
         """
         import pathlib
 
@@ -933,27 +902,18 @@ class JSVisualization(VisualizationBase):
 class MplVisualization(VisualizationBase):
     """Matplotlib-based visualization for Stormvogel models.
 
-    Extends the base visualization class to render the model, results, and
-    scheduler using Matplotlib. Supports interactive features like node
+    Extend the base visualization class to render the model, results, and
+    scheduler using Matplotlib. Support interactive features like node
     highlighting and custom hover behavior.
 
-    This class manages figure creation, state and edge highlighting, and
-    optionally allows interaction callbacks when hovering over nodes.
-
-    Args:
-        model (stormvogel.model.Model): The model to visualize.
-        layout (stormvogel.layout.Layout, optional): Layout configuration for
-            the visualization. Defaults to `stormvogel.layout.DEFAULT()`.
-        result (stormvogel.result.Result | None, optional): The result of a model
-            checking operation, which may contain a scheduler. Defaults to None.
-        scheduler (stormvogel.result.Scheduler | None, optional): Explicit scheduler
-            defining actions to take in each state. Defaults to None.
-        title (str | None, optional): Title of the visualization figure. Defaults to None.
-        interactive (bool, optional): Whether to enable interactive features such
-            as node hover callbacks. Defaults to False.
-        hover_node (Callable | None, optional): Callback function invoked when
-            hovering over nodes. Receives parameters
-            `(PathCollection, PathCollection, MouseEvent, Axes)`. Defaults to None.
+    :param model: The model to visualize.
+    :param layout: Layout configuration for the visualization.
+    :param result: The result of a model checking operation, which may contain a scheduler.
+    :param scheduler: Explicit scheduler defining actions to take in each state.
+    :param title: Title of the visualization figure.
+    :param interactive: Whether to enable interactive features such as node hover callbacks.
+    :param hover_node: Callback function invoked when hovering over nodes. Receives parameters
+        ``(PathCollection, PathCollection, MouseEvent, Axes)``.
     """
 
     def __init__(
@@ -993,14 +953,11 @@ class MplVisualization(VisualizationBase):
     def highlight_state(
         self, state: stormvogel.model.State, color: str = "red"
     ) -> None:
-        """Highlights a state node in the visualization by setting its color.
+        """Highlight a state node in the visualization by setting its color.
 
-        Args:
-            state (stormvogel.model.State | int): The state object or state ID to highlight.
-            color (str, optional): The color to apply. Defaults to "red".
-
-        Raises:
-            AssertionError: If the state node is not present in the model graph.
+        :param state: The state to highlight.
+        :param color: The color to apply.
+        :raises AssertionError: If the state node is not present in the model graph.
         """
         assert state in self.G.nodes, f"Node {state} not in graph"
         self._highlights[state] = color
@@ -1011,15 +968,12 @@ class MplVisualization(VisualizationBase):
         action: stormvogel.model.Action,
         color: str = "red",
     ) -> None:
-        """Highlights an action node associated with a state by setting its color.
+        """Highlight an action node associated with a state by setting its color.
 
-        Args:
-            state (stormvogel.model.State): The state object from which the action originates.
-            action (stormvogel.model.Action): The action to highlight.
-            color (str, optional): The color to apply. Defaults to "red".
-
-        Raises:
-            AssertionError: If the state node is not present in the model graph.
+        :param state: The state from which the action originates.
+        :param action: The action to highlight.
+        :param color: The color to apply.
+        :raises AssertionError: If the state node is not present in the model graph.
         """
         assert state in self.G.nodes, f"Node {state} not in graph"
         action_node = (state, action)
@@ -1033,30 +987,27 @@ class MplVisualization(VisualizationBase):
         | tuple[stormvogel.model.State, stormvogel.model.Action],
         color: str = "red",
     ) -> None:
-        """Highlights an edge between two nodes by setting its color.
+        """Highlight an edge between two nodes by setting its color.
 
-        Args:
-            from_ (int): The source node ID of the edge.
-            to_ (int): The target node ID of the edge.
-            color (str, optional): The color to apply. Defaults to "red".
+        :param from_: The source node of the edge.
+        :param to_: The target node of the edge.
+        :param color: The color to apply.
         """
         self._edge_highlights[from_, to_] = color
 
     def clear_highlighting(self) -> None:
-        """Clear all nodes that are marked for highlighting in the visualization"""
+        """Clear all nodes that are marked for highlighting in the visualization."""
         self._highlights.clear()
         self._edge_highlights.clear()
 
     def highlight_scheduler(self, scheduler: stormvogel.result.Scheduler) -> None:
-        """Highlights states, actions, and edges according to the given scheduler.
+        """Highlight states, actions, and edges according to the given scheduler.
 
-        Applies a specific highlight color defined by the layout to all states and
-        actions specified by the scheduler’s taken actions, as well as the edges connecting them.
-        The color is derived from the layout’s configured group colors for scheduled actions.
+        Apply a specific highlight color defined by the layout to all states and
+        actions specified by the scheduler's taken actions, as well as the edges
+        connecting them.
 
-        Args:
-            scheduler (stormvogel.result.Scheduler): The scheduler containing
-                state-action mappings to highlight.
+        :param scheduler: The scheduler containing state-action mappings to highlight.
         """
         default_color = self.layout.layout["edges"]["color"]["color"]
         color = self.layout.layout["groups"].get(
@@ -1079,28 +1030,22 @@ class MplVisualization(VisualizationBase):
         node_kwargs: dict[str, Any] | None = None,
         edge_kwargs: dict[str, Any] | None = None,
     ) -> tuple[Any, Any]:
-        """Draws the model graph onto a given Matplotlib Axes.
+        """Draw the model graph onto a given Matplotlib Axes.
 
-        This method renders nodes and edges of the model graph on the
-        provided Matplotlib `ax` object. It uses layout positions, colors from
-        the current layout configuration, and any highlights applied to nodes
-        or edges. Node sizes can be specified either as a fixed integer or as a
-        dictionary mapping node IDs to sizes.
+        Render nodes and edges of the model graph on the provided Matplotlib
+        ``ax`` object. Use layout positions, colors from the current layout
+        configuration, and any highlights applied to nodes or edges.
 
-        Args:
-            ax (matplotlib.axes.Axes): The Matplotlib axes to draw the graph on.
-            node_size (int or dict[int, int], optional): Size(s) of nodes. If an
-                int is given, all nodes are drawn with that size. If a dictionary,
-                it must provide sizes for all nodes. Defaults to 300.
-            node_kwargs (dict[str, Any], optional): Additional keyword arguments
-                passed to `nx.draw_networkx_nodes()`. Defaults to None.
-            edge_kwargs (dict[str, Any], optional): Additional keyword arguments
-                passed to `nx.draw_networkx_edges()`. Defaults to None.
-
-        Returns:
-            tuple: A tuple `(nodes, edges)` where `nodes` is the
-                `matplotlib.collections.PathCollection` of drawn nodes and `edges`
-                is the `matplotlib.collections.LineCollection` of drawn edges.
+        :param ax: The Matplotlib axes to draw the graph on.
+        :param node_size: Size(s) of nodes. If an int is given, all nodes are drawn
+            with that size. If a dictionary, it must provide sizes for all nodes.
+        :param node_kwargs: Additional keyword arguments passed to
+            ``nx.draw_networkx_nodes()``.
+        :param edge_kwargs: Additional keyword arguments passed to
+            ``nx.draw_networkx_edges()``.
+        :returns: A tuple ``(nodes, edges)`` where ``nodes`` is the
+            ``PathCollection`` of drawn nodes and ``edges`` is the
+            ``LineCollection`` of drawn edges.
         """
         import numpy as np
         import networkx as nx
@@ -1184,23 +1129,20 @@ class MplVisualization(VisualizationBase):
         node_kwargs: dict[str, Any] | None = None,
         edge_kwargs: dict[str, Any] | None = None,
     ):
-        """Updates or creates the Matplotlib figure displaying the model graph.
+        """Update or create the Matplotlib figure displaying the model graph.
 
-        This method sets up the figure size based on layout settings, draws the
-        graph nodes and edges using `add_to_ax`, and applies highlights and titles.
-        If `interactive` is enabled, it connects a hover event handler to update
-        the plot title dynamically when the mouse moves over nodes.
+        Set up the figure size based on layout settings, draw the graph nodes
+        and edges using ``add_to_ax``, and apply highlights and titles. If
+        ``interactive`` is enabled, connect a hover event handler to update the
+        plot title dynamically when the mouse moves over nodes.
 
-        Args:
-            node_size (int or Sequence[int], optional): Size(s) for the nodes. Can be
-                a single integer or a sequence of sizes for each node. Defaults to 300.
-            node_kwargs (dict[str, Any], optional): Additional keyword arguments
-                passed to `nx.draw_networkx_nodes()`. Defaults to None.
-            edge_kwargs (dict[str, Any], optional): Additional keyword arguments
-                passed to `nx.draw_networkx_edges()`. Defaults to None.
-
-        Returns:
-            matplotlib.figure.Figure: The Matplotlib figure object containing the visualization.
+        :param node_size: Size(s) for the nodes. Can be a single integer or a
+            dictionary mapping nodes to sizes.
+        :param node_kwargs: Additional keyword arguments passed to
+            ``nx.draw_networkx_nodes()``.
+        :param edge_kwargs: Additional keyword arguments passed to
+            ``nx.draw_networkx_edges()``.
+        :returns: The Matplotlib figure object containing the visualization.
         """
         import matplotlib.pyplot as plt
 

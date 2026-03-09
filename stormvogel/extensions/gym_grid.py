@@ -14,7 +14,12 @@ GRID_ACTION_LABEL_MAP = {0: "←", 1: "↓", 2: "→", 3: "↑", 4: "pickup", 5:
 def gymnasium_grid_to_stormvogel(
     env, action_label_map: dict[int, str] = GRID_ACTION_LABEL_MAP
 ):
-    """Convert a FrozenLake, Taxi, or Cliffwalking gymnasium environment to an explicit stormvogel model."""
+    """Convert a FrozenLake, Taxi, or Cliffwalking gymnasium environment to an explicit stormvogel model.
+
+    :param env: Gymnasium environment.
+    :param action_label_map: Mapping from action numbers to action labels.
+    :returns: Stormvogel model.
+    """
     TRANSITIONS = env.unwrapped.P
     NO_ACTIONS = env.action_space.n
     INV_MAP = {v: k for k, v in action_label_map.items()}
@@ -97,7 +102,14 @@ def gymnasium_grid_to_stormvogel(
 
 
 def to_coordinate(s, env):
-    """Calculate the state's coordinates. Works for FrozenLake, Cliffwalking, and Taxi"""
+    """Calculate the state's coordinates.
+
+    Work for FrozenLake, Cliffwalking, and Taxi.
+
+    :param s: State index.
+    :param env: Gymnasium environment.
+    :returns: ``(x, y)`` coordinate tuple.
+    """
     num_states = env.observation_space.n
     grid_size = int(math.sqrt(num_states))
     x_target = int(s % grid_size)
@@ -106,14 +118,28 @@ def to_coordinate(s, env):
 
 
 def to_state(x, y, env):
-    """Calculate the state index from coordinates. Works for FrozenLake, CliffWalking, and Taxi."""
+    """Calculate the state index from coordinates.
+
+    Work for FrozenLake, CliffWalking, and Taxi.
+
+    :param x: X coordinate.
+    :param y: Y coordinate.
+    :param env: Gymnasium environment.
+    :returns: State index.
+    """
     num_states = env.observation_space.n
     grid_size = int(math.sqrt(num_states))
     return y * grid_size + x
 
 
 def get_target_state(env):
-    """Calculate the target state for an env. Works for FrozenLake and Cliffwalking"""
+    """Calculate the target state for an environment.
+
+    Work for FrozenLake and Cliffwalking.
+
+    :param env: Gymnasium environment.
+    :returns: Target state index.
+    """
     return env.observation_space.n - 1
 
 
@@ -125,12 +151,15 @@ def to_gymnasium_scheduler(
     ),
     action_label_map: dict[int, str] = GRID_ACTION_LABEL_MAP,
 ) -> Callable[[int], int]:
-    """Convert a stormvogel scheduler to a gymnasium scheduler (for a model that was converted using gymnasium_grid_to_stormvogel).
-    Args:
-        model: Stormvogel model.
-        scheduler: Stormvogel scheduler.
-        action_label_map: Map that you also used for the call in gymnasium_grid_to_stormvogel.
-    Returns a gymnasium scheduler."""
+    """Convert a stormvogel scheduler to a gymnasium scheduler.
+
+    Intended for models converted via :func:`gymnasium_grid_to_stormvogel`.
+
+    :param model: Stormvogel model.
+    :param scheduler: Stormvogel scheduler.
+    :param action_label_map: Mapping used in the call to :func:`gymnasium_grid_to_stormvogel`.
+    :returns: A callable mapping environment state ids to action numbers.
+    """
     inv_map = {v: k for k, v in action_label_map.items()}
 
     def gymnasium_scheduler(env_sid: int):
@@ -159,16 +188,17 @@ def gymnasium_render_model_gif(
     fps: int = 2,
     loop: int = 0,
 ) -> str:
-    """Render a gymnasium model to a gif, using the gymnasium_scheduler (A map from state numbers to action numbers) to pick an action.
-    Leave as None for a random action.
+    """Render a gymnasium model to a gif.
 
-    Args:
-        env: The gymnasium environment.
-        gymnasium_scheduler: A function that takes a state number and returns an action number.
-        filename: The name of the gif file to save.
-        max_length: The maximum number of frames to render.
-        fps: Frames per second for the gif.
-        loop: Number of times to loop the gif (0 means loop forever).
+    Use *gymnasium_scheduler* to pick actions; leave as ``None`` for random actions.
+
+    :param env: Gymnasium environment.
+    :param gymnasium_scheduler: Function mapping a state number to an action number.
+    :param filename: Name of the gif file to save.
+    :param max_length: Maximum number of frames to render.
+    :param fps: Frames per second for the gif.
+    :param loop: Number of times to loop the gif. ``0`` means loop forever.
+    :returns: Filesystem path of the saved gif.
     """
     frames = []  # List to store frames
 

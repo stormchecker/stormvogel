@@ -9,15 +9,16 @@ from time import sleep
 def naive_value_iteration(
     model: stormvogel.model.Model, epsilon: float, target_state: stormvogel.model.State
 ) -> list[list[stormvogel.model.Value]]:
-    """Run naive value iteration. The result is a 2D list where result[n][m] is the probability to be in state m at step n.
+    """Run naive value iteration.
 
-    Args:
-        model (stormvogel.model.Model): Target model.
-        steps (int): Amount of steps.
-        target_state (stormvogel.model.State): Target state of the model.
+    Return a 2D list where ``result[n][m]`` is the value of state *m* at
+    iteration *n*.
 
-    Returns:
-        list[list[float]]: The result is a 2D list where result[n][m] is the value of state m at iteration n.
+    :param model: Target model.
+    :param epsilon: Convergence threshold.
+    :param target_state: Target state of the model.
+    :returns: 2D list of values per iteration per state.
+    :raises RuntimeError: If *epsilon* is zero or negative.
     """
     if epsilon <= 0:
         raise RuntimeError("The algorithm will not terminate if epsilon is zero.")
@@ -64,14 +65,15 @@ def naive_value_iteration(
 
 
 def dtmc_evolution(model: stormvogel.model.Model, steps: int) -> list[list[float]]:
-    """Run DTMC evolution. The result is a 2D list where result[n][m] is the probability to be in state m at step n.
+    """Run DTMC evolution.
 
-    Args:
-        model (stormvogel.model.Model): Target model.
-        steps (int): Amount of steps.
+    Return a 2D list where ``result[n][m]`` is the probability to be in
+    state *m* at step *n*.
 
-    Returns:
-        list[list[float]]: The result is a 2D list where result[n][m] is the probability to be in state m at step n.
+    :param model: Target model.
+    :param steps: Number of steps.
+    :returns: 2D list of probabilities per step per state.
+    :raises RuntimeError: If *steps* < 2 or the model is not a DTMC.
     """
     if steps < 2:
         raise RuntimeError("Need at least two steps")
@@ -114,12 +116,12 @@ def invert_2d_list(li: list[list[Any]]) -> list[list[Any]]:
 def display_value_iteration_result(
     res: list[list[float]], hor_size: int, labels: list[str]
 ):
-    """Display a value iteration results using matplotlib.
+    """Display a value iteration result using matplotlib.
 
-    Args:
-        res (list[list[float]]): 2D list where result[n][m] is the probability to be in state m at step n.
-        hor_size (int): the horizontal size of the plot, in inches.
-        labels (list[str]): the names of all the states.
+    :param res: 2D list where ``result[n][m]`` is the probability to be in
+        state *m* at step *n*.
+    :param hor_size: Horizontal size of the plot in inches.
+    :param labels: Names of all the states.
     """
     import matplotlib.pyplot as plt
 
@@ -137,7 +139,12 @@ def display_value_iteration_result(
 
 
 def arg_max(funcs, args):
-    """Takes a list of callables and arguments and return the argument that yields the highest value."""
+    """Return the argument that yields the highest value across callables.
+
+    :param funcs: List of callables.
+    :param args: List of arguments, one per callable.
+    :returns: The argument whose callable returned the highest value.
+    """
     executed = [f(x) for f, x in zip(funcs, args)]
     index = executed.index(max(executed))
     return args[index]
@@ -151,14 +158,16 @@ def policy_iteration(
     delay: int = 2,
     clear: bool = True,
 ) -> stormvogel.Result:
-    """Performs policy iteration on the given mdp.
-    Args:
-        model (Model): MDP.
-        prop (str): PRISM property string to maximize. Rembember that this is a property on the induced DTMC, not the MDP.
-        visualize (bool): Whether the intermediate and final results should be visualized. Defaults to True.
-        layout (Layout): Layout to use to show the intermediate results.
-        delay (int): Seconds to wait between each iteration.
-        clear (bool): Whether to clear the visualization of each previous iteration.
+    """Perform policy iteration on the given MDP.
+
+    :param model: MDP model.
+    :param prop: PRISM property string to maximize. Note that this is a
+        property on the induced DTMC, not the MDP.
+    :param visualize: Whether to visualize intermediate and final results.
+    :param layout: Layout used to show intermediate results.
+    :param delay: Seconds to wait between each iteration.
+    :param clear: Whether to clear the visualization of each previous iteration.
+    :returns: Result of model checking on the final induced DTMC.
     """
     old = None
     new = stormvogel.random_scheduler(model)

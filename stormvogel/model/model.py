@@ -30,15 +30,14 @@ class ModelType(Enum):
 
 
 class Model[ValueType: Value]:
-    """Represents a model.
+    """Represent a model.
 
-    Args:
-        type: The model type.
-        states: The states of the model. The keys are the state's ids.
-        choices: The choices of this model. The keys are the state ids.
-        actions: The actions of the model, if this is a model that supports actions.
-        rewards: The reward models of this model.
-        markovian_states: list of markovian states in the case of a ma.
+    :param model_type: The model type.
+    :param states: The states of the model. The keys are the state's ids.
+    :param choices: The choices of this model. The keys are State objects.
+    :param actions: The actions of the model, if this is a model that supports actions.
+    :param rewards: The reward models of this model.
+    :param markovian_states: List of markovian states in the case of a MA.
     """
 
     model_type: ModelType
@@ -93,12 +92,15 @@ class Model[ValueType: Value]:
                 self.new_state(["init"])
 
     def _get_value_type(self) -> type:
-        """Returns the ValueType of this model."""
+        """Return the ValueType of this model."""
         return self.__orig_class__.__args__[0]
 
     @property
     def actions(self) -> Iterable[Action]:
-        """Extracts the actions from a model that supports actions."""
+        """Extract the actions from a model that supports actions.
+
+        :raises RuntimeError: If the model does not support actions.
+        """
         if not self.supports_actions():
             raise RuntimeError("This model does not support actions.")
 
@@ -123,19 +125,19 @@ class Model[ValueType: Value]:
         )
 
     def supports_actions(self) -> bool:
-        """Returns whether this model supports actions."""
+        """Return whether this model supports actions."""
         return self.model_type in (ModelType.MDP, ModelType.POMDP, ModelType.MA)
 
     def supports_rates(self) -> bool:
-        """Returns whether this model supports rates."""
+        """Return whether this model supports rates."""
         return self.model_type in (ModelType.CTMC, ModelType.MA)
 
     def supports_observations(self) -> bool:
-        """Returns whether this model supports observations."""
+        """Return whether this model supports observations."""
         return self.model_type == ModelType.POMDP
 
     def is_interval_model(self) -> bool:
-        """Returns whether this model is an interval model, i.e., containts interval values)"""
+        """Return whether this model is an interval model, i.e., contains interval values."""
         if self._is_interval is None:
             for _, choice in self.choices.items():
                 for _, branch in choice:
@@ -148,7 +150,7 @@ class Model[ValueType: Value]:
 
     @property
     def parameters(self) -> set[str]:
-        """Returns the set of parameters of this model"""
+        """Return the set of parameters of this model."""
         parameters = set()
         for _, choice in self.choices.items():
             for _, branch in choice:
@@ -158,7 +160,7 @@ class Model[ValueType: Value]:
         return parameters
 
     def is_parametric(self) -> bool:
-        """Returns whether this model contains parametric transition values"""
+        """Return whether this model contains parametric transition values."""
         if self._is_parametric is None:
             for _, choice in self.choices.items():
                 for _, branch in choice:
@@ -170,8 +172,16 @@ class Model[ValueType: Value]:
         return self._is_parametric
 
     def is_stochastic(self, epsilon=1e-6) -> bool | None:
-        """For discrete models: Checks if all sums of outgoing transition probabilities for all states equal 1, with at most epsilon rounding error.
-        For continuous models: Checks if all sums of outgoing rates sum to 0
+        """Check whether the model is stochastic.
+
+        For discrete models, check that all sums of outgoing transition
+        probabilities for all states equal 1, with at most *epsilon* rounding
+        error. For continuous models, check that all outgoing rates are
+        positive.
+
+        :param epsilon: Maximum allowed rounding error for probability sums.
+        :returns: ``True`` if the model is stochastic, ``False`` otherwise, or
+            ``True`` trivially for parametric / interval models.
         """
 
         # if the model is parametric or an interval model, it should be trivially true, as the probabilities do
@@ -191,7 +201,14 @@ class Model[ValueType: Value]:
         return True
 
     def normalize(self):
-        """Normalizes a model (for states where outgoing transition probabilities don't sum to 1, we divide each probability by the sum)"""
+        """Normalize the model.
+
+        For states where outgoing transition probabilities do not sum to 1,
+        divide each probability by the sum. For rate-based models, only add
+        self-loops.
+
+        :raises RuntimeError: If the model is parametric or an interval model.
+        """
         if self.is_parametric() or self.is_interval_model():
             raise RuntimeError(
                 "normalize method undefined for parametric or interval models"
@@ -224,8 +241,12 @@ class Model[ValueType: Value]:
             self.add_self_loops()
 
     def get_sub_model(self, states: Iterable[State], normalize: bool = True) -> "Model":
-        """Returns a submodel of the model based on a collection of states.
-        The states in the collection are the states that stay in the model."""
+        """Return a submodel containing only the given states.
+
+        :param states: The states to keep in the submodel.
+        :param normalize: Whether to normalize the submodel after construction.
+        :returns: A new model containing only the specified states.
+        """
         keep_ids = {s.state_id for s in states}
         sub_model = deepcopy(self)
         remove = [state for state in sub_model if state.state_id not in keep_ids]
@@ -237,7 +258,11 @@ class Model[ValueType: Value]:
         return sub_model
 
     def get_instantiated_model(self, values: dict[str, Number]) -> "Model":
-        """evaluates all parametric transitions with the given values and returns the instantiated model"""
+        """Evaluate all parametric transitions with the given values and return the instantiated model.
+
+        :param values: Mapping from parameter names to their numeric values.
+        :returns: A new model with all parametric transitions evaluated.
+        """
         evaluated_model = deepcopy(self)
         for state, transition in evaluated_model.choices.items():
             for action, branch in transition:
@@ -250,7 +275,7 @@ class Model[ValueType: Value]:
         return evaluated_model
 
     def add_self_loops(self):
-        """adds self loops to all states that do not have an outgoing transition"""
+        """Add self-loops to all states that do not have an outgoing transition."""
         for state in self:
             if not state.has_choices():  # state has no outgoing transitions
                 self.set_choices(
@@ -260,7 +285,12 @@ class Model[ValueType: Value]:
     def add_valuation_at_remaining_states(
         self, variables: list[str] | None = None, value: Any = 0
     ):
-        """Sets (dummy) value to variables in all states where they don't have a value yet."""
+        """Set a dummy value for variables in all states where they are unassigned.
+
+        :param variables: List of variable names to set. If ``None``, all
+            variables in the model are used.
+        :param value: The value to assign to unassigned variables.
+        """
 
         # we either set it at all variables or just at a given subset of variables
         if variables is not None:
@@ -275,7 +305,7 @@ class Model[ValueType: Value]:
                     state.valuations[var] = value
 
     def unassigned_variables(self) -> Iterator[tuple[State, str]]:
-        """Yield tuples of state variable pairs that are unassigned."""
+        """Yield tuples of state-variable pairs that are unassigned."""
         variables = self.variables
         for state in self:
             for variable in variables:
@@ -283,35 +313,45 @@ class Model[ValueType: Value]:
                     yield (state, variable)
 
     def all_states_outgoing_transition(self) -> bool:
-        """Checks if all states have a choice."""
+        """Check whether all states have at least one choice."""
         for state in self.states:
             if not state.has_choices():
                 return False
         return True
 
     def iterate_transitions(self) -> Iterator[tuple[ValueType, State]]:
-        """Iterates through all transitions in all choices of the model."""
+        """Iterate through all transitions in all choices of the model."""
         for choice in self.choices.values():
             for _action, branch in choice:
                 for transition in branch:
                     yield transition
 
     def has_zero_transition(self) -> bool:
-        """checks if the model has transitions with probability zero"""
+        """Check whether the model has transitions with probability zero."""
         for _, choice in self.choices.items():
             if choice.has_zero_transition():
                 return True
         return False
 
     def add_markovian_state(self, markovian_state: State):
-        """Adds a state to the markovian states (in case of markov automata)."""
+        """Add a state to the markovian states.
+
+        :param markovian_state: The state to mark as markovian.
+        :raises RuntimeError: If the model is not a Markov automaton.
+        """
         if self.model_type == ModelType.MA and self.markovian_states is not None:
             self.markovian_states.add(markovian_state)
         else:
             raise RuntimeError("This model is not a MA")
 
     def set_choices(self, s: State, choices: Choices | ChoicesShorthand) -> None:
-        """Set the choice for a state."""
+        """Set the choices for a state.
+
+        :param s: The state to set choices for.
+        :param choices: The choices to assign.
+        :raises RuntimeError: If any transition probability is zero in a
+            non-rate-based model.
+        """
         if not isinstance(choices, Choices):
             choices = choices_from_shorthand(choices)
 
@@ -321,7 +361,16 @@ class Model[ValueType: Value]:
         self.choices[s] = choices
 
     def add_choices(self, s: State, choices: Choices | ChoicesShorthand) -> None:
-        """Add new choices from a state to the model. If no choice currently exists, the result will be the same as set_choice."""
+        """Add new choices from a state to the model.
+
+        If no choice currently exists, the result is the same as
+        :meth:`set_choices`.
+
+        :param s: The state to add choices to.
+        :param choices: The choices to add.
+        :raises RuntimeError: If any transition probability is zero in a
+            non-rate-based model.
+        """
         if s not in self.choices:
             self.choices[s] = Choices(dict())
 
@@ -334,21 +383,37 @@ class Model[ValueType: Value]:
         self.choices[s].add(choices)
 
     def get_successor_states(self, state: State) -> set[State]:
-        """Returns the set of successors of state_or_id."""
+        """Return the set of successor states of the given state.
+
+        :param state: The state whose successors to retrieve.
+        :returns: The set of successor states.
+        """
         result = set()
         for _, branches in self.choices[state]:
             result |= branches.successors
         return result
 
     def get_branches(self, state: State) -> Branches:
-        """Get the branch at state s. Only intended for emtpy choices, otherwise a RuntimeError is thrown."""
+        """Get the branches at the given state.
+
+        Only intended for empty choices; raises an error otherwise.
+
+        :param state: The state to retrieve branches for.
+        :returns: The branches for the empty action at this state.
+        :raises RuntimeError: If the state has non-empty choices.
+        """
         choice = self.choices[state].choices
         if EmptyAction not in choice:
             raise RuntimeError("Called get_branch on a non-empty choice.")
         return choice[EmptyAction]
 
     def action(self, label: str | None = None) -> Action:
-        """Creates a new action and returns it."""
+        """Create a new action and return it.
+
+        :param label: Optional label for the action.
+        :returns: The newly created action.
+        :raises RuntimeError: If the model does not support actions.
+        """
         if not self.supports_actions():
             raise RuntimeError(
                 "Called new_action on a model that does not support actions"
@@ -358,7 +423,13 @@ class Model[ValueType: Value]:
         return action
 
     def new_action(self, label: str | None = None) -> Action:
-        """Creates a new action and returns it."""
+        """Create a new action and return it.
+
+        Alias for :meth:`action`.
+
+        :param label: Optional label for the action.
+        :returns: The newly created action.
+        """
         return self.action(label)
 
     def remove_state(
@@ -367,7 +438,17 @@ class Model[ValueType: Value]:
         normalize: bool = True,
         suppress_warning: bool = False,
     ):
-        """Properly removes a state, it can optionally normalize the model and reassign ids automatically."""
+        """Remove a state from the model.
+
+        Removes all incoming and outgoing transitions, labels, reward entries,
+        and markovian-state membership for the given state.
+
+        :param state: The state to remove.
+        :param normalize: Whether to normalize the model after removal.
+        :param suppress_warning: If ``True``, suppress the warning about
+            existing references to states by id.
+        :raises RuntimeError: If the state is not part of this model.
+        """
         if not suppress_warning:
             import warnings
 
@@ -428,7 +509,11 @@ class Model[ValueType: Value]:
             self.normalize()
 
     def get_state_index(self, state: State) -> int:
-        """Returns the index of the given state in the model, with O(1) amortized lookup."""
+        """Return the index of the given state in the model, with O(1) amortized lookup.
+
+        :param state: The state to look up.
+        :returns: The index of the state, or -1 if not found.
+        """
         # Check if the cache is valid for this state
         if self._state_index_cache is not None:
             idx = self._state_index_cache.get(state)
@@ -446,7 +531,16 @@ class Model[ValueType: Value]:
         valuations: dict[str, Any] | None = None,
         observation: Observation | Distribution[ValueType, Observation] | None = None,
     ) -> State:
-        """Creates a new state and returns it."""
+        """Create a new state and return it.
+
+        :param labels: Labels to assign to the new state.
+        :param valuations: Variable-value pairs to assign as valuations.
+        :param observation: Observation to assign (required for models that
+            support observations).
+        :returns: The newly created state.
+        :raises RuntimeError: If the model supports observations but none is
+            provided, or if an observation is provided but not supported.
+        """
         state = State(self)
 
         self.states.append(state)
@@ -480,25 +574,42 @@ class Model[ValueType: Value]:
         return state
 
     def get_states_with_label(self, label: str) -> set[State]:
-        """Get all states with a given label."""
+        """Get all states with a given label.
+
+        :param label: The label to search for.
+        :returns: The set of states that carry the label.
+        """
         return self.state_labels[label]
 
     def get_state_by_id(self, state_id: UUID) -> State:
-        """Get a state by its UUID id."""
+        """Get a state by its UUID.
+
+        :param state_id: The UUID of the state.
+        :returns: The matching state.
+        :raises RuntimeError: If no state with the given id is found.
+        """
         for state in self.states:
             if state.state_id == state_id:
                 return state
         raise RuntimeError(f"State with id {state_id} not found.")
 
     def get_state_by_stormpy_id(self, stormpy_id: int) -> State:
-        """Get a state by its stormpy id (index in the states list)."""
+        """Get a state by its stormpy id (index in the states list).
+
+        :param stormpy_id: The index of the state.
+        :returns: The matching state.
+        :raises RuntimeError: If the index is out of range.
+        """
         if stormpy_id < 0 or stormpy_id >= len(self.states):
             raise RuntimeError(f"State with stormpy id {stormpy_id} not found.")
         return self.states[stormpy_id]
 
     @property
     def initial_state(self) -> State:
-        """Gets the initial state (contains label "init", or has id 0)."""
+        """Get the initial state (the state with label ``"init"``).
+
+        :raises RuntimeError: If the model does not have exactly one initial state.
+        """
 
         if "init" not in self.state_labels or len(self.state_labels["init"]) != 1:
             raise RuntimeError(
@@ -507,32 +618,49 @@ class Model[ValueType: Value]:
         return next(iter(self.state_labels["init"]))
 
     def add_label(self, label: str):
-        """Adds a label to the model."""
+        """Add a label to the model.
+
+        :param label: The label to add.
+        """
         self.state_labels[label] = set()
 
     @property
     def variables(self) -> set[str]:
-        """Gets the set of all variables present in this model (corresponding to valuations)."""
+        """Get the set of all variables present in this model (corresponding to valuations)."""
         variables: set[str] = set()
         for state in self.states:
             variables = variables | set(state.valuations.keys())
         return variables
 
     def get_default_rewards(self) -> RewardModel:
-        """Gets the default reward model, throws a RuntimeError if there is none."""
+        """Get the default reward model.
+
+        :returns: The first reward model.
+        :raises RuntimeError: If there are no reward models.
+        """
         if len(self.rewards) == 0:
             raise RuntimeError("This model has no reward models.")
         return self.rewards[0]
 
     def get_rewards(self, name: str) -> RewardModel:
-        """Gets the reward model with the specified name. Throws a RuntimeError if said model does not exist."""
+        """Get the reward model with the specified name.
+
+        :param name: The name of the reward model.
+        :returns: The matching reward model.
+        :raises RuntimeError: If no reward model with the given name exists.
+        """
         for model in self.rewards:
             if model.name == name:
                 return model
         raise RuntimeError(f"Reward model {name} not present in model.")
 
     def new_reward_model(self, name: str) -> RewardModel:
-        """Creates a reward model with the specified name, adds it and returns it."""
+        """Create a reward model with the specified name, add it, and return it.
+
+        :param name: The name for the new reward model.
+        :returns: The newly created reward model.
+        :raises RuntimeError: If a reward model with the given name already exists.
+        """
         for model in self.rewards:
             if model.name == name:
                 raise RuntimeError(f"Reward model {name} already present in model.")
@@ -542,29 +670,33 @@ class Model[ValueType: Value]:
 
     @deprecated(version="0.10.0", reason="use model_type instead.")
     def get_type(self) -> ModelType:
-        """Gets the type of this model"""
+        """Get the type of this model."""
         return self.model_type
 
     @property
     def nr_states(self) -> int:
-        """
-        Returns the number of states in this model.
+        """Return the number of states in this model.
+
         Note that not all states need to be reachable.
         """
         return len(self.states)
 
     @property
     def nr_choices(self) -> int:
-        """
-        Returns the number of choices in the model (summed over all states).
-        """
+        """Return the number of choices in the model (summed over all states)."""
         return sum(state.nr_choices for state in self.states)
 
     def new_observation(
         self,
         alias: str,
     ) -> Observation:
-        """Creates a new observation with the given alias and returns it."""
+        """Create a new observation with the given alias and return it.
+
+        :param alias: The alias for the new observation.
+        :returns: The newly created observation.
+        :raises RuntimeError: If the model does not support observations, or if
+            an observation with the given alias already exists.
+        """
         if not self.supports_observations():
             raise RuntimeError(
                 "Called new_observation on a model that does not support observations"
@@ -582,7 +714,13 @@ class Model[ValueType: Value]:
         return observation
 
     def get_observation(self, alias: str) -> Observation:
-        """Gets an existing observation with the given alias."""
+        """Get an existing observation with the given alias.
+
+        :param alias: The alias of the observation.
+        :returns: The matching observation.
+        :raises RuntimeError: If the model does not support observations, or if
+            no observation with the given alias is found.
+        """
         if not self.supports_observations():
             raise RuntimeError(
                 "Called get_observation on a model that does not support observations"
@@ -598,7 +736,12 @@ class Model[ValueType: Value]:
         self,
         alias: str,
     ) -> Observation:
-        """New observation or get observation if it exists."""
+        """Get an existing observation or create a new one if it does not exist.
+
+        :param alias: The alias of the observation.
+        :returns: The existing or newly created observation.
+        :raises RuntimeError: If the model does not support observations.
+        """
         if not self.supports_observations():
             raise RuntimeError(
                 "Called method observation on a model that does not support observations"
@@ -611,7 +754,7 @@ class Model[ValueType: Value]:
             return self.new_observation(alias)
 
     def to_dot(self) -> str:
-        """Generates a dot representation of this model."""
+        """Generate a dot representation of this model."""
         dot = "digraph model {\n"
         for state in self:
             dot += f'{state.state_id} [ label = "{state.state_id}: {", ".join(state.labels)}" ];\n'
@@ -657,9 +800,12 @@ class Model[ValueType: Value]:
         return iter(self.states)
 
     def make_observations_deterministic(self):
-        """
-        In case of POMDPs or HMMs, makes the observations deterministic by splitting states with
-        multiple observations into multiple states with single observations.
+        """Make observations deterministic by splitting states with multiple observations.
+
+        In case of POMDPs or HMMs, split each state that has a distribution
+        over observations into multiple states with single observations.
+
+        :raises RuntimeError: If the model does not support observations.
         """
         if not self.supports_observations():
             raise RuntimeError(
@@ -709,35 +855,64 @@ class Model[ValueType: Value]:
 
 
 def new_dtmc(create_initial_state: bool = True) -> Model:
-    """Creates a DTMC."""
+    """Create a DTMC.
+
+    :param create_initial_state: Whether to create an initial state.
+    :returns: A new DTMC model.
+    """
     return Model(ModelType.DTMC, create_initial_state)
 
 
 def new_mdp(create_initial_state: bool = True) -> Model:
-    """Creates an MDP."""
+    """Create an MDP.
+
+    :param create_initial_state: Whether to create an initial state.
+    :returns: A new MDP model.
+    """
     return Model(ModelType.MDP, create_initial_state)
 
 
 def new_ctmc(create_initial_state: bool = True) -> Model:
-    """Creates a CTMC."""
+    """Create a CTMC.
+
+    :param create_initial_state: Whether to create an initial state.
+    :returns: A new CTMC model.
+    """
     return Model(ModelType.CTMC, create_initial_state)
 
 
 def new_pomdp(create_initial_state: bool = True) -> Model:
-    """Creates a POMDP."""
+    """Create a POMDP.
+
+    :param create_initial_state: Whether to create an initial state.
+    :returns: A new POMDP model.
+    """
     return Model(ModelType.POMDP, create_initial_state)
 
 
 def new_hmm(create_initial_state: bool = True) -> Model:
-    """Creates a HMM."""
+    """Create an HMM.
+
+    :param create_initial_state: Whether to create an initial state.
+    :returns: A new HMM model.
+    """
     return Model(ModelType.HMM, create_initial_state)
 
 
 def new_ma(create_initial_state: bool = True) -> Model:
-    """Creates a MA."""
+    """Create a MA.
+
+    :param create_initial_state: Whether to create an initial state.
+    :returns: A new Markov automaton model.
+    """
     return Model(ModelType.MA, create_initial_state)
 
 
 def new_model(modeltype: ModelType, create_initial_state: bool = True) -> Model:
-    """More general model creation function"""
+    """Create a model of the given type.
+
+    :param modeltype: The type of model to create.
+    :param create_initial_state: Whether to create an initial state.
+    :returns: A new model of the specified type.
+    """
     return Model(modeltype, create_initial_state)

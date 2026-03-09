@@ -6,22 +6,25 @@ from dataclasses import dataclass
 
 @dataclass(eq=False)
 class Distribution[ValueType: Value, SupportType]:
-    """A sparse distribution."""
+    """Represent a sparse distribution mapping values to support elements."""
 
     distribution: list[tuple[ValueType, SupportType]]
 
     @property
     def support(self) -> set[SupportType]:
-        """Returns the support of this distribution."""
+        """Return the support of this distribution."""
         return set(s for _, s in self.distribution)
 
     @property
     def values(self) -> list[ValueType]:
-        """Returns the values of this distribution."""
+        """Return the values of this distribution."""
         return [v for v, _ in self.distribution]
 
     def is_stochastic(self, precision=1e-6) -> bool:
-        """Returns whether this distribution is probabilistic (i.e., sums to 1)."""
+        """Check whether this distribution is probabilistic (i.e., sums to 1).
+
+        :param precision: Tolerance for floating-point comparison.
+        """
         from stormvogel.model.value import Interval
         from stormvogel.parametric import Parametric
 

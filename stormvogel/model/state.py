@@ -17,11 +17,10 @@ from stormvogel.model.action import Action, EmptyAction
 
 @dataclass(order=False, eq=False)
 class State[ValueType: Value]:
-    """Represents a state in a Model.
+    """Represent a state in a Model.
 
-    Args:
-        id: The id of this state.
-        model: The model this state belongs to.
+    :param model: The model this state belongs to.
+    :param state_id: The unique identifier of this state.
     """
 
     model: "Model[ValueType]"
@@ -48,7 +47,7 @@ class State[ValueType: Value]:
 
     @property
     def labels(self) -> Iterable[str]:
-        """Returns an iterator over the state's labels."""
+        """Return an iterator over the state's labels."""
         return (
             label
             for (label, states) in self.model.state_labels.items()
@@ -56,6 +55,10 @@ class State[ValueType: Value]:
         )
 
     def set_labels(self, labels: set[str]):
+        """Set the labels of this state, adding and removing as needed.
+
+        :param labels: The complete set of labels this state should have.
+        """
         for label in self.model.state_labels:
             if label in labels and self not in self.model.state_labels[label]:
                 self.model.state_labels[label].add(self)
@@ -63,20 +66,30 @@ class State[ValueType: Value]:
                 self.model.state_labels[label].remove(self)
 
     def has_label(self, label: str):
-        """Returns whether this state has this label."""
+        """Check whether this state has the given label.
+
+        :param label: The label to check for.
+        :returns: ``True`` if the label is present.
+        """
         if label not in self.model.state_labels:
             return False
         return self in self.model.state_labels[label]
 
     def add_label(self, label: str):
-        """Adds a new label to the state."""
+        """Add a new label to this state.
+
+        :param label: The label to add.
+        """
         if label not in self.model.state_labels:
             self.model.add_label(label)
         self.model.state_labels[label].add(self)
 
     @property
     def observation(self) -> Observation | Distribution[ValueType, Observation] | None:
-        """The observation associated with this state."""
+        """Return the observation associated with this state.
+
+        :raises RuntimeError: If the model does not support observations.
+        """
         if (
             self.model.supports_observations()
             and self.model.state_observations is not None
@@ -103,20 +116,31 @@ class State[ValueType: Value]:
 
     @property
     def choices(self) -> "Choices[ValueType]":
+        """Return the choices for this state.
+
+        :raises RuntimeError: If no choices exist for this state.
+        """
         if self in self.model.choices:
             return self.model.choices[self]
         else:
             raise RuntimeError("The model this state belongs to does not have choices")
 
     def set_choices(self, choices: Choices | ChoicesShorthand):
+        """Set the choices for this state.
+
+        :param choices: The choices to set.
+        """
         self.model.set_choices(self, choices)
 
     def add_choices(self, choices: Choices | ChoicesShorthand):
-        """Add choices to this state."""
+        """Add choices to this state.
+
+        :param choices: The choices to add.
+        """
         self.model.add_choices(self, choices)
 
     def has_choices(self) -> bool:
-        """Returns whether this state has choices."""
+        """Check whether this state has choices."""
         if self not in self.model.choices:
             return False
         return len(self.choices.choices) != 0
@@ -141,20 +165,36 @@ class State[ValueType: Value]:
         self.model.state_valuations[self] = value
 
     def add_valuation(self, variable: str, value: Any):
-        """Adds a valuation to the state."""
+        """Add a valuation to this state.
+
+        :param variable: The variable name.
+        :param value: The value for the variable.
+        """
         self.valuations[variable] = value
 
     def get_valuation(self, variable: str) -> Any:
+        """Return the valuation for the given variable.
+
+        :param variable: The variable name.
+        :returns: The value associated with the variable.
+        """
         return self.valuations[variable]
 
     def available_actions(self) -> list["Action"]:
-        """returns the list of all available actions in this state"""
+        """Return the list of available actions in this state."""
         if self.model.supports_actions():
             return self.choices.actions
         return [EmptyAction]
 
     def get_branches(self, action: Action | None = None) -> Branches[ValueType] | None:
-        """Gets the branches of this state (after a specific action). For a model without actions, action should be None."""
+        """Get the branches of this state for a specific action.
+
+        For a model without actions, ``action`` should be ``None``.
+
+        :param action: The action to get branches for.
+        :returns: The branches, or ``None`` if not found.
+        :raises RuntimeError: If the model supports actions but none is provided.
+        """
         choices = self.choices
         assert choices is not None
 
@@ -172,7 +212,12 @@ class State[ValueType: Value]:
     def get_outgoing_transitions(
         self, action: Action | None = None
     ) -> Distribution[ValueType, "State[ValueType]"] | None:
-        """gets the outgoing transitions of this state (after a specific action)"""
+        """Get the outgoing transitions of this state for a specific action.
+
+        :param action: The action to get transitions for.
+        :returns: The distribution over successor states, or ``None`` if not found.
+        :raises RuntimeError: If the model supports actions but none is provided.
+        """
 
         choice = self.choices
         assert choice is not None
@@ -189,7 +234,7 @@ class State[ValueType: Value]:
         return None
 
     def is_absorbing(self) -> bool:
-        """returns whether the state has a nonzero transition going to another state or not"""
+        """Check whether this state is absorbing (no nonzero transitions to other states)."""
 
         # if the state has no choice it is trivially true
         if self not in self.model.choices:
@@ -203,7 +248,7 @@ class State[ValueType: Value]:
         return True
 
     def is_initial(self):
-        """Returns whether this state is initial."""
+        """Check whether this state is the initial state."""
         return self.has_label("init")
 
     def __str__(self):
