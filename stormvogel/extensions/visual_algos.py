@@ -91,7 +91,6 @@ def invert_2d_list(li: list[list[Any]]) -> list[list[Any]]:
         res.append(sublist)
     return res
 
-
 def display_value_iteration_result(
     res: list[list[float]], hor_size: int, labels: list[str]
 ):
@@ -109,13 +108,18 @@ def display_value_iteration_result(
     ax.set_yticks(range(len(res[0]) + 1))
     ax.set_yticklabels(labels + [""])
 
-    ax.imshow(invert_2d_list(res), cmap="hot", interpolation="nearest", aspect="equal")
+    # --- Add text annotations ---
+    data = invert_2d_list(res)
+    for i in range(len(data)):
+      for j in range(len(data[0])):
+        text_colour = 'white' if data[i][j] < 0.5 else 'black'
+        ax.text(j, i, f"{data[i][j]:.2f}", ha='center', va='center', color=text_colour)
+    ax.imshow(data, cmap="hot", interpolation="nearest", aspect="equal")
     plt.xlabel("steps")
     plt.ylabel("states")
     fig.set_size_inches(hor_size, hor_size)
 
     plt.show()
-
 
 def arg_max(funcs, args):
     """Takes a list of callables and arguments and return the argument that yields the highest value."""

@@ -4,7 +4,6 @@ import stormvogel.model
 def create_monty_hall_pomdp():
     # Create a new model
     pomdp = stormvogel.model.new_pomdp()
-
     init = pomdp.get_initial_state()
 
     # first choose car position

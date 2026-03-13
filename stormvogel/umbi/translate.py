@@ -2,10 +2,11 @@ import logging
 import umbi
 import umbi.ats
 import stormvogel
+from umbi.ats.annotations import AnnotationAppliesTo
 
-# TODO support reward models
-# TODO support observations
+# TODO support reward models (Requires refactoring of reward models on stormvogel side)
 # TODO support Markov automata.
+# TODO support state valuations (Requires refactoring of state valuations on stormvogel side)
 
 logger = logging.getLogger("stormvogel.translate")
 
@@ -50,7 +51,7 @@ def translate_to_umbi(model: stormvogel.Model) -> umbi.ats.ExplicitAts:
     ats.num_states = model.nr_states
     ats.state_is_initial = [s.is_initial() for s in model.states.values()]
     # TODO do we already enforce that state ids are consecutive.
-    if model.type == stormvogel.ModelType.MDP:
+    if model.type in [stormvogel.ModelType.MDP, stormvogel.ModelType.POMDP]:
         assert model.actions is not None, "MDPs must have actions."
         actions_to_ids = {a: state_id for state_id, a in enumerate(model.actions)}
         ats.num_actions = len(model.actions)  # TODO change once stormvogel is updated
@@ -71,6 +72,7 @@ def translate_to_umbi(model: stormvogel.Model) -> umbi.ats.ExplicitAts:
     if model.supports_rates():
         ats.state_is_markovian: [True] * model.nr_states
         ats.state_exit_rate = []
+
     for state in model.states.values():
         if ats.num_players > 0:
             assert ats.state_to_choice is not None, "If players exist, states must have choices."
@@ -108,6 +110,14 @@ def translate_to_umbi(model: stormvogel.Model) -> umbi.ats.ExplicitAts:
             description=label,
             state_to_value=[True if s_id in labeled_states else False for s_id in range(ats.num_states)]
         ))
+    if model.observations is not None:
+        # TODO we do not enforce consecutive numbers right now. Should we?
+        ats.observation_annotation = umbi.ats.ObservationAnnotation(
+            num_observations=max([obs.observation for obs in model.observations])+1, state_to_value= [s.get_observation().observation for s in model.states.values()]
+        )
+
+        print(ats.num_states)
+        print(len(ats.observation_annotation.state_to_value))
 
     # Now create reward structures:
     # for reward_model in model.rewards:
@@ -149,7 +159,7 @@ def get_model_type(
     )
 
 def translate_to_stormvogel(ats: umbi.ats.ExplicitAts) -> stormvogel.Model:
-    modeltype = get_model_type(ats.time, ats.num_players, False)
+    modeltype = get_model_type(ats.time, ats.num_players, ats.has_observations)
     logger.debug(f"modeltype: {modeltype}")
     model = stormvogel.new_model(
         modeltype=modeltype,
@@ -184,7 +194,7 @@ def translate_to_stormvogel(ats: umbi.ats.ExplicitAts) -> stormvogel.Model:
             raise RuntimeError("Branch labels are not supported by Stormvogel.")
 
         for s_id in range(ats.num_states):
-            if ap_structure.get_state_value(s_id):
+            if ap_structure.get_values_for(AnnotationAppliesTo.STATES)[s_id]:
                 model.get_state_by_id(s_id).add_label(ap_structure.name)
             # We currently ignore the description and the alias.
     if not initial_state_found:
@@ -208,4 +218,18 @@ def translate_to_stormvogel(ats: umbi.ats.ExplicitAts) -> stormvogel.Model:
                 stormvogel_actions.get(ats.get_choice_action(c_id)) if ats.choice_to_action is not None else stormvogel.EmptyAction
             ] = choice_branches
         model.add_choice(state, state_choices)
+    if ats.has_observations:
+        if ats.observation_annotation.has_choice_values:
+            raise RuntimeError("Observation choice labels are not supported by Stormvogel.")
+        if ats.observation_annotation.has_branch_values:
+            raise RuntimeError("Observation branch labels are not supported by Stormvogel.")
+        observation_dict = {}
+        for s_id in range(ats.num_states):
+            obs_id = ats.observation_annotation.state_to_value[s_id]
+            if obs_id not in observation_dict:
+                obs = model.new_observation(None, obs_id)
+                observation_dict[obs_id] = obs
+            else:
+                obs = observation_dict[obs_id]
+            model.get_state_by_id(s_id).set_observation(obs)
     return model
