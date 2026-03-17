@@ -183,7 +183,7 @@ class VisualizationBase:
                     "\n"
                     + self.layout.layout["state_properties"]["observation_symbol"]
                     + " "
-                    + str(obs.format())
+                    + str(obs.display())
                     + ": "
                     + self._format_number(prob)
                 )

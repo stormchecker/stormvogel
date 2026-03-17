@@ -16,9 +16,11 @@ class Observation:
     observation_id: UUID = field(default_factory=uuid4)
     valuations: dict[str, Any] | None = None
 
-    def format(self):
+    def display(self):
         """Format the observation for visualizations."""
-        return f"{self.alias} {self.valuations if self.valuations is not None else ''}"
+        if self.valuations is None:
+            return self.alias
+        return f"{self.alias} {self.valuations}"
 
     def __str__(self):
         return f"Obs: {self.alias} ({self.observation_id})"

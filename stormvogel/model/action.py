@@ -23,6 +23,8 @@ class Action:
     def __lt__(self, other):
         if not isinstance(other, Action):
             return NotImplemented
+        if self.label is None and other.label is not None:
+            return True
         return str(self.label) < str(other.label)
 
     def __str__(self):
