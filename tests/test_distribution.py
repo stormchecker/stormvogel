@@ -73,33 +73,3 @@ def test_distribution_iter():
     d = Distribution([(0.5, "a"), (0.5, "b")])
     items = list(d)
     assert items == [(0.5, "a"), (0.5, "b")]
-
-
-def test_distribution_sort():
-    class MockModel:
-        def __init__(self, states):
-            self.states = states
-
-        def get_state_index(self, state):
-            return self.states.index(state)
-
-    class MockState:
-        def __init__(self, name, model):
-            self.name = name
-            self.model = model
-
-    states = []
-    model = MockModel(states)
-
-    s1 = MockState("s1", model)
-    s2 = MockState("s2", model)
-    s3 = MockState("s3", model)
-
-    # the model.states order is s1, s2, s3
-    states.extend([s1, s2, s3])
-
-    d = Distribution([(0.3, s3), (0.2, s1), (0.5, s2)])
-    d.sort()
-
-    supports = [s for _, s in d.distribution]
-    assert supports == [s1, s2, s3]

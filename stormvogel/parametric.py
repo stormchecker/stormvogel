@@ -22,6 +22,10 @@ class Polynomial:
         self.terms = dict()
         self.variables = variables
 
+    def is_zero(self) -> bool:
+        """Returns whether this polynomial is the zero polynomial."""
+        return all(coefficient == 0 for coefficient in self.terms.values())
+
     # TODO exponents may also be a single integer
     def add_term(self, exponents: tuple[int, ...], coefficient: float):
         """
@@ -144,6 +148,10 @@ class RationalFunction:
             self.denominator = denominator
         else:
             raise RuntimeError("dividision by 0 is not allowed")
+
+    def is_zero(self) -> bool:
+        """Returns whether this rational function is the zero function."""
+        return self.numerator.is_zero()
 
     def get_dimension(self) -> int:
         """returns the number of different variables present"""

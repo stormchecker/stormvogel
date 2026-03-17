@@ -8,42 +8,38 @@ from dataclasses import dataclass
 class Distribution[ValueType: Value, SupportType]:
     """A sparse distribution."""
 
-    distribution: list[tuple[ValueType, SupportType]]
+    _distribution: list[tuple[ValueType, SupportType]]
 
     @property
     def support(self) -> set[SupportType]:
         """Returns the support of this distribution."""
-        return set(s for _, s in self.distribution)
+        return set(s for prob, s in self._distribution if not prob.is_zero())
 
     @property
-    def values(self) -> list[ValueType]:
+    def probabilities(self) -> list[ValueType]:
         """Returns the values of this distribution."""
-        return [v for v, _ in self.distribution]
+        return [v for v, _ in self._distribution]
 
-    def is_stochastic(self, precision=1e-6) -> bool:
+    def is_stochastic(self, epsilon=1e-6) -> bool:
         """Returns whether this distribution is probabilistic (i.e., sums to 1)."""
         from stormvogel.model.value import Interval
         from stormvogel.parametric import Parametric
 
-        if any(isinstance(v, (Interval, Parametric)) for v, _ in self.distribution):
+        if any(isinstance(v, (Interval, Parametric)) for v, _ in self._distribution):
             return True
 
         from fractions import Fraction
 
         total = sum(
             float(v)
-            for v, _ in self.distribution
+            for v, _ in self._distribution
             if isinstance(v, (int, float, Fraction))
         )
-        return abs(total - 1) < precision
-
-    def sort(self):
-        """Sorts the distribution by the support's position in the model's states."""
-        self.distribution.sort(key=lambda t: t[1].model.get_state_index(t[1]))
+        return abs(total - 1) < epsilon
 
     def __str__(self):
         parts = []
-        for value, support in self.distribution:
+        for value, support in self._distribution:
             parts.append(f"{value} -> {support}")
         return ", ".join(parts)
 
@@ -51,7 +47,7 @@ class Distribution[ValueType: Value, SupportType]:
         if not isinstance(other, Distribution):
             raise TypeError("Can only add Distribution to Distribution")
         combined = {}
-        for value, support in self.distribution + other.distribution:
+        for value, support in self._distribution + other._distribution:
             if support in combined:
                 combined[support] += value
             else:
@@ -59,7 +55,7 @@ class Distribution[ValueType: Value, SupportType]:
         return Distribution([(v, k) for k, v in combined.items()])
 
     def __iter__(self):
-        return iter(self.distribution)
+        return iter(self._distribution)
 
     def __len__(self) -> int:
-        return len(self.distribution)
+        return len(self._distribution)

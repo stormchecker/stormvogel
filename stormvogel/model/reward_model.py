@@ -38,6 +38,13 @@ class RewardModel[ValueType: Value]:
             state_action: If True, the vector has one entry per (state, action)
                 pair; only the first entry for each state is used.
         """
+        if state_action:
+            # Give a warning if this flag is true
+            import warnings
+
+            warnings.warn(
+                "Warning: Only using first entry of state-action reward vector."
+            )
         combined_id = 0
         self.rewards = dict()
         for s in self.model:
@@ -46,7 +53,7 @@ class RewardModel[ValueType: Value]:
             if (
                 state_action
                 and self.model.supports_actions()
-                and s in self.model.choices
+                and s in self.model.transitions
             ):
                 combined_id += len(list(s.available_actions()))
             else:
@@ -76,10 +83,14 @@ class RewardModel[ValueType: Value]:
         vector = []
         for state in self.model:
             val = self.get_state_reward(state)
+            if any(not isinstance(val, (int, float)) for val in self.rewards.values()):
+                raise RuntimeError(
+                    "Cannot get reward vector if not all rewards are numeric."
+                )
             val_float = (
                 float(val) if val is not None and isinstance(val, (int, float)) else 0.0
             )
-            if self.model.supports_actions() and state in self.model.choices:
+            if self.model.supports_actions() and state in self.model.transitions:
                 for _ in state.available_actions():
                     vector.append(val_float)
             else:

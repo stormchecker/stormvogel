@@ -146,12 +146,13 @@ def build_matrix(
         if nondeterministic:
             builder.new_row_group(row_index)
         for action in transition[1]:
-            action[1].branches.sort()
-            for tuple in action[1]:
-                val = value_to_stormpy(tuple[0], variables, model)
+            branches = list(action[1])
+            branches.sort(key=lambda t: t[1].model.get_state_index(t[1]))
+            for branch in branches:
+                val = value_to_stormpy(branch[0], variables, model)
                 builder.add_next_value(
                     row=row_index,
-                    column=model.stormpy_id[tuple[1]],
+                    column=model.stormpy_id[branch[1]],
                     value=val,
                 )
 

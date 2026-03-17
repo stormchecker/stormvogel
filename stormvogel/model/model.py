@@ -1,4 +1,3 @@
-from stormvogel.model.branches import Branches
 from enum import Enum
 from typing import Iterable, Any, Iterator
 from uuid import UUID
@@ -35,7 +34,7 @@ class Model[ValueType: Value]:
     Args:
         type: The model type.
         states: The states of the model. The keys are the state's ids.
-        choices: The choices of this model. The keys are the state ids.
+        transitions: The transitions of this model. The keys are the state ids.
         actions: The actions of the model, if this is a model that supports actions.
         rewards: The reward models of this model.
         markovian_states: list of markovian states in the case of a ma.
@@ -45,7 +44,7 @@ class Model[ValueType: Value]:
 
     states: list[State[ValueType]]
 
-    choices: dict[State[ValueType], Choices]
+    transitions: dict[State[ValueType], Choices]
     observations: list[Observation] | None
 
     state_valuations: dict[State[ValueType], dict[str, Any]]
@@ -63,7 +62,7 @@ class Model[ValueType: Value]:
     def __init__(self, model_type: ModelType, create_initial_state: bool = True):
         self.model_type = model_type
         self.states = list()
-        self.choices = dict()
+        self.transitions = dict()
         self.state_valuations = dict()
         self.state_labels = dict()
         self.rewards = []
@@ -103,7 +102,7 @@ class Model[ValueType: Value]:
             raise RuntimeError("This model does not support actions.")
 
         seen: set[Action] = set()
-        for choice in self.choices.values():
+        for choice in self.transitions.values():
             for action in choice.choices.keys():
                 if action not in seen:
                     seen.add(action)
@@ -137,7 +136,7 @@ class Model[ValueType: Value]:
     def is_interval_model(self) -> bool:
         """Returns whether this model is an interval model, i.e., containts interval values)"""
         if self._is_interval is None:
-            for _, choice in self.choices.items():
+            for _, choice in self.transitions.items():
                 for _, branch in choice:
                     for value, _ in branch:
                         if issubclass(type(value), Interval):
@@ -150,7 +149,7 @@ class Model[ValueType: Value]:
     def parameters(self) -> set[str]:
         """Returns the set of parameters of this model"""
         parameters = set()
-        for _, choice in self.choices.items():
+        for _, choice in self.transitions.items():
             for _, branch in choice:
                 for transition in branch:
                     if isinstance(transition[0], Parametric):
@@ -160,7 +159,7 @@ class Model[ValueType: Value]:
     def is_parametric(self) -> bool:
         """Returns whether this model contains parametric transition values"""
         if self._is_parametric is None:
-            for _, choice in self.choices.items():
+            for _, choice in self.transitions.items():
                 for _, branch in choice:
                     for value, _ in branch:
                         if issubclass(type(value), Parametric):
@@ -179,7 +178,9 @@ class Model[ValueType: Value]:
         if self.is_parametric() or self.is_interval_model():
             return True
         if not self.supports_rates():
-            return all([self.choices[state].is_stochastic(epsilon) for state in self])
+            return all(
+                [self.transitions[state].is_stochastic(epsilon) for state in self]
+            )
         else:
             for state in self:
                 for action in state.available_actions():
@@ -218,7 +219,7 @@ class Model[ValueType: Value]:
                                 t[1],
                             )
                             new_transitions.append(normalized_transition)
-                    self.choices[state].choices[action].branches = new_transitions
+                    self.transitions[state][action]._branches = new_transitions
         else:
             # for ctmcs and mas we currently only add self loops
             self.add_self_loops()
@@ -239,14 +240,14 @@ class Model[ValueType: Value]:
     def get_instantiated_model(self, values: dict[str, Number]) -> "Model":
         """evaluates all parametric transitions with the given values and returns the instantiated model"""
         evaluated_model = deepcopy(self)
-        for state, transition in evaluated_model.choices.items():
+        for state, transition in evaluated_model.transitions.items():
             for action, branch in transition:
                 new_branch = []
                 for tup in branch:
                     if isinstance(tup[0], Parametric):
                         tup = (tup[0].evaluate(values), tup[1])
                     new_branch.append(tup)
-                evaluated_model.choices[state][action].branches = new_branch
+                evaluated_model.transitions[state][action]._branches = new_branch
         return evaluated_model
 
     def add_self_loops(self):
@@ -291,14 +292,14 @@ class Model[ValueType: Value]:
 
     def iterate_transitions(self) -> Iterator[tuple[ValueType, State]]:
         """Iterates through all transitions in all choices of the model."""
-        for choice in self.choices.values():
+        for choice in self.transitions.values():
             for _action, branch in choice:
                 for transition in branch:
                     yield transition
 
     def has_zero_transition(self) -> bool:
         """checks if the model has transitions with probability zero"""
-        for _, choice in self.choices.items():
+        for _, choice in self.transitions.items():
             if choice.has_zero_transition():
                 return True
         return False
@@ -318,12 +319,12 @@ class Model[ValueType: Value]:
         if choices.has_zero_transition() and not self.supports_rates():
             raise RuntimeError("All transition probabilities should be nonzero.")
 
-        self.choices[s] = choices
+        self.transitions[s] = choices
 
     def add_choices(self, s: State, choices: Choices | ChoicesShorthand) -> None:
         """Add new choices from a state to the model. If no choice currently exists, the result will be the same as set_choice."""
-        if s not in self.choices:
-            self.choices[s] = Choices(dict())
+        if s not in self.transitions:
+            self.transitions[s] = Choices(dict())
 
         if not isinstance(choices, Choices):
             choices = choices_from_shorthand(choices)
@@ -331,21 +332,23 @@ class Model[ValueType: Value]:
         if choices.has_zero_transition() and not self.supports_rates():
             raise RuntimeError("All transition probabilities should be nonzero.")
 
-        self.choices[s].add(choices)
+        self.transitions[s].add(choices)
 
     def get_successor_states(self, state: State) -> set[State]:
         """Returns the set of successors of state_or_id."""
         result = set()
-        for _, branches in self.choices[state]:
+        for _, branches in self.transitions[state]:
             result |= branches.successors
         return result
 
-    def get_branches(self, state: State) -> Branches:
+    def get_distribution(
+        self, state: State
+    ) -> Distribution[ValueType, State[ValueType]]:
         """Get the branch at state s. Only intended for emtpy choices, otherwise a RuntimeError is thrown."""
-        choice = self.choices[state].choices
-        if EmptyAction not in choice:
-            raise RuntimeError("Called get_branch on a non-empty choice.")
-        return choice[EmptyAction]
+        choices = self.transitions[state].choices
+        if EmptyAction not in choices:
+            raise RuntimeError("Called get_distribution on a non-empty choice.")
+        return choices[EmptyAction]
 
     def action(self, label: str | None = None) -> Action:
         """Creates a new action and returns it."""
@@ -379,33 +382,33 @@ class Model[ValueType: Value]:
 
         # remove all incoming transitions to this state
         states_to_remove_from_choices = []
-        for source_state, transition in self.choices.items():
+        for source_state, transition in self.transitions.items():
             actions_to_remove = []
             for action, branch in transition.choices.items():
                 # filter out the tuple referencing the state
                 new_branch = [
                     (prob, target)
-                    for prob, target in branch.branches
+                    for prob, target in branch._branches
                     if target != state
                 ]
-                branch.branches = new_branch
+                branch._branches = new_branch
                 # if branch is empty, we must remove the action
-                if len(branch.branches) == 0:
+                if len(branch._branches) == 0:
                     actions_to_remove.append(action)
 
             for action in actions_to_remove:
-                del transition.choices[action]
+                del transition[action]
 
             # if state has no choices left, remove it from choices dict
             if len(transition.choices) == 0 and source_state != state:
                 states_to_remove_from_choices.append(source_state)
 
         for s in states_to_remove_from_choices:
-            del self.choices[s]
+            del self.transitions[s]
 
         # remove the state's outgoing choices
-        if state in self.choices:
-            del self.choices[state]
+        if state in self.transitions:
+            del self.transitions[state]
 
         # remove the state itself from the list
         self.states.remove(state)
@@ -464,7 +467,7 @@ class Model[ValueType: Value]:
             for var, val in valuations.items():
                 state.add_valuation(var, val)
 
-        self.choices[state] = Choices(dict())
+        self.transitions[state] = Choices(dict())
 
         if self.supports_observations() and observation is None:
             raise RuntimeError(
@@ -615,11 +618,11 @@ class Model[ValueType: Value]:
         dot = "digraph model {\n"
         for state in self:
             dot += f'{state.state_id} [ label = "{state.state_id}: {", ".join(state.labels)}" ];\n'
-        for state_id, transition in self.choices.items():
+        for state_id, transition in self.transitions.items():
             for action, branch in transition:
                 if action != EmptyAction:
                     dot += f'{state_id} [ label = "", shape=point ];\n'
-        for state_id, transition in self.choices.items():
+        for state_id, transition in self.transitions.items():
             for action, branch in transition:
                 if action == EmptyAction:
                     # Only draw probabilities
@@ -637,7 +640,7 @@ class Model[ValueType: Value]:
         res = [f"{self.model_type}"]
         res += ["", "States:"] + [f"{state}" for state in self]
         res += ["", "Choices:"] + [
-            f"{id}: {transition}" for (id, transition) in self.choices.items()
+            f"{id}: {transition}" for (id, transition) in self.transitions.items()
         ]
 
         if (
@@ -679,7 +682,7 @@ class Model[ValueType: Value]:
                         valuations=state.valuations,
                         observation=obs,
                     )
-                    self.choices[new_state] = self.choices[state]
+                    self.transitions[new_state] = self.transitions[state]
                     new_states_distribution.append((prob, new_state))
 
                 # Replace transitions to the original state with transitions to the new states
@@ -696,12 +699,12 @@ class Model[ValueType: Value]:
                                         )
                                 else:
                                     new_transitions.append((transition_prob, target))
-                            self.choices[other_state].choices[action] = Branches(
+                            self.transitions[other_state][action] = Distribution(
                                 new_transitions
                             )
 
                 # Remove the original state and choices
-                del self.choices[state]
+                del self.transitions[state]
                 self.states.remove(state)
                 # Remove labels for this state
                 for label in state.labels:

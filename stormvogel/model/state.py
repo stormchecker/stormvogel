@@ -7,7 +7,6 @@ from uuid import UUID, uuid4
 if TYPE_CHECKING:
     from stormvogel.model.model import Model
 
-from stormvogel.model.branches import Branches
 from stormvogel.model.choices import Choices, ChoicesShorthand
 from stormvogel.model.distribution import Distribution
 from stormvogel.model.observation import Observation
@@ -56,6 +55,14 @@ class State[ValueType: Value]:
         )
 
     def set_labels(self, labels: set[str]):
+        for label in labels:
+            if label not in self.model.state_labels:
+                import warnings
+
+                warnings.warn(
+                    f"Label {label} is not in the model's state labels. Adding it to the model."
+                )
+                self.model.add_label(label)
         for label in self.model.state_labels:
             if label in labels and self not in self.model.state_labels[label]:
                 self.model.state_labels[label].add(self)
@@ -103,8 +110,8 @@ class State[ValueType: Value]:
 
     @property
     def choices(self) -> "Choices[ValueType]":
-        if self in self.model.choices:
-            return self.model.choices[self]
+        if self in self.model.transitions:
+            return self.model.transitions[self]
         else:
             raise RuntimeError("The model this state belongs to does not have choices")
 
@@ -117,18 +124,17 @@ class State[ValueType: Value]:
 
     def has_choices(self) -> bool:
         """Returns whether this state has choices."""
-        if self not in self.model.choices:
+        if self not in self.model.transitions:
             return False
-        return len(self.choices.choices) != 0
+        return len(self.choices) != 0
 
     @property
     def nr_choices(self) -> int:
         """The number of choices in this state."""
-        try:
-            choices = self.choices
-            n = len(choices)
+        if self.has_choices():
+            n = len(self.choices)
             return n if n > 0 else 1
-        except RuntimeError:
+        else:
             return 1
 
     @property
@@ -153,46 +159,44 @@ class State[ValueType: Value]:
             return self.choices.actions
         return [EmptyAction]
 
-    def get_branches(self, action: Action | None = None) -> Branches[ValueType] | None:
-        """Gets the branches of this state (after a specific action). For a model without actions, action should be None."""
+    def get_branches(
+        self, action: Action = EmptyAction
+    ) -> Distribution[ValueType, "State[ValueType]"] | None:
+        """Gets the branches of this state (after a specific action). For a model without actions, action should be EmptyAction."""
         choices = self.choices
         assert choices is not None
 
         # if the model supports actions we need to provide an action
-        if action and self.model.supports_actions():
-            if self in self.model.choices:
-                return choices.choices[action]
+        if action != EmptyAction and self.model.supports_actions():
+            if self in self.model.transitions:
+                return choices[action]
         elif not action and self.model.supports_actions():
             raise RuntimeError("You need to provide a specific action")
         else:
-            if self in self.model.choices:
-                return choices.choices[EmptyAction]
+            if self in self.model.transitions:
+                return choices[EmptyAction]
         return None
 
     def get_outgoing_transitions(
         self, action: Action | None = None
     ) -> Distribution[ValueType, "State[ValueType]"] | None:
         """gets the outgoing transitions of this state (after a specific action)"""
-
-        choice = self.choices
-        assert choice is not None
-
         # if the model supports actions we need to provide an action
         if action and self.model.supports_actions():
-            if self in self.model.choices:
-                return choice.choices[action].branches
+            if self in self.model.transitions:
+                return self.choices[action]
         elif not action and self.model.supports_actions():
             raise RuntimeError("You need to provide a specific action")
         else:
-            if self in self.model.choices:
-                return choice.choices[EmptyAction].branches
+            if self in self.model.transitions:
+                return self.choices[EmptyAction]
         return None
 
     def is_absorbing(self) -> bool:
         """returns whether the state has a nonzero transition going to another state or not"""
 
         # if the state has no choice it is trivially true
-        if self not in self.model.choices:
+        if self not in self.model.transitions:
             return True
         choice = self.choices
         # for all actions we check if the state has outgoing transitions to a different state with value != 0
