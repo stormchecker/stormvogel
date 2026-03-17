@@ -53,6 +53,14 @@ class State[ValueType: Value]:
             if self in states
         )
 
+    def set_friendly_name(self, friendly_name: str | None) -> None:
+        self.model.friendly_names[self] = friendly_name
+
+    @property
+    def friendly_name(self) -> str | None:
+        """Returns the friendly name of this state."""
+        return self.model.friendly_names.get(self, None)
+
     def set_labels(self, labels: set[str]):
         """Set the labels of this state, adding and removing as needed.
 

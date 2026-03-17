@@ -34,9 +34,9 @@ class Model[ValueType: Value]:
     :param model_type: The model type.
     :param states: The states of the model.
     :param transitions: The transitions of this model. The keys are State objects.
-    :param actions: The actions of the model, if this is a model that supports actions.
+    :param state_valuations: The state valuations of this model, mapping states to variable-value pairs.
+    :param friendly_names: Optional mapping from states to friendly names for easier debugging and visualization.
     :param rewards: The reward models of this model.
-    :param markovian_states: List of markovian states in the case of a MA.
     """
 
     model_type: ModelType
@@ -49,13 +49,14 @@ class Model[ValueType: Value]:
 
     state_labels: dict[str, set[State[ValueType]]]
 
+    friendly_names: dict[State[ValueType], str | None]
+
     rewards: list[RewardModel]
 
     _state_observations: (
         dict[State[ValueType], Observation | Distribution[ValueType, Observation]]
         | None
     )
-
     _markovian_states: set[State[ValueType]] | None
 
     def __init__(self, model_type: ModelType, create_initial_state: bool = True):
@@ -65,6 +66,7 @@ class Model[ValueType: Value]:
         self.state_valuations = dict()
         self.state_labels = dict()
         self.rewards = []
+        self.friendly_names = dict()
         self._is_parametric: bool | None = None
         self._is_interval: bool | None = None
         self._state_index_cache: dict[State, int] | None = None
@@ -300,9 +302,11 @@ class Model[ValueType: Value]:
         for state, transition in evaluated_model.transitions.items():
             for action, branch in transition:
                 new_distr = Distribution()
-                for tup in branch:
-                    if isinstance(tup[0], Parametric):
-                        new_distr[tup[1]] = tup[0].evaluate(values)
+                for val, target in branch:
+                    if isinstance(val, Parametric):
+                        new_distr[target] = val.evaluate(values)
+                    else:
+                        new_distr[target] = val
                 evaluated_model.transitions[state][action] = new_distr
         return evaluated_model
 
@@ -376,6 +380,8 @@ class Model[ValueType: Value]:
         :param choices: The choices to assign.
         :raises RuntimeError: If any transition probability is zero.
         """
+        self._is_interval = None
+        self._is_parametric = None
         if not isinstance(choices, Choices):
             choices = choices_from_shorthand(choices)
 
@@ -392,8 +398,7 @@ class Model[ValueType: Value]:
 
         :param s: The state to add choices to.
         :param choices: The choices to add.
-        :raises RuntimeError: If any transition probability is zero in a
-            non-rate-based model.
+        :raises RuntimeError: If any transition probability is zero.
         """
         self._is_interval = None
         self._is_parametric = None
@@ -415,8 +420,9 @@ class Model[ValueType: Value]:
         :returns: The set of successor states.
         """
         result = set()
-        for _, branches in self.transitions[state]:
-            result |= branches.successors
+        for _, branch in self.transitions[state]:
+            for _, target in branch:
+                result.add(target)
         return result
 
     def get_distribution(
@@ -430,8 +436,8 @@ class Model[ValueType: Value]:
         :returns: The branches for the empty action at this state.
         :raises RuntimeError: If the state has non-empty choices.
         """
-        choices = self.transitions[state].choices
-        if EmptyAction not in choices:
+        choices = self.transitions[state]
+        if not choices.has_empty_action():
             raise RuntimeError("Called get_distribution on a non-empty choice.")
         return choices[EmptyAction]
 
@@ -688,33 +694,6 @@ class Model[ValueType: Value]:
         """Return the number of choices in the model (summed over all states)."""
         return sum(state.nr_choices for state in self.states)
 
-    def new_observation(
-        self,
-        alias: str,
-    ) -> Observation:
-        """Create a new observation with the given alias and return it.
-
-        :param alias: The alias for the new observation.
-        :returns: The newly created observation.
-        :raises RuntimeError: If the model does not support observations, or if
-            an observation with the given alias already exists.
-        """
-        if not self.supports_observations():
-            raise RuntimeError(
-                "Called new_observation on a model that does not support observations"
-            )
-        assert self.observations is not None
-
-        for observation in self.observations:
-            if observation.alias == alias:
-                raise RuntimeError(
-                    f"An observation with alias {alias} already exists, namely {observation}."
-                )
-
-        observation = Observation(alias)
-        self.observations.append(observation)
-        return observation
-
     def get_observation(self, alias: str) -> Observation:
         """Get an existing observation with the given alias.
 
@@ -733,27 +712,6 @@ class Model[ValueType: Value]:
                 return observation
 
         raise RuntimeError(f"Observation with alias {alias} not found.")
-
-    def observation(
-        self,
-        alias: str,
-    ) -> Observation:
-        """Get an existing observation or create a new one if it does not exist.
-
-        :param alias: The alias of the observation.
-        :returns: The existing or newly created observation.
-        :raises RuntimeError: If the model does not support observations.
-        """
-        if not self.supports_observations():
-            raise RuntimeError(
-                "Called method observation on a model that does not support observations"
-            )
-        assert self.observations is not None
-
-        try:
-            return self.get_observation(alias)
-        except RuntimeError:
-            return self.new_observation(alias)
 
     def to_dot(self) -> str:
         """Generate a dot representation of this model."""
@@ -782,6 +740,10 @@ class Model[ValueType: Value]:
 
     def __str__(self) -> str:
         return self.summary()
+
+    @property
+    def sorted_states(self):
+        return sorted(self.states, key=lambda state: state.friendly_name or "")
 
     def __getitem__(self, state_index: int):
         return self.states[state_index]

@@ -244,8 +244,10 @@ def find_free_port() -> int:
     return -1
 
 
-def initialize_server() -> CommunicationServer | None:
-    """Initialize or return the global communication server.
+def initialize_server(silent=True) -> CommunicationServer | None:
+    """If server is None, then create a new server and store it in global variable server.
+    Use the port stored in global variable server_port.
+    If the server is already initialized, just return it.
 
     If the server has not been created yet, create one on the first free port
     in the configured range and store it in the global ``server`` variable.
@@ -261,11 +263,12 @@ def initialize_server() -> CommunicationServer | None:
         return None
 
     output = widgets.Output()
-    with output:
-        print(
-            "Initializing communication server and sending a test message. This might take a couple of seconds."
-        )
-    ipd.display(output)
+    if not silent:
+        with output:
+            print(
+                "Initializing communication server and sending a test message. This might take a couple of seconds."
+            )
+        ipd.display(output)
     try:
         if (
             server is None
@@ -273,8 +276,9 @@ def initialize_server() -> CommunicationServer | None:
             server_port = find_free_port()
             if server_port == -1:  # Could not find a free port.
                 __warn_no_free_port()
-                with output:
-                    ipd.clear_output()
+                if not silent:
+                    with output:
+                        ipd.clear_output()
                 return None
             server = CommunicationServer(server_port=server_port)
             logging.info("Succesfully initialized server.")
@@ -282,12 +286,14 @@ def initialize_server() -> CommunicationServer | None:
                 server.result("RETURN('test message')")
                 logging.info("Succesfully received test message.")
             except TimeoutError:  # Test request failed.
-                __warn_request()
+                if not silent:
+                    __warn_request()
         with output:
             ipd.clear_output()
         return server
     except OSError:
         logging.warning("Server port likely taken.")
-        __warn_server()
-        with output:
-            ipd.clear_output()
+        if not silent:
+            __warn_server()
+            with output:
+                ipd.clear_output()

@@ -37,8 +37,9 @@ def valid_input[ValueType: stormvogel.model.Value](
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
     rates: Callable[[Any], float] | None = None,
     valuations: Callable[[Any], dict[str, float | int | bool]] | None = None,
-    observation_valuations: Callable[[int], dict[str, float | int | bool]]
-    | None = None,
+    observation_valuations: (
+        Callable[[int], dict[str, float | int | bool]] | None
+    ) = None,
     modeltype: stormvogel.model.ModelType = stormvogel.model.ModelType.MDP,
 ):
     """Validate the input for the bird model builder.
@@ -156,19 +157,21 @@ def valid_input[ValueType: stormvogel.model.Value](
 
 
 def build_bird[ValueType: stormvogel.model.Value](
-    delta: Callable[
-        [Any, Action], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None
-    ]
-    | Callable[[Any], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None],
+    delta: (
+        Callable[[Any, Action], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None]
+        | Callable[[Any], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None]
+    ),
     init: Any,
     rewards: Callable[[Any], dict[str, ValueType]] | None = None,
     labels: Callable[[Any], list[str] | str | None] | None = None,
+    friendly_names: Callable[[Any], str] | None = None,
     available_actions: Callable[[Any], list[Action]] | None = None,
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
     rates: Callable[[Any], float] | None = None,
     valuations: Callable[[Any], dict[str, float | int | bool]] | None = None,
-    observation_valuations: Callable[[int], dict[str, float | int | bool]]
-    | None = None,
+    observation_valuations: (
+        Callable[[int], dict[str, float | int | bool]] | None
+    ) = None,
     modeltype: stormvogel.model.ModelType = stormvogel.model.ModelType.MDP,
     max_size: int = 10000,
 ) -> stormvogel.model.Model[ValueType]:
@@ -406,8 +409,9 @@ def build_bird[ValueType: stormvogel.model.Value](
                 )
 
         if observation_valuations is not None and model.observations is not None:
+            # TODO this seems fragile
             observation_valuation_keys = observation_valuations(
-                int(model.observations[0].alias)
+                int(next(iter(model.observations)).alias)
             ).keys()
             for obs in model.observations:
                 valuation_dict = observation_valuations(int(obs.alias))
@@ -518,5 +522,11 @@ def build_bird[ValueType: stormvogel.model.Value](
                         )
                     if label not in s.labels:
                         s.add_label(label)
+
+    # friendly names
+    if friendly_names is not None:
+        for state, s in state_lookup.items():
+            name = friendly_names(state)
+            s.set_friendly_name(name)
 
     return model
