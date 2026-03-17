@@ -7,7 +7,7 @@ from collections import deque
 
 @dataclass
 class State:
-    """bird state object. Can contain any number of any type of arguments"""
+    """Represent a bird state as a dynamic attribute container."""
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
@@ -41,9 +41,33 @@ def valid_input[ValueType: stormvogel.model.Value](
     | None = None,
     modeltype: stormvogel.model.ModelType = stormvogel.model.ModelType.MDP,
 ):
-    """
-    function that checks if the input for the bird model builder is valid
-    it will give a runtime error if it isn't.
+    """Validate the input for the bird model builder.
+
+    Check that all user-supplied callbacks have the correct number of
+    parameters and that required callbacks are provided for the chosen
+    model type.
+
+    :param delta: Transition function. Takes ``(state, action)`` for models
+        that support actions, or ``(state,)`` otherwise.
+    :param init: Initial state passed to the callbacks.
+    :param rewards: Optional callback mapping a state to a dict of reward
+        model name to reward value.
+    :param labels: Optional callback mapping a state to a list of label
+        strings, a single label string, or ``None``.
+    :param available_actions: Optional callback returning the list of
+        available action strings for a state. Required for MDP, POMDP,
+        and MA model types.
+    :param observations: Optional callback returning an observation id or a
+        distribution over observations for a state. Required for POMDP and
+        HMM model types.
+    :param rates: Optional callback returning the exit rate for a state.
+    :param valuations: Optional callback returning a dict of variable name
+        to value for a state.
+    :param observation_valuations: Optional callback returning a dict of
+        variable name to value for a given observation id.
+    :param modeltype: The type of model to build.
+    :raises ValueError: If a required callback is missing or any callback
+        has an incorrect number of parameters.
     """
 
     supports_actions = modeltype in (
@@ -148,18 +172,48 @@ def build_bird[ValueType: stormvogel.model.Value](
     modeltype: stormvogel.model.ModelType = stormvogel.model.ModelType.MDP,
     max_size: int = 10000,
 ) -> stormvogel.model.Model[ValueType]:
-    """
-    function that converts a delta function, an available_actions function an initial state and a model type
-    to a stormvogel model
+    """Build a stormvogel model from user-supplied callbacks.
 
-    this works analogous to a prism file, where the delta is the module in this case.
+    Explore the state space starting from *init* by repeatedly calling
+    *delta* (and *available_actions* for action-based models) until no new
+    states are discovered, analogous to a PRISM module.
 
-    (this function uses the bird classes state and action instead of the ones from stormvogel.model)
+    :param delta: Transition function. For action-based models it takes
+        ``(state, action)`` and returns a list of ``(probability, state)``
+        tuples (or a single successor, or ``None`` for a self-loop).
+        For models without actions it takes ``(state,)``.
+    :param init: Initial state of the model.
+    :param rewards: Optional callback mapping a state to a dict of reward
+        model name to reward value.
+    :param labels: Optional callback mapping a state to a list of label
+        strings, a single label string, or ``None``.
+    :param available_actions: Optional callback returning the list of
+        available action strings for a state. Required for MDP, POMDP,
+        and MA model types.
+    :param observations: Optional callback returning an observation id or a
+        distribution over observations for a state. Required for POMDP and
+        HMM model types.
+    :param rates: Optional callback returning the exit rate for a state.
+    :param valuations: Optional callback returning a dict of variable name
+        to value for a state.
+    :param observation_valuations: Optional callback returning a dict of
+        variable name to value for a given observation id.
+    :param modeltype: The type of model to build.
+    :param max_size: Maximum number of states before aborting.
+    :returns: The constructed stormvogel model.
+    :raises ValueError: If callbacks return invalid results during
+        exploration.
+    :raises RuntimeError: If the state space exceeds *max_size*.
     """
 
     def add_new_choices(tuples, state):
-        """
-        helper function to add all the newly found choices and states to the model
+        """Add newly discovered choices and states to the model.
+
+        :param tuples: Sequence of ``(probability, state)`` tuples, bare
+            states, or ``None`` (interpreted as a self-loop).
+        :param state: The source state in the bird state space.
+        :returns: List of ``(value, stormvogel_state)`` branch entries.
+        :raises ValueError: If a transition tuple has an unexpected length.
         """
         branch = []
         if tuples is not None:

@@ -3,13 +3,12 @@ import random
 
 
 class Scheduler:
-    """
-    Scheduler object specifies what action to take in each state.
-    All schedulers are nondeterminstic and memoryless.
+    """Specify what action to take in each state.
 
-    Args:
-        model: model associated with the scheduler (has to support actions).
-        taken_actions: for each state the action we choose in that state.
+    All schedulers are nondeterministic and memoryless.
+
+    :param model: Model associated with the scheduler (must support actions).
+    :param taken_actions: For each state, the action chosen in that state.
     """
 
     model: stormvogel.model.Model
@@ -27,14 +26,22 @@ class Scheduler:
     def get_action_at_state(
         self, state: stormvogel.model.State
     ) -> stormvogel.model.Action:
-        """returns the action in the scheduler for the given state if present in the model"""
+        """Return the action in the scheduler for the given state.
+
+        :param state: The state to look up.
+        :returns: The action chosen for the given state.
+        :raises RuntimeError: If the state is not a part of the model.
+        """
         if state in self.model.states:
             return self.taken_actions[state]
         else:
             raise RuntimeError("This state is not a part of the model")
 
     def generate_induced_dtmc(self) -> stormvogel.model.Model | None:
-        """This function resolves the nondeterminacy of the mdp and returns the scheduler induced dtmc"""
+        """Resolve the nondeterminacy of the MDP and return the scheduler-induced DTMC.
+
+        :returns: The induced DTMC, or ``None`` if the model is not an MDP.
+        """
         if self.model.model_type == stormvogel.model.ModelType.MDP:
             induced_dtmc = stormvogel.model.new_dtmc(create_initial_state=False)
 
@@ -82,8 +89,8 @@ class Scheduler:
 def random_scheduler(model: stormvogel.model.Model) -> Scheduler:
     """Create a random scheduler for the provided model.
 
-    Raises:
-        ValueError: If any state in the model has no available actions.
+    :param model: The model to create a scheduler for.
+    :returns: A new :class:`Scheduler` with randomly chosen actions.
     """
     choices = {}
     for state in model:
@@ -97,12 +104,11 @@ def random_scheduler(model: stormvogel.model.Model) -> Scheduler:
 
 
 class Result:
-    """Result object represents the model checking results for a given model
+    """Represent the model checking results for a given model.
 
-    Args:
-        model: stormvogel representation of the model associated with the results
-        values: for each state the model checking result
-        scheduler: in case the model is an mdp we can optionally store a scheduler
+    :param model: Stormvogel representation of the model associated with the results.
+    :param values: For each state, the model checking result.
+    :param scheduler: In case the model is an MDP, optionally store a scheduler.
     """
 
     model: stormvogel.model.Model
@@ -127,7 +133,12 @@ class Result:
     def get_result_of_state(
         self, state: stormvogel.model.State
     ) -> stormvogel.model.Value | None:
-        """returns the model checking result for a given state"""
+        """Return the model checking result for a given state.
+
+        :param state: The state to look up.
+        :returns: The model checking result value for the state.
+        :raises RuntimeError: If the state is not a part of the model.
+        """
         if isinstance(state, stormvogel.model.State) and state in self.values:
             return self.values[state]
         else:
@@ -143,7 +154,11 @@ class Result:
         )
 
     def maximum_result(self) -> stormvogel.model.Value:
-        """Return the maximum result."""
+        """Return the maximum result.
+
+        :returns: The maximum value across all states.
+        :raises RuntimeError: If the model uses interval or parametric values.
+        """
         values = list(self.values.values())
         max_val = values[0]
         for v in values:

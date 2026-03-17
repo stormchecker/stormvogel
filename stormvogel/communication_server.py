@@ -16,7 +16,11 @@ import json
 
 
 def random_word(k: int) -> str:
-    """Random word of length k. Used to generate event ids."""
+    """Generate a random word of length *k*.
+
+    :param k: Length of the random word.
+    :returns: A random string of ASCII letters.
+    """
     return "".join(random.choices(string.ascii_letters, k=k))
 
 
@@ -45,15 +49,16 @@ server: "CommunicationServer | None" = None
 
 class CommunicationServer:
     """Run a web server in the background to receive Javascript communications.
-    It works by having a list of events, each with a unique id.
+
+    The server maintains a list of events, each with a unique id.
     The Javascript code sends a POST request to the server with the id and the data.
     The server then looks up the event with that id and calls the function associated with it.
     """
 
     def __init__(self, server_port: int = 8080) -> None:
         """Initialize the communication server.
-        Args:
-            server_port (int, optional): Defaults to 8080.
+
+        :param server_port: Port to run the server on.
         """
         import IPython.display as ipd
 
@@ -78,8 +83,10 @@ function return_id_result(url, id, data) {
         class InnerServer(http.server.BaseHTTPRequestHandler):
             def do_POST(self):
                 """Handle POST requests.
+
                 Call the function associated with the id in the request body.
-                The argument is passed as the body of the request."""
+                The argument is passed as the body of the request.
+                """
                 content_length = int(self.headers.get("Content-Length", 0))
                 body = json.loads(self.rfile.read(content_length).decode("utf-8"))
                 id = body["id"]
@@ -99,9 +106,11 @@ function return_id_result(url, id, data) {
         thr.start()
 
     def __run_server(self):
-        """Run the server (used to put it on a thread).
-        Waits 0.5 seconds and then sets global variable server_running to true.
-        This is to prevent making requests too early."""
+        """Run the server on a background thread.
+
+        Set the global variable ``server_running`` to ``True`` once started.
+        This prevents making requests too early.
+        """
         global server_running
         try:
             logging.info(
@@ -114,16 +123,21 @@ function return_id_result(url, id, data) {
 
     def add_event(self, js: str, function: Callable[[str], Any]) -> str:
         """Add an event using some JavaScript code.
-        Within your js, use the special function FUNCTION(...) to call the Python function.
 
-        Example:
+        Within the *js* code, use the special function ``FUNCTION(...)`` to call
+        the Python *function*.
+
+        Example::
+
             js = "FUNCTION(37 + 42);"
             function = lambda data: print(data)
-            Then the arithmetic is performed in Javascript, and the result is printed in Python.
-            Note that the function is called with the result of the arithmetic as a string.
 
+        The arithmetic is performed in Javascript, and the result is printed in Python.
+        Note that the function is called with the result of the arithmetic as a string.
 
-        Returns event id which can be used to remove it later.
+        :param js: JavaScript code containing a ``FUNCTION(...)`` call.
+        :param function: Python callable invoked with the JavaScript result as a string.
+        :returns: Event id which can be used to remove the event later.
         """
         import IPython.display as ipd
 
@@ -145,15 +159,28 @@ function return_id_result(url, id, data) {
         return id
 
     def remove_event(self, event_id: str) -> Callable[[str], Any]:
-        """Remove the event associated with this event id."""
+        """Remove the event associated with the given event id.
+
+        :param event_id: The id of the event to remove.
+        :returns: The callable that was associated with the event.
+        """
         return events.pop(event_id)
 
     def result(self, js: str, timeout_seconds: float = 2.0) -> str:
-        """Execute some JavaScript, then use the special function RETURN(...) to return the result.
+        """Execute some JavaScript and return the result.
 
-        Example:
+        Use the special function ``RETURN(...)`` in *js* to send the result back.
+
+        Example::
+
             js = "RETURN(37 + 42);"
-            Then the function result returns "79" as a string, but the arithmatic is executed in javascript.
+
+        The arithmetic is executed in Javascript, and ``"79"`` is returned as a string.
+
+        :param js: JavaScript code containing a ``RETURN(...)`` call.
+        :param timeout_seconds: Seconds to wait for a result before raising.
+        :returns: The result from JavaScript as a string.
+        :raises TimeoutError: If no result is received within *timeout_seconds*.
         """
         # We implement this by using our add_event function, and waiting for the result to be set.
         result = None  # Variable that will contain the result when received.
@@ -197,15 +224,20 @@ def __warn_no_free_port():
 
 
 def is_port_free(port: int) -> bool:
-    """Return true iff the specified port is free on localhost_address.
-    Thanks to StackOverflow user Rugnar
-    https://stackoverflow.com/questions/2470971/fast-way-to-test-if-a-port-is-in-use-using-python
+    """Return ``True`` if the specified port is free on ``localhost_address``.
+
+    :param port: Port number to check.
+    :returns: ``True`` if the port is free, ``False`` otherwise.
     """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex((localhost_address, port)) != 0
 
 
 def find_free_port() -> int:
+    """Find a free port in the configured port range.
+
+    :returns: A free port number, or ``-1`` if none are available.
+    """
     for port_no in port_range:
         if is_port_free(port_no):
             return port_no
@@ -213,12 +245,13 @@ def find_free_port() -> int:
 
 
 def initialize_server() -> CommunicationServer | None:
-    """If server is None, then create a new server and store it in global variable server.
-    Use the port stored in global variable server_port.
-    If the server is already initialized, just return it.
+    """Initialize or return the global communication server.
 
-    Returns:
-        CommunicationServer | None: The server if successful.
+    If the server has not been created yet, create one on the first free port
+    in the configured range and store it in the global ``server`` variable.
+    If already initialized, return the existing server.
+
+    :returns: The server instance, or ``None`` if initialization failed or is disabled.
     """
     import ipywidgets as widgets
     import IPython.display as ipd

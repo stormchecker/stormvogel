@@ -5,13 +5,13 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Action:
-    """Represents an action, e.g., in MDPs.
-        Note that this action object is completely independent of its corresponding branch.
-        Their relation is managed by Choices.
-        Two actions with the same labels are considered equal.
+    """Represent an action, e.g., in MDPs.
 
-    Args:
-        label: The label of this action. Corresponds to Storm label.
+    The action object is independent of its corresponding branch;
+    their relation is managed by :class:`Choices`.
+    Two actions with the same label are considered equal.
+
+    :param label: The label of this action. Corresponds to a Storm label.
     """
 
     label: str | None

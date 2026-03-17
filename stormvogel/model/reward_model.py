@@ -12,11 +12,11 @@ if TYPE_CHECKING:
 
 @dataclass(eq=False)
 class RewardModel[ValueType: Value]:
-    """Represents a state-exit reward model.
-    Args:
-        name: Name of the reward model.
-        model: The model this rewardmodel belongs to.
-        rewards: The rewards, the keys states.
+    """Represent a state-exit reward model.
+
+    :param name: Name of the reward model.
+    :param model: The model this reward model belongs to.
+    :param rewards: Mapping from states to their reward values.
     """
 
     name: str
@@ -33,10 +33,9 @@ class RewardModel[ValueType: Value]:
     ) -> None:
         """Set the rewards of this model according to a (stormpy) rewards vector.
 
-        Args:
-            vector: The reward values.
-            state_action: If True, the vector has one entry per (state, action)
-                pair; only the first entry for each state is used.
+        :param vector: The reward values.
+        :param state_action: If ``True``, the vector has one entry per (state, action)
+            pair; only the first entry for each state is used.
         """
         if state_action:
             # Give a warning if this flag is true
@@ -60,17 +59,28 @@ class RewardModel[ValueType: Value]:
                 combined_id += 1
 
     def get_state_reward(self, state: State) -> ValueType | None:
-        """Gets the reward at said state. Return None if no reward is present."""
+        """Get the reward at the given state.
+
+        :param state: The state to look up.
+        :returns: The reward value, or ``None`` if no reward is present.
+        """
         if state not in self.rewards:
             return None
         return self.rewards[state]
 
     def set_state_reward(self, state: State, value: ValueType):
-        """Sets the reward at said state."""
+        """Set the reward at the given state.
+
+        :param state: The state to set the reward for.
+        :param value: The reward value to assign.
+        """
         self.rewards[state] = value
 
     def set_unset_rewards(self, value: ValueType):
-        """Fills up rewards that were not set yet with the specified value."""
+        """Fill up rewards that were not set yet with the specified value.
+
+        :param value: The default reward value to assign to unset states.
+        """
         for s in self.model:
             if s not in self.rewards:
                 self.rewards[s] = value
@@ -79,7 +89,10 @@ class RewardModel[ValueType: Value]:
         return iter(self.rewards.items())
 
     def get_reward_vector(self) -> list[float]:
-        """Returns a list of all rewards ordered appropriately."""
+        """Return a list of all rewards ordered appropriately.
+
+        :returns: A flat list of reward values as floats.
+        """
         vector = []
         for state in self.model:
             val = self.get_state_reward(state)

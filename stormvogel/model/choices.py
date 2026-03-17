@@ -10,12 +10,13 @@ if TYPE_CHECKING:
 
 
 class Choices[ValueType: Value]:
-    """Represents a choice, which map actions to branches.
-        Note that an EmptyAction may be used if we want a non-action choice.
-        Note that a single Choices might correspond to multiple 'arrows'.
+    """Represent a choice, which maps actions to branches.
 
-    Args:
-        choice: The choice dictionary. For each available action, we have a branch containing the transitions.
+    An :class:`EmptyAction` may be used for a non-action choice.
+    A single ``Choices`` instance might correspond to multiple 'arrows'.
+
+    :param choices: The choice dictionary. For each available action, a branch
+        containing the transitions.
     """
 
     _choices: dict[Action, Distribution[ValueType, State[ValueType]]]
@@ -31,7 +32,7 @@ class Choices[ValueType: Value]:
 
     @property
     def actions(self) -> list[Action]:
-        """Returns the actions for the choices"""
+        """Return the actions for the choices."""
         return list(self._choices.keys())
 
     def __str__(self):
@@ -47,14 +48,21 @@ class Choices[ValueType: Value]:
         return EmptyAction in self._choices.keys()
 
     def is_stochastic(self, epsilon=1e-6) -> bool:
-        """Returns whether the probabilities in the branches sum to 1"""
+        """Check whether the probabilities in the branches sum to 1.
+
+        :param epsilon: Tolerance for floating-point comparison.
+        :returns: ``True`` if all branches are stochastic within *epsilon*.
+        """
         for a in self._choices:
             if not self._choices[a].is_stochastic(epsilon):
                 return False
         return True
 
     def has_zero_transition(self) -> bool:
-        """Returns whether any of the branches contains a zero-probability transition."""
+        """Check whether any of the branches contains a zero-probability transition.
+
+        :returns: ``True`` if a zero-probability transition exists.
+        """
         for _, branch in self:
             for transition in branch:
                 if is_zero(transition[0]):
@@ -62,7 +70,11 @@ class Choices[ValueType: Value]:
         return False
 
     def add(self, other: Self):
-        """Adds two Choices together if they have no overlapping actions."""
+        """Add another :class:`Choices` to this one in-place.
+
+        :param other: The choices to merge in.
+        :raises RuntimeError: If the two choices have incompatible or overlapping actions.
+        """
         # Check EmptyAction invariant before adding
         if self.has_empty_action() and not other.has_empty_action():
             raise RuntimeError(
@@ -130,11 +142,18 @@ ChoicesShorthand = (
 def choices_from_shorthand(
     shorthand: ChoicesShorthand,
 ) -> Choices[Value]:
-    """Get a Choice object from a ChoicesShorthand. Use for all choices in DTMCs and for empty actions in MDPs.
+    """Create a :class:`Choices` object from a :data:`ChoicesShorthand`.
 
-    There are two possible ways to define a ChoicesShorthand.
-    - using only the probability and the target state (implies default action when in an MDP).
-    - using only the action and the target state (implies probability=1)."""
+    Two shorthand modes are supported:
+
+    - A list of ``(probability, target_state)`` tuples (implies the default
+      action when in an MDP).
+    - A list of ``(action, target_state)`` tuples (implies probability 1).
+    - A dict mapping actions to lists of ``(probability, target_state)`` tuples.
+
+    :param shorthand: The shorthand representation to convert.
+    :returns: A new :class:`Choices` instance.
+    """
 
     if isinstance(shorthand, dict):
         # We convert the shorthand so that we have states instead of ids

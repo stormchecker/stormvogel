@@ -24,6 +24,11 @@ except ImportError:
 
 
 def stormvogel_to_stormpy(model):
+    """Convert a stormvogel model to a stormpy sparse model.
+
+    :param model: The stormvogel model to convert.
+    :returns: The equivalent stormpy sparse model.
+    """
     from stormvogel.stormpy_utils.stormvogel_to_stormpy import (
         stormvogel_to_stormpy as _stormvogel_to_stormpy,
     )
@@ -32,12 +37,21 @@ def stormvogel_to_stormpy(model):
 
 
 def value_to_stormvogel(value, sparsemodel) -> Value:
-    """Converts a stormpy transition value to a stormvogel one"""
+    """Convert a stormpy transition value to a stormvogel value.
+
+    :param value: The stormpy transition value.
+    :param sparsemodel: The stormpy sparse model providing context.
+    :returns: The converted stormvogel value.
+    """
 
     assert stormpy is not None
 
     def is_float(val) -> bool:
-        """we check if we can convert a value to a float"""
+        """Check if a value can be converted to a float.
+
+        :param val: The value to check.
+        :returns: ``True`` if the value is convertible to float.
+        """
         try:
             float(val)
             return True
@@ -47,7 +61,11 @@ def value_to_stormvogel(value, sparsemodel) -> Value:
     def convert_polynomial(
         polynomial: stormpy.pycarl.cln.Polynomial,
     ) -> parametric.Polynomial:
-        """helper function for converting pycarl polynomials to stormvogel polynomials"""
+        """Convert a pycarl polynomial to a stormvogel polynomial.
+
+        :param polynomial: The pycarl polynomial to convert.
+        :returns: The converted stormvogel polynomial.
+        """
 
         # we create the list of variables
         # TODO make this more concise
@@ -131,6 +149,12 @@ def stormpy_to_stormvogel(
         "stormpy.storage.SparseMA",
     ],
 ) -> Model:
+    """Convert a stormpy sparse model to a stormvogel model.
+
+    :param sparsemodel: The stormpy sparse model to convert.
+    :returns: The equivalent stormvogel model.
+    :raises NotImplementedError: If the model type is not supported.
+    """
     assert stormpy is not None
 
     def add_states(
@@ -143,8 +167,10 @@ def stormpy_to_stormvogel(
             | stormpy.storage.SparseMA
         ),
     ):
-        """
-        helper function to add the states from the sparsemodel to the model
+        """Add states from the sparse model to the stormvogel model.
+
+        :param model: The stormvogel model to add states to.
+        :param sparsemodel: The stormpy sparse model containing the states.
         """
         # First add all known labels to the model
         for label in sparsemodel.labeling.get_labels():
@@ -186,8 +212,10 @@ def stormpy_to_stormvogel(
             | stormpy.storage.SparseMA
         ),
     ):
-        """
-        adds the rewards from the sparsemodel to either the states or the state action pairs of the model
+        """Add reward models from the sparse model to the stormvogel model.
+
+        :param model: The stormvogel model to add rewards to.
+        :param sparsemodel: The stormpy sparse model containing the reward models.
         """
         for reward_model_name in sparsemodel.reward_models:
             rewards = sparsemodel.get_reward_model(reward_model_name)
@@ -209,8 +237,10 @@ def stormpy_to_stormvogel(
             | stormpy.storage.SparseMA
         ),
     ):
-        """
-        adds the valuations from the sparsemodel to the states of the model
+        """Add state valuations from the sparse model to the stormvogel model.
+
+        :param model: The stormvogel model to add valuations to.
+        :param sparsemodel: The stormpy sparse model containing the valuations.
         """
         if sparsemodel.has_state_valuations():
             valuations = sparsemodel.state_valuations
@@ -221,8 +251,10 @@ def stormpy_to_stormvogel(
                     state.valuations = v
 
     def map_dtmc(sparsedtmc: stormpy.storage.SparseDtmc) -> Model:
-        """
-        Takes a dtmc stormpy representation as input and outputs a simple stormvogel representation
+        """Convert a stormpy DTMC to a stormvogel model.
+
+        :param sparsedtmc: The stormpy sparse DTMC to convert.
+        :returns: The equivalent stormvogel model.
         """
 
         # we create the model
@@ -257,8 +289,10 @@ def stormpy_to_stormvogel(
         return model
 
     def map_mdp(sparsemdp: stormpy.storage.SparseMdp) -> Model:
-        """
-        Takes a mdp stormpy representation as input and outputs a simple stormvogel representation
+        """Convert a stormpy MDP to a stormvogel model.
+
+        :param sparsemdp: The stormpy sparse MDP to convert.
+        :returns: The equivalent stormvogel model.
         """
 
         # we create the model
@@ -312,8 +346,10 @@ def stormpy_to_stormvogel(
         return model
 
     def map_ctmc(sparsectmc: stormpy.storage.SparseCtmc) -> Model:
-        """
-        Takes a ctmc stormpy representation as input and outputs a simple stormvogel representation
+        """Convert a stormpy CTMC to a stormvogel model.
+
+        :param sparsectmc: The stormpy sparse CTMC to convert.
+        :returns: The equivalent stormvogel model.
         """
 
         # we create the model
@@ -350,7 +386,11 @@ def stormpy_to_stormvogel(
         return model
 
     def map_pomdp(sparsepomdp: stormpy.storage.SparsePomdp) -> Model:
-        # Takes a pomdp stormpy representation as input and outputs a simple stormvogel representation
+        """Convert a stormpy POMDP to a stormvogel model.
+
+        :param sparsepomdp: The stormpy sparse POMDP to convert.
+        :returns: The equivalent stormvogel model.
+        """
         model = new_pomdp(create_initial_state=False)
         if len(sparsepomdp.states) > 0:
             max_obs = max(
@@ -468,7 +508,11 @@ def stormpy_to_stormvogel(
         return model
 
     def map_ma(sparsema: stormpy.storage.SparseMA) -> Model:
-        # Takes a ma stormpy representation as input and outputs a simple stormvogel representation
+        """Convert a stormpy MA to a stormvogel model.
+
+        :param sparsema: The stormpy sparse MA to convert.
+        :returns: The equivalent stormvogel model.
+        """
 
         # we create the model
         model = new_ma(create_initial_state=False)
@@ -542,7 +586,11 @@ def stormpy_to_stormvogel(
 
 
 def from_prism(prism_code="stormpy.storage.storage.PrismProgram"):
-    # Create a model from prism.
+    """Create a stormvogel model from a PRISM program.
+
+    :param prism_code: The PRISM program to build from.
+    :returns: The converted stormvogel model.
+    """
 
     assert stormpy is not None
     return stormpy_to_stormvogel(stormpy.build_model(prism_code))

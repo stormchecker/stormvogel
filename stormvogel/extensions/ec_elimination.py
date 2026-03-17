@@ -11,10 +11,13 @@ import stormvogel.stormpy_utils.mapping as mapping
 
 
 def map_state_labels(m, res):
-    """Based on the result of EC elimination, create a new state labeling that can be used for a new model that captures the result.
-    Args:
-        m: stormpy model
-        res (EndComponentEliminatorReturnTypeDouble): EC result
+    """Create a new state labeling based on the result of EC elimination.
+
+    Label sets of merged states are unified so the new model preserves all
+    original labels.
+
+    :param m: stormpy model.
+    :param res: EC elimination result.
     """
     assert stormpy is not None
     old_nr_columns = m.transition_matrix.nr_columns
@@ -30,11 +33,13 @@ def map_state_labels(m, res):
 
 
 def map_choice_labels(m_old, m_new, res):
-    """Based on the result of EC elimination, create a new choice labeling that can be used for a new model that captures the result.
-    Args:
-        m_old: old stormpy model
-        m_new: new strompy model that is based on res
-        res (EndComponentEliminatorReturnTypeDouble): EC result
+    """Create a new choice labeling based on the result of EC elimination.
+
+    Action labels are preserved when the number of choices is unchanged.
+
+    :param m_old: Old stormpy model.
+    :param m_new: New stormpy model based on *res*.
+    :param res: EC elimination result.
     """
     assert stormpy is not None
     new_nr_rows = m_new.transition_matrix.nr_rows
@@ -58,10 +63,11 @@ def map_choice_labels(m_old, m_new, res):
 
 def simple_ec_elimination(m):
     """Perform End Component elimination on a stormpy model while preserving labels.
+
     Label sets of merged states are unified.
     Action labels are preserved when possible.
-    Args:
-        m: stormpy model
+
+    :param m: stormpy model.
     """
     assert stormpy is not None
     # Keep all states, and consider ecs to be possible anywhere in the model
@@ -88,7 +94,12 @@ def stormvogel_get_maximal_end_components(
     sv_model: stormvogel.model.Model,
 ) -> list[Tuple[set[int], set[stormvogel.model.Action]]]:
     """Get the maximal end components of this model.
-    They are returned as a list of tuples where the first element is a set of state ids, and the second a set of actions.
+
+    Return a list of tuples where the first element is a set of states,
+    and the second is a set of actions.
+
+    :param sv_model: Stormvogel model to decompose.
+    :returns: List of ``(states, actions)`` tuples.
     """
     assert stormpy is not None
     sp_model = mapping.stormvogel_to_stormpy(sv_model)
@@ -106,8 +117,13 @@ def stormvogel_get_maximal_end_components(
 
 
 def choice_mapping(sv_model, sp_model):
-    """Return a bijective mapping between the stormvogel state-action pairs and the stormvogel model.
-    WARNING: This function will be depricated later. It might also be faulty, I don't know :))
+    """Return a bijective mapping between stormvogel state-action pairs and stormpy choice indices.
+
+    .. warning:: This function will be deprecated later. It might also be faulty.
+
+    :param sv_model: Stormvogel model.
+    :param sp_model: Corresponding stormpy model.
+    :returns: A :class:`bidict` mapping ``(State, Action)`` to choice index.
     """
     res = bidict({})
     choice_id = 0

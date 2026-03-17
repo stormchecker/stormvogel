@@ -5,13 +5,11 @@ import random
 
 
 class Path:
-    """
-    Path object that represents a path created by a simulator on a certain model.
+    """Represent a path created by a simulator on a certain model.
 
-    Args:
-        path: The path itself is a dictionary where we either store for each step a state or a state action pair,
-        depending on if we are working with a dtmc or an mdp.
-        model: model that the path traverses through
+    :param path: The path itself is a list where we either store for each step a state or a
+        state-action pair, depending on whether we are working with a DTMC or an MDP.
+    :param model: Model that the path traverses through.
     """
 
     path: (
@@ -36,7 +34,11 @@ class Path:
             raise NotImplementedError
 
     def get_state_in_step(self, step: int) -> stormvogel.model.State | None:
-        """returns the state discovered in the given step in the path"""
+        """Return the state discovered in the given step in the path.
+
+        :param step: The step index to look up.
+        :returns: The state at the given step, or ``None``.
+        """
         if not self.model.supports_actions():
             state = self.path[step]
             assert isinstance(state, stormvogel.model.State)
@@ -51,7 +53,11 @@ class Path:
             return state
 
     def get_action_in_step(self, step: int) -> stormvogel.model.Action | None:
-        """returns the action discovered in the given step in the path"""
+        """Return the action discovered in the given step in the path.
+
+        :param step: The step index to look up.
+        :returns: The action at the given step, or ``None``.
+        """
         if self.model.supports_actions():
             t = self.path[step]
             assert (
@@ -67,13 +73,20 @@ class Path:
     ) -> (
         tuple[stormvogel.model.Action, stormvogel.model.State] | stormvogel.model.State
     ):
-        """returns the state or state action pair discovered in the given step"""
+        """Return the state or state-action pair discovered in the given step.
+
+        :param step: The step index to look up.
+        :returns: The state or state-action pair at the given step.
+        """
         return self.path[step]
 
     def to_state_action_sequence(
         self,
     ) -> list[stormvogel.model.Action | stormvogel.model.State]:
-        """Convert a Path to a list containing actions and states."""
+        """Convert a Path to a list containing actions and states.
+
+        :returns: A flat list of actions and states from this path.
+        """
         res: list[stormvogel.model.Action | stormvogel.model.State] = [
             self.model.initial_state
         ]
@@ -110,7 +123,13 @@ def get_action_at_state(
         | Callable[[stormvogel.model.State], stormvogel.model.Action]
     ),
 ) -> stormvogel.model.Action:
-    """Helper function to obtain the chosen action in a state by a scheduler."""
+    """Obtain the chosen action in a state by a scheduler.
+
+    :param state: The state to get the action for.
+    :param scheduler: A scheduler or callable that maps states to actions.
+    :returns: The action chosen by the scheduler at the given state.
+    :raises TypeError: If scheduler is not a Scheduler or callable.
+    """
     assert scheduler is not None
     if isinstance(scheduler, stormvogel.result.Scheduler):
         action = scheduler.get_action_at_state(state)
@@ -129,7 +148,14 @@ def _copy_rewards(
     partial_state: stormvogel.model.State,
 ) -> None:
     """Copy rewards from the original model to the partial model for a state.
-    Missing rewards default to 0."""
+
+    Missing rewards default to 0.
+
+    :param model: The original model containing rewards.
+    :param partial_model: The partial model to copy rewards into.
+    :param original_state: The state in the original model.
+    :param partial_state: The corresponding state in the partial model.
+    """
     for index, rewardmodel in enumerate(partial_model.rewards):
         r = model.rewards[index].get_state_reward(original_state)
         rewardmodel.set_state_reward(partial_state, r if r is not None else 0)
@@ -140,7 +166,13 @@ def _transition_probability(
     to_state: stormvogel.model.State,
     action: stormvogel.model.Action | None = None,
 ) -> float:
-    """Calculate the total transition probability from from_state to to_state."""
+    """Calculate the total transition probability from one state to another.
+
+    :param from_state: The source state.
+    :param to_state: The target state.
+    :param action: The action taken, or ``None`` for models without actions.
+    :returns: The total transition probability.
+    """
     transitions = from_state.get_outgoing_transitions(action)
     assert transitions is not None
     probability = 0.0
@@ -156,10 +188,15 @@ def step(
     action: stormvogel.model.Action | None = None,
     seed: int | None = None,
 ) -> tuple[stormvogel.model.State, list[stormvogel.model.Number], list[str]]:
-    """Simulate one step: returns (next_state, state-exit rewards, next_state labels).
+    """Simulate one step from the given state.
 
     Rewards are always the state-exit rewards of the current state.
     Missing rewards default to 0.
+
+    :param state: The current state to step from.
+    :param action: The action to take, or ``None`` for models without actions.
+    :param seed: Seed for the random state selection. Random if not provided.
+    :returns: A tuple of (next_state, state-exit rewards, next_state labels).
     """
 
     # we go to the next state according to the probability distribution of the transition
@@ -200,16 +237,14 @@ def simulate_path(
     ) = None,
     seed: int | None = None,
 ) -> Path:
-    """
-    Simulates the model and returns the path created by the process.
-    Args:
-        model: The stormvogel model that the simulator should run on.
-        steps: The number of steps the simulator walks through the model.
-        scheduler: A stormvogel scheduler to determine what actions should be taken. Random if not provided.
-                    (instead of a stormvogel scheduler, a function from states to actions can also be provided.)
-        seed: The seed for the function that determines for each state what the next state will be. Random seed if not provided.
+    """Simulate the model and return the path created by the process.
 
-    Returns a path object.
+    :param model: The stormvogel model that the simulator should run on.
+    :param steps: The number of steps the simulator walks through the model.
+    :param scheduler: A stormvogel scheduler to determine what actions should be taken.
+        Random if not provided. A callable from states to actions can also be provided.
+    :param seed: The seed for the random state selection. Random if not provided.
+    :returns: A path object representing the simulated trajectory.
     """
 
     # we need to set the seed for choosing actions in case no scheduler is provided
@@ -265,17 +300,15 @@ def simulate(
     ) = None,
     seed: int | None = None,
 ) -> stormvogel.model.Model:
-    """
-    Simulates the model.
-    Args:
-        model: The stormvogel model that the simulator should run on
-        steps: The number of steps the simulator walks through the model
-        runs: The number of times the model gets simulated.
-        scheduler: A stormvogel scheduler to determine what actions should be taken. Random if not provided.
-                    (instead of a stormvogel scheduler, a function from states to actions can also be provided.)
-        seed: The seed for the function that determines for each state what the next state will be. Random seed if not provided.
+    """Simulate the model over multiple runs.
 
-    Returns the partial model discovered by all the runs of the simulator together
+    :param model: The stormvogel model that the simulator should run on.
+    :param steps: The number of steps the simulator walks through the model.
+    :param runs: The number of times the model gets simulated.
+    :param scheduler: A stormvogel scheduler to determine what actions should be taken.
+        Random if not provided. A callable from states to actions can also be provided.
+    :param seed: The seed for the random state selection. Random if not provided.
+    :returns: The partial model discovered by all the runs of the simulator together.
     """
 
     # we need to set the seed for choosing actions in case no scheduler is provided

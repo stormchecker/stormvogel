@@ -6,13 +6,12 @@ Number = int | float | Fraction
 
 @dataclass
 class Polynomial:
-    """
-    Represents polynomials, to be used as values for parametric models.
+    """Represent a polynomial, to be used as a value for parametric models.
+
     Polynomials are represented as a dictionary with n-dimensional tuples as keys.
 
-    Args:
-        terms: terms of the polynomial (dictionary that relates exponents to coefficients)
-        variables: variables of the polynomial as a list of strings
+    :param terms: Terms of the polynomial (dictionary that relates exponents to coefficients).
+    :param variables: Variables of the polynomial as a list of strings.
     """
 
     terms: dict[tuple, float]
@@ -28,9 +27,14 @@ class Polynomial:
 
     # TODO exponents may also be a single integer
     def add_term(self, exponents: tuple[int, ...], coefficient: float):
-        """
-        adds a term to the polynomial
-        example: add_term((1,2,3,4), 5) means we add 5*(x1^1*x2^2*x3^3*x4^4)
+        """Add a term to the polynomial.
+
+        Example: ``add_term((1,2,3,4), 5)`` means we add ``5*(x1^1*x2^2*x3^3*x4^4)``.
+
+        :param exponents: Tuple of exponents for each variable.
+        :param coefficient: Coefficient of the term.
+        :raises RuntimeError: If a term with the given exponents already exists,
+            or if the exponents tuple has the wrong dimension.
         """
 
         assert isinstance(exponents, tuple)
@@ -51,15 +55,19 @@ class Polynomial:
         self.terms[exponents] = float(coefficient)
 
     def get_dimension(self) -> int:
-        """returns the number of different variables present"""
+        """Return the number of different variables present."""
         return len(self.variables)
 
     def get_variables(self) -> set[str]:
-        """returns the set of parameters"""
+        """Return the set of parameters."""
         return set(self.variables)
 
     def get_degree(self) -> int | None:
-        """returns the degree of the polynomial"""
+        """Return the degree of the polynomial.
+
+        :returns: The degree of the polynomial.
+        :raises RuntimeError: If the polynomial has no terms.
+        """
         if self.terms is not {}:
             largest = 0
             for term in self.terms.keys():
@@ -70,7 +78,11 @@ class Polynomial:
         raise RuntimeError("A polynomial without terms does not have a degree.")
 
     def evaluate(self, values: dict[str, Number]) -> float:
-        """evaluates the polynomial with the given values for the variables"""
+        """Evaluate the polynomial with the given values for the variables.
+
+        :param values: Mapping from variable names to their values.
+        :returns: The result of evaluating the polynomial.
+        """
         result = 0
         for exponents, coefficient in self.terms.items():
             term = coefficient
@@ -125,13 +137,12 @@ class Polynomial:
 
 
 class RationalFunction:
-    """
-    Represents rational functions, to be used as values for parametric models
+    """Represent a rational function, to be used as a value for parametric models.
+
     Rational functions are represented as a pair of polynomials.
 
-     Args:
-        numerator: Polynomial in the numerator
-        denominator: Polynomial in the denominator
+    :param numerator: Polynomial in the numerator.
+    :param denominator: Polynomial in the denominator.
     """
 
     numerator: Polynomial
@@ -154,15 +165,19 @@ class RationalFunction:
         return self.numerator.is_zero()
 
     def get_dimension(self) -> int:
-        """returns the number of different variables present"""
+        """Return the number of different variables present."""
         return max(self.numerator.get_dimension(), self.denominator.get_dimension())
 
     def get_variables(self) -> set[str]:
-        "returns the total set of variables of this rational function"
+        """Return the total set of variables of this rational function."""
         return set(self.numerator.variables).union(set(self.denominator.variables))
 
     def evaluate(self, values: dict[str, Number]) -> float:
-        """evaluates the rational function with the given values"""
+        """Evaluate the rational function with the given values.
+
+        :param values: Mapping from variable names to their values.
+        :returns: The result of evaluating the rational function.
+        """
         return self.numerator.evaluate(values) / self.denominator.evaluate(values)
 
     def __str__(self) -> str:

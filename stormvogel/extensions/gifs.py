@@ -22,18 +22,21 @@ def render_model_gif(
     fps: int = 2,
     loop: int = 0,
 ) -> str:
-    """Render a stormvogel model to a gif, using the gymnasium_scheduler (A map from state numbers to action numbers) to pick an action.
-    Leave as None for a random action.
+    """Render a stormvogel model to a gif.
 
-    Args:
-        model (Model): stormvogel model.
-        state_to_image (Callable[[State], Image]): Function that takes a state and returns an image.
-        scheduler (Scheduler | Callable[[State], Action] | None): Scheduler to use for the simulation.
-        path (Path | None): Path to use for the simulation. If both scheduler and path are set, path takes presedence.
-        filename (str): The gif will be saved as gifs/filename.gif.
-        max_length (int): The maximum amount of steps to simulate.
-        fps (int): The frames per second of the gif.
-        loop (int): The amount of times the gif will loop. 0 means infinite."""
+    Use *scheduler* to pick actions; leave as ``None`` for random actions.
+
+    :param model: Stormvogel model.
+    :param state_to_image: Function that takes a state and returns an image.
+    :param scheduler: Scheduler to use for the simulation.
+    :param path: Path to use for the simulation. If both *scheduler* and *path*
+        are set, *path* takes precedence.
+    :param filename: The gif will be saved as ``gifs/<filename>.gif``.
+    :param max_length: Maximum number of steps to simulate.
+    :param fps: Frames per second of the gif.
+    :param loop: Number of times the gif loops. ``0`` means infinite.
+    :returns: Filesystem path of the saved gif.
+    """
     if path is None:
         if model.supports_actions() and scheduler is not None:
             path = simulator.simulate_path(model, max_length, scheduler)
@@ -59,7 +62,10 @@ def render_model_gif(
 
 
 def embed_gif(filename: str):
-    """Hacky way to embed a gif in a jupyter notebook so that it also works with sphinx docs."""
+    """Embed a gif in a Jupyter notebook so that it also works with Sphinx docs.
+
+    :param filename: Path to the gif file.
+    """
     import IPython.display as ipd
 
     with open("GIF" + ".html", "w") as f:

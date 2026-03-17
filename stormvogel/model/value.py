@@ -10,11 +10,10 @@ Number = int | float | Fraction
 
 @dataclass
 class Interval:
-    """represents an interval value for interval models
+    """Represent an interval value for interval models.
 
-    Args:
-        bottom: the bottom (left) element of the interval
-        top: the top (right) element of the interval
+    :param bottom: The bottom (left) element of the interval.
+    :param top: The top (right) element of the interval.
     """
 
     lower: Number
@@ -63,7 +62,14 @@ def is_zero(value: Value) -> bool:
 def value_to_string(
     n: Value, use_fractions: bool = True, round_digits: int = 4, denom_limit: int = 1000
 ) -> str:
-    """Convert a Value to a string."""
+    """Convert a :class:`Value` to a string.
+
+    :param n: The value to convert.
+    :param use_fractions: If ``True``, represent numbers as fractions.
+    :param round_digits: Number of decimal places when not using fractions.
+    :param denom_limit: Maximum denominator when limiting fractions.
+    :returns: String representation of the value.
+    """
     if isinstance(n, (int, float)):
         if math.isinf(float(n)):
             return "inf"
