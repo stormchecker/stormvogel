@@ -110,7 +110,9 @@ def sparse_equal(
 def test_stormpy_to_stormvogel_and_back_dtmc():
     if stormpy is not None:
         # we test it for an example stormpy representation of a dtmc
-        stormpy_dtmc = stormvogel.examples.stormpy_examples.stormpy_dtmc.example_building_dtmcs_01()
+        stormpy_dtmc = (
+            stormvogel.examples.stormpy_examples.stormpy_dtmc.example_building_dtmcs_01()
+        )
         # print(stormpy_dtmc.transition_matrix)
         stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
         # print(stormvogel_dtmc)
@@ -215,7 +217,9 @@ def test_stormvogel_to_stormpy_and_back_ctmc():
 def test_stormpy_to_stormvogel_and_back_ctmc():
     if stormpy is not None:
         # we create a stormpy representation of an example ctmc
-        stormpy_ctmc = stormvogel.examples.stormpy_examples.stormpy_ctmc.example_building_ctmcs_01()
+        stormpy_ctmc = (
+            stormvogel.examples.stormpy_examples.stormpy_ctmc.example_building_ctmcs_01()
+        )
         # print(stormpy_ctmc)
         stormvogel_ctmc = mapping.stormpy_to_stormvogel(stormpy_ctmc)
         # print(stormvogel_ctmc)
@@ -241,7 +245,9 @@ def test_stormvogel_to_stormpy_and_back_pomdp():
 def test_stormpy_to_stormvogel_and_back_pomdp():
     if stormpy is not None:
         # we create a stormpy representation of an example pomdp
-        stormpy_pomdp = stormvogel.examples.stormpy_examples.stormpy_pomdp.example_building_pomdps_01()
+        stormpy_pomdp = (
+            stormvogel.examples.stormpy_examples.stormpy_pomdp.example_building_pomdps_01()
+        )
         # print(stormpy_pomdp)
         stormvogel_pomdp = mapping.stormpy_to_stormvogel(stormpy_pomdp)
         # print(stormvogel_pomdp)

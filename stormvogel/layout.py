@@ -91,9 +91,9 @@ class Layout:
 
         # Save changes to the schema. The visualization object will handle putting nodes into the correct groups.
         groups2 = self.layout["edit_groups"]["groups"]
-        self.schema[
-            "groups"
-        ] = {}  # empty the schema groups, to clear existing groups that we may not want
+        self.schema["groups"] = (
+            {}
+        )  # empty the schema groups, to clear existing groups that we may not want
         for g in groups2:
             # For the settings themselves, we need to manually copy everything.
             layout_group_macro = copy.deepcopy(

@@ -1,5 +1,6 @@
 import stormvogel.model
 import random
+from typing import Callable
 
 
 class Scheduler:
@@ -132,6 +133,18 @@ class Result:
             return self.values[state]
         else:
             raise RuntimeError("This state is not a part of the model")
+
+    def filter(
+        self, value_predicate: Callable[[stormvogel.model.Value], bool]
+    ) -> list[stormvogel.model.State]:
+        """ """
+        return [s for s, v in self.values.items() if value_predicate(v)]
+
+    def filter_true(self):
+        """
+        Obtain the set of states S'  where the result for each s in S' is true.
+        """
+        return self.filter(lambda v: v == True)
 
     def __str__(self) -> str:
         return (

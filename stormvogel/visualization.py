@@ -681,8 +681,10 @@ class JSVisualization(VisualizationBase):
 
     def set_node_color(
         self,
-        obj: stormvogel.model.State
-        | tuple[stormvogel.model.State, stormvogel.model.Action],
+        obj: (
+            stormvogel.model.State
+            | tuple[stormvogel.model.State, stormvogel.model.Action]
+        ),
         color: str | None,
     ) -> None:
         """Sets the color of a specific node in the visualization.
@@ -1027,10 +1029,14 @@ class MplVisualization(VisualizationBase):
 
     def highlight_edge(
         self,
-        from_: stormvogel.model.State
-        | tuple[stormvogel.model.State, stormvogel.model.Action],
-        to_: stormvogel.model.State
-        | tuple[stormvogel.model.State, stormvogel.model.Action],
+        from_: (
+            stormvogel.model.State
+            | tuple[stormvogel.model.State, stormvogel.model.Action]
+        ),
+        to_: (
+            stormvogel.model.State
+            | tuple[stormvogel.model.State, stormvogel.model.Action]
+        ),
         color: str = "red",
     ) -> None:
         """Highlights an edge between two nodes by setting its color.

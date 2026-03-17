@@ -55,6 +55,7 @@ class Model[ValueType: Value]:
     )
 
     state_labels: dict[str, set[State[ValueType]]]
+    friendly_names: dict[State[ValueType], str | None] | None
 
     rewards: list[RewardModel]
 
@@ -67,6 +68,7 @@ class Model[ValueType: Value]:
         self.state_valuations = dict()
         self.state_labels = dict()
         self.rewards = []
+        self.friendly_names: dict[State[ValueType], str | None] | None = dict()
         self._is_parametric: bool | None = None
         self._is_interval: bool | None = None
         self._state_index_cache: dict[State, int] | None = None
@@ -649,6 +651,10 @@ class Model[ValueType: Value]:
             res += ["", "Markovian states:"] + [f"{markovian_states}"]
 
         return "\n".join(res)
+
+    @property
+    def sorted_states(self):
+        return sorted(self.states, key=lambda state: state.friendly_name)
 
     def __getitem__(self, state_index: int):
         return self.states[state_index]
