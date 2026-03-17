@@ -62,7 +62,7 @@ class Choices[ValueType: Value]:
         return False
 
     def add(self, other: Self):
-        """Adds two Choices together, provided they have no overlapping actions."""
+        """Adds two Choices together if they have no overlapping actions."""
         # Check EmptyAction invariant before adding
         if self.has_empty_action() and not other.has_empty_action():
             raise RuntimeError(
@@ -78,13 +78,9 @@ class Choices[ValueType: Value]:
             )
         for action, branch in other:
             if action in self._choices:
-                if action == EmptyAction:
-                    # Merge branches for EmptyAction
-                    self._choices[action] = self._choices[action] + branch
-                else:
-                    raise RuntimeError(
-                        "Cannot add two Choices that have overlapping actions."
-                    )
+                raise RuntimeError(
+                    f"Cannot add choices with overlapping actions. Action {action} is in both choices."
+                )
             else:
                 self._choices[action] = branch
 
@@ -100,7 +96,7 @@ class Choices[ValueType: Value]:
         return len(self._choices)
 
     def __setitem__(self, key, value):
-        # These sanity checks are intended to preserve the DTMC / MDP semantics.
+        # These sanity checks are intended to preserve the invariant that a choice cannot have both an empty action and a non-empty action.
         if key is None:
             raise ValueError("Action cannot be None.")
         if key != EmptyAction and self.has_empty_action():

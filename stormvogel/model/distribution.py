@@ -4,7 +4,7 @@ from stormvogel.model.value import Value
 from dataclasses import dataclass
 
 
-@dataclass(eq=False)
+@dataclass
 class Distribution[ValueType: Value, SupportType]:
     """A sparse distribution."""
 
