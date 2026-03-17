@@ -1,64 +1,77 @@
 """A distribution object."""
 
-from stormvogel.model.value import Value
-from dataclasses import dataclass
+import math
+
+from stormvogel.model.value import Value, is_zero
 
 
-@dataclass
 class Distribution[ValueType: Value, SupportType]:
-    """Represent a sparse distribution mapping values to support elements."""
+    """A sparse distribution mapping support elements to probability values."""
 
-    _distribution: list[tuple[ValueType, SupportType]]
+    _distribution: dict[SupportType, ValueType]
+
+    def __init__(self, distribution: dict[SupportType, ValueType]):
+        self._distribution = distribution
 
     @property
     def support(self) -> set[SupportType]:
-        """Return the support of this distribution."""
-        return set(s for prob, s in self._distribution if not prob.is_zero())
+        """Returns the support of this distribution (elements with non-zero probability)."""
+        return {s for s, v in self._distribution.items() if not is_zero(v)}
 
     @property
     def probabilities(self) -> list[ValueType]:
-        """Returns the values of this distribution."""
-        return [v for v, _ in self._distribution]
+        """Returns the probability values of this distribution."""
+        return list(self._distribution.values())
 
-    def is_stochastic(self, epsilon=1e-6) -> bool:
-        """Check whether this distribution is probabilistic (i.e., sums to 1).
-
-        :param precision: Tolerance for floating-point comparison.
-        """
+    def is_stochastic(self, epsilon: float = 1e-6) -> bool:
+        """Returns whether this distribution sums to 1."""
         from stormvogel.model.value import Interval
         from stormvogel.parametric import Parametric
 
-        if any(isinstance(v, (Interval, Parametric)) for v, _ in self._distribution):
+        if any(
+            isinstance(v, (Interval, Parametric)) for v in self._distribution.values()
+        ):
             return True
 
         from fractions import Fraction
 
         total = sum(
             float(v)
-            for v, _ in self._distribution
+            for v in self._distribution.values()
             if isinstance(v, (int, float, Fraction))
         )
-        return abs(total - 1) < epsilon
+        return math.isclose(total, 1, abs_tol=epsilon)
 
-    def __str__(self):
-        parts = []
-        for value, support in self._distribution:
-            parts.append(f"{value} -> {support}")
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Distribution):
+            return NotImplemented
+        return self._distribution == other._distribution
+
+    def __str__(self) -> str:
+        parts = [f"{v} -> {s}" for s, v in self._distribution.items()]
         return ", ".join(parts)
 
-    def __add__(self, other):
+    def __add__(
+        self, other: "Distribution[ValueType, SupportType]"
+    ) -> "Distribution[ValueType, SupportType]":
         if not isinstance(other, Distribution):
             raise TypeError("Can only add Distribution to Distribution")
-        combined = {}
-        for value, support in self._distribution + other._distribution:
+        combined: dict[SupportType, ValueType] = dict(self._distribution)
+        for support, value in other._distribution.items():
             if support in combined:
-                combined[support] += value
+                combined[support] += value  # type: ignore[assignment]
             else:
                 combined[support] = value
-        return Distribution([(v, k) for k, v in combined.items()])
+        return Distribution(combined)
 
     def __iter__(self):
-        return iter(self._distribution)
+        return iter((v, s) for s, v in self._distribution.items())
 
     def __len__(self) -> int:
         return len(self._distribution)
+
+    def __getitem__(self, key: SupportType) -> ValueType:
+        return self._distribution[key]
+
+    def __contains__(self, key: SupportType) -> bool:
+        return key in self._distribution
