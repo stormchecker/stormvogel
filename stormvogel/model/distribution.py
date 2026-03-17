@@ -10,8 +10,30 @@ class Distribution[ValueType: Value, SupportType]:
 
     _distribution: dict[SupportType, ValueType]
 
-    def __init__(self, distribution: dict[SupportType, ValueType]):
-        self._distribution = distribution
+    def __init__(
+        self,
+        distribution: "dict[SupportType, ValueType] | list[tuple[ValueType, SupportType]] | Distribution[ValueType, SupportType] | None" = None,
+    ):
+        if distribution is None:
+            self._distribution = {}
+        elif isinstance(distribution, dict):
+            self._distribution = distribution
+        elif isinstance(distribution, Distribution):
+            self._distribution = dict(distribution._distribution)
+        elif isinstance(distribution, list):
+            seen: set[SupportType] = set()
+            self._distribution = {}
+            for v, s in distribution:
+                if s in seen:
+                    raise RuntimeError(
+                        f"Duplicate support element {s} in distribution."
+                    )
+                seen.add(s)
+                self._distribution[s] = v
+        else:
+            raise RuntimeError(
+                f"Distribution expects a dict, list of tuples, or None, got {type(distribution)}"
+            )
 
     @property
     def support(self) -> set[SupportType]:
@@ -72,6 +94,9 @@ class Distribution[ValueType: Value, SupportType]:
 
     def __getitem__(self, key: SupportType) -> ValueType:
         return self._distribution[key]
+
+    def __setitem__(self, key: SupportType, value: ValueType):
+        self._distribution[key] = value
 
     def __contains__(self, key: SupportType) -> bool:
         return key in self._distribution

@@ -93,7 +93,7 @@ def value_to_stormpy(
         # in the case of interval models, we convert intervals, and regular values are converted
         # to intervals where the lower and upper value are the same
         if isinstance(value, Interval):
-            interval = stormpy.pycarl.Interval(value[0], value[1])
+            interval = stormpy.pycarl.Interval(value.lower, value.upper)
         else:
             interval = stormpy.pycarl.Interval(value, value)
 
@@ -627,6 +627,14 @@ def _all_non_init_states_incoming_transition(model) -> bool:
     return True
 
 
+def _all_states_outgoing_transition(model) -> bool:
+    """Check whether all states have at least one choice."""
+    for state in model.states:
+        if not state.has_choices():
+            return False
+    return True
+
+
 def stormvogel_to_stormpy(
     model: Model,
 ):
@@ -640,8 +648,9 @@ def stormvogel_to_stormpy(
     :raises NotImplementedError: If the model type is not supported.
     """
     assert stormpy is not None
+
     # we throw the neccessary errors first
-    if not model.all_states_outgoing_transition():
+    if not _all_states_outgoing_transition(model):
         raise RuntimeError(
             "This model has states with no outgoing transitions.\nUse the add_self_loops() function to add self loops to all states with no outgoing transition."
         )

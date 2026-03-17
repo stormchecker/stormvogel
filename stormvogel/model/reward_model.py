@@ -23,11 +23,6 @@ class RewardModel[ValueType: Value]:
     model: "Model"
     rewards: dict[State, ValueType]
 
-    def __init__(self, name: str, model: "Model", rewards: dict[State, ValueType]):
-        self.name = name
-        self.rewards = rewards
-        self.model = model
-
     def set_from_rewards_vector(
         self, vector: list[ValueType], state_action: bool = False
     ) -> None:
@@ -47,8 +42,12 @@ class RewardModel[ValueType: Value]:
         combined_id = 0
         self.rewards = dict()
         for s in self.model:
-            if combined_id < len(vector):
-                self.rewards[s] = vector[combined_id]
+            if combined_id >= len(vector):
+                raise ValueError(
+                    f"Reward vector too short: expected entry at index {combined_id} "
+                    f"for state {s}, but vector has length {len(vector)}."
+                )
+            self.rewards[s] = vector[combined_id]
             if (
                 state_action
                 and self.model.supports_actions()
@@ -93,16 +92,18 @@ class RewardModel[ValueType: Value]:
 
         :returns: A flat list of reward values as floats.
         """
+        if any(not isinstance(val, (int, float)) for val in self.rewards.values()):
+            raise RuntimeError(
+                "Cannot get reward vector if not all rewards are numeric."
+            )
+        numeric_rewards: dict[State, float] = {
+            state: float(val)
+            for state, val in self.rewards.items()
+            if isinstance(val, (int, float))
+        }
         vector = []
         for state in self.model:
-            val = self.get_state_reward(state)
-            if any(not isinstance(val, (int, float)) for val in self.rewards.values()):
-                raise RuntimeError(
-                    "Cannot get reward vector if not all rewards are numeric."
-                )
-            val_float = (
-                float(val) if val is not None and isinstance(val, (int, float)) else 0.0
-            )
+            val_float = numeric_rewards.get(state, 0.0)
             if self.model.supports_actions() and state in self.model.transitions:
                 for _ in state.available_actions():
                     vector.append(val_float)
