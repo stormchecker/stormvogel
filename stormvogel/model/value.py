@@ -19,26 +19,10 @@ class Interval:
     lower: Number
     upper: Number
 
-    def __init__(self, bottom: Number, top: Number):
-        self.lower = bottom
-        self.upper = top
-
-    def __getitem__(self, idx):
-        if idx == 0:
-            return self.lower
-        elif idx == 1:
-            return self.upper
-        else:
-            raise IndexError(
-                "Intervals only have two elements (the bottom and top element)"
-            )
-
     def __lt__(self, other):
         if not isinstance(other, Interval):
             raise TypeError("Can only compare Interval to Interval")
-        if (self.lower, self.upper) < (other.lower, other.upper):
-            return True
-        return False
+        return (self.lower, self.upper) < (other.lower, other.upper)
 
     def __str__(self):
         return f"[{self.lower},{self.upper}]"
