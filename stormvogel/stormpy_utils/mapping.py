@@ -3,6 +3,7 @@ import json
 from typing import Union, cast
 
 from stormvogel import parametric
+from stormvogel.model.distribution import Distribution
 from stormvogel.model.model import (
     Model,
     ModelType,
@@ -12,10 +13,8 @@ from stormvogel.model.model import (
     new_ma,
 )
 from stormvogel.model.state import State
-from stormvogel.model.branches import Branches
 from stormvogel.model.choices import Choices, choices_from_shorthand
 from stormvogel.model.value import Value, Interval
-from stormvogel.model.observation import Observation
 
 try:
     import stormpy
@@ -182,7 +181,7 @@ def stormpy_to_stormvogel(
                     if len(model.states) == 0:
                         model.new_state(
                             labels=list(state.labels),
-                            observation=Observation(str(state.id)),
+                            observation=model.observation(str(state.id)),
                         )
                     else:
                         for label in state.labels:
@@ -197,7 +196,7 @@ def stormpy_to_stormvogel(
                 if model.supports_observations():
                     model.new_state(
                         labels=list(state.labels),
-                        observation=Observation(str(state.id)),
+                        observation=model.observation(str(state.id)),
                     )
                 else:
                     model.new_state(labels=list(state.labels))
@@ -270,12 +269,12 @@ def stormpy_to_stormvogel(
             choiceshorthand = [
                 (
                     value_to_stormvogel(x.value(), sparsedtmc),
-                    model.get_state_by_stormpy_id(x.column),
+                    model.states[x.column],
                 )
                 for x in row
             ]
             choices = choices_from_shorthand(choiceshorthand)
-            model.set_choices(model.get_state_by_stormpy_id(state.id), choices)
+            model.set_choices(model.states[state.id], choices)
 
         # we add the valuations
         add_valuations(model, sparsedtmc)
@@ -314,7 +313,7 @@ def stormpy_to_stormvogel(
 
                 if sparsemdp.has_choice_labeling():
                     labels = sparsemdp.choice_labeling.get_labels_of_choice(i)
-                    actionlabel = ",".join(sorted(labels)) if labels else None
+                    actionlabel = ",".join(sorted(labels)) if labels else str(i)
                 else:
                     actionlabel = str(i)
 
@@ -322,17 +321,17 @@ def stormpy_to_stormvogel(
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsemdp),
-                        model.get_state_by_stormpy_id(x.column),
+                        model.states[x.column],
                     )
                     for x in row
                 ]
-                choice[action] = Branches(
+                choice[action] = Distribution(
                     cast(
                         list[tuple[Value, State]],
                         branch,
                     )
                 )
-            model.set_choices(model.get_state_by_stormpy_id(state.id), Choices(choice))
+            model.set_choices(model.states[state.id], Choices(choice))
 
         # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
@@ -367,12 +366,12 @@ def stormpy_to_stormvogel(
             choiceshorthand = [
                 (
                     value_to_stormvogel(x.value(), sparsectmc),
-                    model.get_state_by_stormpy_id(x.column),
+                    model.states[x.column],
                 )
                 for x in row
             ]
             choices = choices_from_shorthand(choiceshorthand)
-            model.set_choices(model.get_state_by_stormpy_id(state.id), choices)
+            model.set_choices(model.states[state.id], choices)
 
         # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
@@ -414,7 +413,7 @@ def stormpy_to_stormvogel(
 
                 if sparsepomdp.has_choice_labeling():
                     labels = sparsepomdp.choice_labeling.get_labels_of_choice(i)
-                    actionlabel = ",".join(sorted(labels)) if labels else None
+                    actionlabel = ",".join(sorted(labels)) if labels else str(i)
                 else:
                     actionlabel = str(i)
 
@@ -422,17 +421,17 @@ def stormpy_to_stormvogel(
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsepomdp),
-                        model.get_state_by_stormpy_id(x.column),
+                        model.states[x.column],
                     )
                     for x in row
                 ]
-                choice[action] = Branches(
+                choice[action] = Distribution(
                     cast(
                         list[tuple[Value, State]],
                         branch,
                     )
                 )
-            model.set_choices(model.get_state_by_stormpy_id(state.id), Choices(choice))
+            model.set_choices(model.states[state.id], Choices(choice))
 
         # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
@@ -444,62 +443,6 @@ def stormpy_to_stormvogel(
         add_valuations(model, sparsepomdp)
 
         # map the observations to the states
-        for index, state in enumerate(model.states):
-            state.observation = model.observation(
-                str(sparsepomdp.get_observation(index))
-            )
-
-        return model
-        # we add the transitions
-        matrix = sparsepomdp.transition_matrix
-        for index, state in enumerate(sparsepomdp.states):
-            row_group_start = matrix.get_row_group_start(index)
-            row_group_end = matrix.get_row_group_end(index)
-
-            # within a row group we add for each action the transitions
-            choice = dict()
-            for i in range(row_group_start, row_group_end):
-                row = matrix.get_row(i)
-
-                if sparsepomdp.has_choice_labeling():
-                    labels = sparsepomdp.choice_labeling.get_labels_of_choice(i)
-                    actionlabel = ",".join(sorted(labels)) if labels else None
-                else:
-                    actionlabel = str(i)
-
-                action = model.action(actionlabel)
-                branch = [
-                    (
-                        value_to_stormvogel(x.value(), sparsepomdp),
-                        model.get_state_by_stormpy_id(x.column),
-                    )
-                    for x in row
-                ]
-                choice[action] = Branches(
-                    cast(
-                        list[tuple[Value, State]],
-                        branch,
-                    )
-                )
-            model.set_choices(model.get_state_by_stormpy_id(state.id), Choices(choice))
-
-        # we add self loops to all states with no outgoing transitions
-        model.add_self_loops()
-
-        # we add the reward models to the state action pairs
-        new_reward_model(model, sparsepomdp)
-
-        # we add the valuations
-        add_valuations(model, sparsepomdp)
-
-        # we add the observations:
-        max_obs = (
-            max(sparsepomdp.get_observation(i) for i in range(len(sparsepomdp.states)))
-            if len(sparsepomdp.states) > 0
-            else -1
-        )
-        for i in range(max_obs + 1):
-            model.observation(str(i))
         for index, state in enumerate(model.states):
             state.observation = model.observation(
                 str(sparsepomdp.get_observation(index))
@@ -533,7 +476,7 @@ def stormpy_to_stormvogel(
 
                 if sparsema.has_choice_labeling():
                     labels = sparsema.choice_labeling.get_labels_of_choice(i)
-                    actionlabel = ",".join(sorted(labels)) if labels else None
+                    actionlabel = ",".join(sorted(labels)) if labels else str(i)
                 else:
                     actionlabel = str(i)
 
@@ -541,17 +484,17 @@ def stormpy_to_stormvogel(
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsema),
-                        model.get_state_by_stormpy_id(x.column),
+                        model.states[x.column],
                     )
                     for x in row
                 ]
-                choice[action] = Branches(
+                choice[action] = Distribution(
                     cast(
                         list[tuple[Value, State]],
                         branch,
                     )
                 )
-            model.set_choices(model.get_state_by_stormpy_id(state.id), Choices(choice))
+            model.set_choices(model.states[state.id], Choices(choice))
 
         # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
@@ -564,7 +507,7 @@ def stormpy_to_stormvogel(
 
         # we set the markovian states
         for state_id in list(sparsema.markovian_states):
-            model.add_markovian_state(model.get_state_by_stormpy_id(state_id))
+            model.add_markovian_state(model.states[state_id])
 
         return model
 

@@ -9,6 +9,13 @@ if TYPE_CHECKING:
     from stormvogel.model.state import State
 
 
+ChoicesShorthand = (
+    list[tuple[Value, "State[Value]"]]
+    | list[tuple[Action, "State[Value]"]]
+    | dict[Action, list[tuple[Value, "State[Value]"]]]
+)
+
+
 class Choices[ValueType: Value]:
     """Represent a choice, which maps actions to branches.
 
@@ -69,12 +76,21 @@ class Choices[ValueType: Value]:
                     return True
         return False
 
-    def add(self, other: Self):
+    def add(self, other_choices: Self | ChoicesShorthand):
         """Add another :class:`Choices` to this one in-place.
 
         :param other: The choices to merge in.
         :raises RuntimeError: If the two choices have incompatible or overlapping actions.
         """
+
+        if not isinstance(other_choices, Choices):
+            other = cast("Choices[ValueType]", choices_from_shorthand(other_choices))
+        else:
+            other = other_choices
+
+        if other.has_zero_transition():
+            raise RuntimeError("All transition probabilities should be nonzero.")
+
         # Check EmptyAction invariant before adding
         if self.has_empty_action() and not other.has_empty_action():
             raise RuntimeError(
@@ -96,7 +112,7 @@ class Choices[ValueType: Value]:
             else:
                 self._choices[action] = branch
 
-    def __add__(self, other: Self) -> "Choices[ValueType]":
+    def __add__(self, other: Self | ChoicesShorthand) -> "Choices[ValueType]":
         new_choices = Choices(self._choices)
         new_choices.add(other)
         return new_choices
@@ -130,13 +146,6 @@ class Choices[ValueType: Value]:
 
     def __delitem__(self, key):
         del self._choices[key]
-
-
-ChoicesShorthand = (
-    list[tuple[Value, "State[Value]"]]
-    | list[tuple[Action, "State[Value]"]]
-    | dict[Action, list[tuple[Value, "State[Value]"]]]
-)
 
 
 def choices_from_shorthand(

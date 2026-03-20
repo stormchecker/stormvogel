@@ -1,9 +1,14 @@
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+from stormvogel.model.variable import Variable
+
+if TYPE_CHECKING:
+    from stormvogel.model import Model
 
 
-@dataclass(eq=False)
+@dataclass(order=False, eq=False, frozen=True)
 class Observation:
     """Represent an observation of a state (for POMDPs and HMMs).
 
@@ -12,9 +17,26 @@ class Observation:
     :param valuations: Optional mapping of variable names to observed values.
     """
 
-    alias: str
+    model: "Model"
     observation_id: UUID = field(default_factory=uuid4)
-    valuations: dict[str, Any] | None = None
+
+    @property
+    def valuations(self) -> dict[Variable, Any]:
+        """Return the variable-value pairs observed in this observation."""
+        if self not in self.model.observation_valuations:
+            raise RuntimeError(
+                f"Observation {self} does not have valuations in the model."
+            )
+        return self.model.observation_valuations[self]
+
+    @property
+    def alias(self) -> str:
+        """Return the alias of this observation."""
+        if self not in self.model.observation_aliases:
+            raise RuntimeError(
+                f"Observation {self} does not have an alias in the model."
+            )
+        return self.model.observation_aliases[self]
 
     def display(self):
         """Format the observation for visualizations."""

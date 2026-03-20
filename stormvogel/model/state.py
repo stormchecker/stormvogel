@@ -1,6 +1,6 @@
 """A model state."""
 
-from dataclasses import FrozenInstanceError, dataclass
+from dataclasses import dataclass, field
 from typing import Any, Iterable, TYPE_CHECKING
 from uuid import UUID, uuid4
 
@@ -12,6 +12,7 @@ from stormvogel.model.distribution import Distribution
 from stormvogel.model.observation import Observation
 from stormvogel.model.value import Value
 from stormvogel.model.action import Action, EmptyAction
+from stormvogel.model.variable import Variable
 
 
 @dataclass(order=False, eq=False)
@@ -23,26 +24,7 @@ class State[ValueType: Value]:
     """
 
     model: "Model[ValueType]"
-    state_id: UUID = UUID(int=0)
-
-    def __init__(self, model: "Model[ValueType]"):
-        self.model = model
-        self.state_id = uuid4()
-
-    def __setattr__(self, name, value):
-        if name == "state_id" and self.state_id != UUID(int=0):
-            raise FrozenInstanceError("Cannot modify values of State")
-
-        if name == "model" and self.state_id != UUID(int=0):
-            raise FrozenInstanceError("Cannot modify values of State")
-
-        super().__setattr__(name, value)
-
-    def __delattr__(self, name):
-        if name in ["state_id", "model"]:
-            raise FrozenInstanceError("Cannot delete properties of State")
-
-        super().__delattr__(name)
+    observation_id: UUID = field(default_factory=uuid4)
 
     @property
     def labels(self) -> Iterable[str]:
@@ -170,15 +152,15 @@ class State[ValueType: Value]:
             return 1
 
     @property
-    def valuations(self) -> dict[str, Any]:
+    def valuations(self) -> dict[Variable, Any]:
         """The valuations of this state."""
         return self.model.state_valuations[self]
 
     @valuations.setter
-    def valuations(self, value: dict[str, Any]):
+    def valuations(self, value: dict[Variable, Any]):
         self.model.state_valuations[self] = value
 
-    def add_valuation(self, variable: str, value: Any):
+    def add_valuation(self, variable: Variable, value: Any):
         """Add a valuation to this state.
 
         :param variable: The variable name.
@@ -186,7 +168,7 @@ class State[ValueType: Value]:
         """
         self.valuations[variable] = value
 
-    def get_valuation(self, variable: str) -> Any:
+    def get_valuation(self, variable: Variable) -> Any:
         """Return the valuation for the given variable.
 
         :param variable: The variable name.

@@ -54,7 +54,7 @@ The single `stormvogel/model.py` file has been split into a package `stormvogel/
 |---|---|
 | `for id, state in model:` | `for state in model:` |
 | `model[state_id]` (by int id) | `model[index]` (by list index) |
-| `model.get_state_by_id(int)` | `model.get_state_by_id(UUID)`. For integer index access, use `model.get_state_by_stormpy_id(id)` or `model.states[id]`. |
+| `model.get_state_by_id(int)` | `model.get_state_by_id(UUID)`. For integer index access, use `model.states[id]` or `model.states[id]`. |
 | `model.get_states_with_label()` returned `list[State]` | Returns `set[State]` |
 | `model.get_sub_model(states: list[State])` | `model.get_sub_model(states: Iterable[State])` |
 | `model.iterate_transitions()` returned `list` | Returns `Iterator[tuple[ValueType, State]]` |

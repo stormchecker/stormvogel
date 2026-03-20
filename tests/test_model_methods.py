@@ -5,6 +5,7 @@ import stormvogel.examples.nuclear_fusion_ctmc
 import pytest
 from typing import cast
 from model_testing import assert_models_equal, assert_choices_equal
+from stormvogel.model.variable import Variable
 
 
 def test_available_actions():
@@ -270,10 +271,91 @@ def test_remove_state_ids():
 
     other_dtmc = stormvogel.model.new_dtmc(create_initial_state=False)
     for i in range(6):
-        other_dtmc.new_state(labels=[f"rolled{i + 1}"], valuations={"rolled": i + 1})
+        other_dtmc.new_state(
+            labels=[f"rolled{i + 1}"], valuations={Variable("rolled"): i + 1}
+        )
     other_dtmc.add_self_loops()
 
     assert_models_equal(dtmc, other_dtmc)
+
+
+def test_summary_counts_model_choices():
+    mdp = stormvogel.model.new_mdp()
+    state1 = mdp.new_state()
+    state2 = mdp.new_state()
+    action_a = mdp.new_action("a")
+    action_b = mdp.new_action("b")
+    mdp.set_choices(
+        mdp.initial_state,
+        {action_a: [(1, state1)], action_b: [(1, state2)]},
+    )
+
+    summary = mdp.summary()
+
+    assert "2 choices" in summary
+
+
+def test_new_state_validation_is_transactional():
+    pomdp = stormvogel.model.new_pomdp(create_initial_state=False)
+
+    with pytest.raises(
+        RuntimeError,
+        match="without providing an observation",
+    ):
+        pomdp.new_state()
+
+    assert len(pomdp.states) == 0
+    assert len(pomdp.transitions) == 0
+    assert len(pomdp.state_valuations) == 0
+
+    dtmc = stormvogel.model.new_dtmc()
+    obs_model = stormvogel.model.new_pomdp(create_initial_state=False)
+    observation = obs_model.new_observation("obs")
+    states_before = len(dtmc.states)
+    transitions_before = len(dtmc.transitions)
+    valuations_before = len(dtmc.state_valuations)
+
+    with pytest.raises(
+        RuntimeError,
+        match="does not support observations",
+    ):
+        dtmc.new_state(observation=observation)
+
+    assert len(dtmc.states) == states_before
+    assert len(dtmc.transitions) == transitions_before
+    assert len(dtmc.state_valuations) == valuations_before
+
+
+def test_remove_state_cleans_state_bookkeeping():
+    pomdp = stormvogel.model.new_pomdp(create_initial_state=False)
+    observation = pomdp.new_observation("obs")
+    state = pomdp.new_state(
+        labels=["tmp"],
+        valuations={Variable("value"): 1},
+        observation=observation,
+    )
+    state.set_friendly_name("tmp-state")
+    reward_model = pomdp.new_reward_model("reward")
+    reward_model.rewards[state] = 1
+
+    pomdp.remove_state(state, normalize=False, suppress_warning=True)
+
+    assert state not in pomdp.states
+    assert state not in pomdp.state_valuations
+    assert state not in pomdp.friendly_names
+    assert state not in pomdp.state_observations
+    assert state not in pomdp.state_labels["tmp"]
+    assert state not in reward_model.rewards
+
+
+def test_remove_state_updates_markovian_states():
+    ma = stormvogel.model.new_ma(create_initial_state=False)
+    state = ma.new_state()
+    ma.add_markovian_state(state)
+
+    ma.remove_state(state, normalize=False, suppress_warning=True)
+
+    assert state not in ma.markovian_states
 
 
 def test_add_choices():
@@ -368,7 +450,7 @@ def test_get_sub_model():
     init.valuations = {"rolled": 0}
     init.set_choices(
         [
-            (1 / 6, new_dtmc.new_state(f"rolled{i + 1}", {"rolled": i + 1}))
+            (1 / 6, new_dtmc.new_state(f"rolled{i + 1}", {Variable("rolled"): i + 1}))
             for i in range(2)
         ]
     )
@@ -401,7 +483,9 @@ def test_valuation_methods():
         [
             (
                 1 / 6,
-                dtmc.new_state(labels=f"rolled{i + 1}", valuations={"rolled": i + 1}),
+                dtmc.new_state(
+                    labels=f"rolled{i + 1}", valuations={Variable("rolled"): i + 1}
+                ),
             )
             for i in range(6)
         ]

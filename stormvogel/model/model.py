@@ -1,10 +1,12 @@
+"""Defines the stormvogel Model."""
+
 from enum import Enum
 from typing import Iterable, Any, Iterator
 from uuid import UUID
 
-from deprecated import deprecated
-
 from copy import deepcopy
+
+from deprecated import deprecated
 
 from stormvogel.model.choices import Choices, ChoicesShorthand, choices_from_shorthand
 from stormvogel.model.action import Action, EmptyAction
@@ -14,6 +16,7 @@ from stormvogel.model.value import Value, Interval, Number
 from stormvogel.model.state import State
 from stormvogel.parametric import Parametric
 from stormvogel.model.reward_model import RewardModel
+from stormvogel.model.variable import Variable
 
 
 class ModelType(Enum):
@@ -37,7 +40,13 @@ class Model[ValueType: Value]:
     :param state_valuations: The state valuations of this model, mapping states to variable-value pairs.
     :param friendly_names: Optional mapping from states to friendly names for easier debugging and visualization.
     :param rewards: The reward models of this model.
+    :param observation_aliases: The mapping from observations to their aliases (empty for non-observation models).
+    :param observation_valuations: The mapping from observations to variable-value pairs (empty for non-observation models).
+    :param state_observations: The mapping from states to their observations (empty for non-observation models).
+    :param markovian_states: The set of states that are markovian (only for Markov automata).
     """
+
+    # All models:
 
     model_type: ModelType
 
@@ -45,7 +54,7 @@ class Model[ValueType: Value]:
 
     transitions: dict[State[ValueType], Choices]
 
-    state_valuations: dict[State[ValueType], dict[str, Any]]
+    state_valuations: dict[State[ValueType], dict[Variable, Any]]
 
     state_labels: dict[str, set[State[ValueType]]]
 
@@ -53,11 +62,19 @@ class Model[ValueType: Value]:
 
     rewards: list[RewardModel]
 
-    _state_observations: (
-        dict[State[ValueType], Observation | Distribution[ValueType, Observation]]
-        | None
-    )
-    _markovian_states: set[State[ValueType]] | None
+    # Partially observable models:
+
+    observation_aliases: dict[Observation, str]
+
+    observation_valuations: dict[Observation, dict[Variable, Any]]
+
+    state_observations: dict[
+        State[ValueType], Observation | Distribution[ValueType, Observation]
+    ]
+
+    # Markov automata:
+
+    markovian_states: set[State[ValueType]]
 
     def __init__(self, model_type: ModelType, create_initial_state: bool = True):
         self.model_type = model_type
@@ -67,20 +84,13 @@ class Model[ValueType: Value]:
         self.state_labels = dict()
         self.rewards = []
         self.friendly_names = dict()
+        self.observation_aliases = dict()
+        self.observation_valuations = dict()
+        self.state_observations = dict()
+        self.markovian_states = set()
         self._is_parametric: bool | None = None
         self._is_interval: bool | None = None
         self._state_index_cache: dict[State, int] | None = None
-
-        # Initialize observations if those are supported by the model type (pomdps)
-        if self.model_type == ModelType.POMDP:
-            self._state_observations = dict()
-        else:
-            self._state_observations = None
-        # Initialize markovian states if applicable (in the case of MA's)
-        if self.model_type == ModelType.MA:
-            self._markovian_states = set()
-        else:
-            self._markovian_states = None
 
         # Add the initial state if specified to do so
         if create_initial_state:
@@ -126,32 +136,10 @@ class Model[ValueType: Value]:
                         seen.add(o)
                         yield o
 
-    @property
-    def state_observations(
-        self,
-    ) -> dict[State[ValueType], Observation | Distribution[ValueType, Observation]]:
-        """Return the state observations mapping.
-
-        :raises RuntimeError: If the model does not support observations.
-        """
-        if self._state_observations is None:
-            raise RuntimeError("This model does not support observations.")
-        return self._state_observations
-
-    @property
-    def markovian_states(self) -> set[State[ValueType]]:
-        """Return the set of markovian states.
-
-        :raises RuntimeError: If the model is not a Markov automaton.
-        """
-        if self._markovian_states is None:
-            raise RuntimeError("This model does not have markovian states.")
-        return self._markovian_states
-
     def summary(self):
         """Give a short summary of the model."""
         choices_bit = (
-            f"{sum(len(state.transitions) for state in self.states)} choices, "
+            f"{sum(len(choices) for choices in self.transitions.values())} choices, "
             if self.supports_actions()
             else ""
         )
@@ -171,7 +159,7 @@ class Model[ValueType: Value]:
 
     def supports_observations(self) -> bool:
         """Return whether this model supports observations."""
-        return self.model_type == ModelType.POMDP
+        return self.model_type in (ModelType.POMDP, ModelType.HMM)
 
     def is_interval_model(self) -> bool:
         """Return whether this model is an interval model, i.e., contains interval values."""
@@ -319,7 +307,7 @@ class Model[ValueType: Value]:
                 self.set_choices(state, [(float(1), state)])
 
     def add_valuation_at_remaining_states(
-        self, variables: list[str] | None = None, value: Any = 0
+        self, variables: list[Variable] | None = None, value: Any = 0
     ):
         """Set a dummy value for variables in all states where they are unassigned.
 
@@ -340,7 +328,7 @@ class Model[ValueType: Value]:
                 if var not in state.valuations.keys():
                     state.valuations[var] = value
 
-    def unassigned_variables(self) -> Iterator[tuple[State, str]]:
+    def unassigned_variables(self) -> Iterator[tuple[State, Variable]]:
         """Yield tuples of state-variable pairs that are unassigned."""
         variables = self.variables
         for state in self:
@@ -404,13 +392,6 @@ class Model[ValueType: Value]:
         self._is_parametric = None
         if s not in self.transitions:
             self.transitions[s] = Choices(dict())
-
-        if not isinstance(choices, Choices):
-            choices = choices_from_shorthand(choices)
-
-        if choices.has_zero_transition():
-            raise RuntimeError("All transition probabilities should be nonzero.")
-
         self.transitions[s].add(choices)
 
     def get_successor_states(self, state: State) -> set[State]:
@@ -460,6 +441,7 @@ class Model[ValueType: Value]:
         """
         self._is_interval = None
         self._is_parametric = None
+        self._state_index_cache = None
         if not suppress_warning:
             import warnings
 
@@ -495,10 +477,10 @@ class Model[ValueType: Value]:
 
         # remove the state itself from the list
         self.states.remove(state)
-
-        # remove from markovian states
-        if self._markovian_states is not None and state in self._markovian_states:
-            self._markovian_states.remove(state)
+        self.state_valuations.pop(state, None)
+        self.friendly_names.pop(state, None)
+        self.state_observations.pop(state, None)
+        self.markovian_states.discard(state)
 
         # remove from labels
         for states in self.state_labels.values():
@@ -533,7 +515,7 @@ class Model[ValueType: Value]:
     def new_state(
         self,
         labels: list[str] | str | None = None,
-        valuations: dict[str, Any] | None = None,
+        valuations: dict[Variable, Any] | None = None,
         observation: Observation | Distribution[ValueType, Observation] | None = None,
     ) -> State:
         """Create a new state and return it.
@@ -546,8 +528,18 @@ class Model[ValueType: Value]:
         :raises RuntimeError: If the model supports observations but none is
             provided, or if an observation is provided but not supported.
         """
+        if self.supports_observations() and observation is None:
+            raise RuntimeError(
+                "Tried to create a state in a model that supports observations without providing an observation."
+            )
+        if observation is not None and not self.supports_observations():
+            raise RuntimeError(
+                "Tried to set an observation on a model that does not support observations."
+            )
+
         self._is_interval = None
         self._is_parametric = None
+        self._state_index_cache = None
         state = State(self)
 
         self.states.append(state)
@@ -566,18 +558,76 @@ class Model[ValueType: Value]:
 
         self.transitions[state] = Choices(dict())
 
-        if self.supports_observations() and observation is None:
-            raise RuntimeError(
-                "Tried to create a state in a model that supports observations without providing an observation."
-            )
         if observation is not None:
-            if not self.supports_observations():
-                raise RuntimeError(
-                    "Tried to set an observation on a model that does not support observations."
-                )
             state.observation = observation
 
         return state
+
+    def new_observation(
+        self, alias: str, valuations: dict[Variable, Any] | None = None
+    ) -> Observation:
+        """Create a new observation and return it.
+
+        :param alias: The alias for the new observation.
+        :param valuations: Variable-value pairs to assign as valuations.
+        :returns: The newly created observation.
+        :raises RuntimeError: If the model does not support observations, or if
+            an observation with the given alias already exists.
+        """
+        if not self.supports_observations():
+            raise RuntimeError(
+                "Tried to create an observation in a model that does not support observations."
+            )
+        if alias in self.observation_aliases.values():
+            raise RuntimeError(
+                f"An observation with alias {alias} already exists in this model."
+            )
+        obs = Observation(self)
+        self.observation_aliases[obs] = alias
+        self.observation_valuations[obs] = (
+            valuations if valuations is not None else dict()
+        )
+        return obs
+
+    def get_observation(self, alias: str) -> Observation:
+        """Get an existing observation with the given alias.
+
+        :param alias: The alias of the observation.
+        :returns: The matching observation.
+        :raises RuntimeError: If the model does not support observations, or if
+            no observation with the given alias is found.
+        """
+        if not self.supports_observations():
+            raise RuntimeError(
+                "Called get_observation on a model that does not support observations"
+            )
+        for obs, obs_alias in self.observation_aliases.items():
+            if obs_alias == alias:
+                return obs
+        raise KeyError(f"Observation with alias {alias} not found.")
+
+    def observation(self, alias: str) -> Observation:
+        """Makes a new observation if the given alias does not exist and returns it, otherwise returns the existing observation with the given alias."""
+        if not self.supports_observations():
+            raise RuntimeError(
+                "Called observation on a model that does not support observations"
+            )
+        for obs, obs_alias in self.observation_aliases.items():
+            if obs_alias == alias:
+                return obs
+        return self.new_observation(alias)
+
+    def new_action(self, label: str) -> Action:
+        """Create a new action with the given label.
+
+        :param label: The label for the new action.
+        :returns: The newly created action.
+        """
+        return Action(label)
+
+    def action(self, label: str) -> Action:
+        """Alias of new_action."""
+        return self.new_action(label)
 
     def get_states_with_label(self, label: str) -> set[State]:
         """Get all states with a given label.
@@ -598,17 +648,6 @@ class Model[ValueType: Value]:
             if state.state_id == state_id:
                 return state
         raise RuntimeError(f"State with id {state_id} not found.")
-
-    def get_state_by_stormpy_id(self, stormpy_id: int) -> State:
-        """Get a state by its stormpy id (index in the states list).
-
-        :param stormpy_id: The index of the state.
-        :returns: The matching state.
-        :raises RuntimeError: If the index is out of range.
-        """
-        if stormpy_id < 0 or stormpy_id >= len(self.states):
-            raise RuntimeError(f"State with stormpy id {stormpy_id} not found.")
-        return self.states[stormpy_id]
 
     @property
     def initial_state(self) -> State:
@@ -633,11 +672,14 @@ class Model[ValueType: Value]:
         self.state_labels[label] = set()
 
     @property
-    def variables(self) -> set[str]:
+    def variables(self) -> set[Variable]:
         """Get the set of all variables present in this model (corresponding to valuations)."""
-        variables: set[str] = set()
+        variables: set[Variable] = set()
         for state in self.states:
             variables = variables | set(state.valuations.keys())
+            variables = variables | set(
+                self.state_observations.get(state, {}).valuations.keys()
+            )
         return variables
 
     def get_default_rewards(self) -> RewardModel:
@@ -693,25 +735,6 @@ class Model[ValueType: Value]:
     def nr_choices(self) -> int:
         """Return the number of choices in the model (summed over all states)."""
         return sum(state.nr_choices for state in self.states)
-
-    def get_observation(self, alias: str) -> Observation:
-        """Get an existing observation with the given alias.
-
-        :param alias: The alias of the observation.
-        :returns: The matching observation.
-        :raises RuntimeError: If the model does not support observations, or if
-            no observation with the given alias is found.
-        """
-        if not self.supports_observations():
-            raise RuntimeError(
-                "Called get_observation on a model that does not support observations"
-            )
-        assert self.observations is not None
-        for observation in self.observations:
-            if observation.alias == alias:
-                return observation
-
-        raise RuntimeError(f"Observation with alias {alias} not found.")
 
     def to_dot(self) -> str:
         """Generate a dot representation of this model."""
