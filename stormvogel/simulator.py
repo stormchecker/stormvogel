@@ -2,17 +2,14 @@ import stormvogel.result
 import stormvogel.model
 from typing import Callable
 import random
-from stormvogel.model import EmptyAction
 
 
 class Path:
-    """
-    Path object that represents a path created by a simulator on a certain model.
+    """Represent a path created by a simulator on a certain model.
 
-    Args:
-        path: The path itself is a dictionary where we either store for each step a state or a state action pair,
-        depending on if we are working with a dtmc or an mdp.
-        model: model that the path traverses through
+    :param path: The path itself is a list where we either store for each step a state or a
+        state-action pair, depending on whether we are working with a DTMC or an MDP.
+    :param model: Model that the path traverses through.
     """
 
     path: (
@@ -29,7 +26,7 @@ class Path:
         ),
         model: stormvogel.model.Model,
     ):
-        if model.type != stormvogel.model.ModelType.MA:
+        if model.model_type != stormvogel.model.ModelType.MA:
             self.path = path
             self.model = model
         else:
@@ -37,7 +34,11 @@ class Path:
             raise NotImplementedError
 
     def get_state_in_step(self, step: int) -> stormvogel.model.State | None:
-        """returns the state discovered in the given step in the path"""
+        """Return the state discovered in the given step in the path.
+
+        :param step: The step index to look up.
+        :returns: The state at the given step, or ``None``.
+        """
         if not self.model.supports_actions():
             state = self.path[step]
             assert isinstance(state, stormvogel.model.State)
@@ -52,7 +53,11 @@ class Path:
             return state
 
     def get_action_in_step(self, step: int) -> stormvogel.model.Action | None:
-        """returns the action discovered in the given step in the path"""
+        """Return the action discovered in the given step in the path.
+
+        :param step: The step index to look up.
+        :returns: The action at the given step, or ``None``.
+        """
         if self.model.supports_actions():
             t = self.path[step]
             assert (
@@ -68,15 +73,22 @@ class Path:
     ) -> (
         tuple[stormvogel.model.Action, stormvogel.model.State] | stormvogel.model.State
     ):
-        """returns the state or state action pair discovered in the given step"""
+        """Return the state or state-action pair discovered in the given step.
+
+        :param step: The step index to look up.
+        :returns: The state or state-action pair at the given step.
+        """
         return self.path[step]
 
     def to_state_action_sequence(
         self,
     ) -> list[stormvogel.model.Action | stormvogel.model.State]:
-        """Convert a Path to a list containing actions and states."""
+        """Convert a Path to a list containing actions and states.
+
+        :returns: A flat list of actions and states from this path.
+        """
         res: list[stormvogel.model.Action | stormvogel.model.State] = [
-            self.model.get_initial_state()
+            self.model.initial_state
         ]
         for v in self.path:
             if isinstance(v, tuple):
@@ -94,31 +106,11 @@ class Path:
                     and isinstance(t[0], stormvogel.model.Action)
                     and isinstance(t[1], stormvogel.model.State)
                 )
-                path += f" --(action: {t[0].label})--> state: {t[1].id}"
+                path += f" --(action: {t[0].label})--> state: {t[1].state_id}"
         else:
             for state in self.path:
-                path += f" --> state: {state.id}"
+                path += f" --> state: {state}"
         return path
-
-    def __eq__(self, other):
-        if not isinstance(other, Path):
-            return False
-
-        if len(self.path) != len(other.path):
-            return False
-
-        if self.model.supports_actions():
-            for tuple, other_tuple in zip(sorted(self.path), sorted(other.path)):
-                assert not (
-                    isinstance(tuple, stormvogel.model.State)
-                    or isinstance(other_tuple, stormvogel.model.State)
-                )
-                if not (tuple[0] == other_tuple[0] or tuple[1] == other_tuple[1]):
-                    return False
-
-            return self.model == other.model
-        else:
-            return self.path == other.path and self.model == other.model
 
     def __len__(self):
         return len(self.path)
@@ -131,7 +123,13 @@ def get_action_at_state(
         | Callable[[stormvogel.model.State], stormvogel.model.Action]
     ),
 ) -> stormvogel.model.Action:
-    """Helper function to obtain the chosen action in a state by a scheduler."""
+    """Obtain the chosen action in a state by a scheduler.
+
+    :param state: The state to get the action for.
+    :param scheduler: A scheduler or callable that maps states to actions.
+    :returns: The action chosen by the scheduler at the given state.
+    :raises TypeError: If scheduler is not a Scheduler or callable.
+    """
     assert scheduler is not None
     if isinstance(scheduler, stormvogel.result.Scheduler):
         action = scheduler.get_action_at_state(state)
@@ -143,12 +141,63 @@ def get_action_at_state(
     return action
 
 
+def _copy_rewards(
+    model: stormvogel.model.Model,
+    partial_model: stormvogel.model.Model,
+    original_state: stormvogel.model.State,
+    partial_state: stormvogel.model.State,
+) -> None:
+    """Copy rewards from the original model to the partial model for a state.
+
+    Missing rewards default to 0.
+
+    :param model: The original model containing rewards.
+    :param partial_model: The partial model to copy rewards into.
+    :param original_state: The state in the original model.
+    :param partial_state: The corresponding state in the partial model.
+    """
+    for index, rewardmodel in enumerate(partial_model.rewards):
+        r = model.rewards[index].get_state_reward(original_state)
+        rewardmodel.set_state_reward(partial_state, r if r is not None else 0)
+
+
+def _transition_probability(
+    from_state: stormvogel.model.State,
+    to_state: stormvogel.model.State,
+    action: stormvogel.model.Action | None = None,
+) -> float:
+    """Calculate the total transition probability from one state to another.
+
+    :param from_state: The source state.
+    :param to_state: The target state.
+    :param action: The action taken, or ``None`` for models without actions.
+    :returns: The total transition probability.
+    """
+    transitions = from_state.get_outgoing_transitions(action)
+    assert transitions is not None
+    probability = 0.0
+    for prob, target in transitions:
+        if target == to_state:
+            assert isinstance(prob, (float, int))
+            probability += float(prob)
+    return probability
+
+
 def step(
     state: stormvogel.model.State,
     action: stormvogel.model.Action | None = None,
     seed: int | None = None,
-) -> tuple[int, list[stormvogel.model.Number], list[str]]:
-    """given a state, action and seed we simulate a step and return information on the state we discover"""
+) -> tuple[stormvogel.model.State, list[stormvogel.model.Number], list[str]]:
+    """Simulate one step from the given state.
+
+    Rewards are always the state-exit rewards of the current state.
+    Missing rewards default to 0.
+
+    :param state: The current state to step from.
+    :param action: The action to take, or ``None`` for models without actions.
+    :param seed: Seed for the random state selection. Random if not provided.
+    :returns: A tuple of (next_state, state-exit rewards, next_state labels).
+    """
 
     # we go to the next state according to the probability distribution of the transition
     transitions = state.get_outgoing_transitions(action)
@@ -169,19 +218,13 @@ def step(
     else:
         next_state = random.choices(states, k=1, weights=probability_distribution)[0]
 
-    next_state_id = next_state.id
+    # State-exit rewards: always from the current state, regardless of model type.
+    rewards: list[stormvogel.model.Number] = []
+    for rewardmodel in state.model.rewards:
+        r = rewardmodel.get_state_reward(state)
+        rewards.append(r if r is not None else 0)
 
-    # we also add the rewards
-    rewards = []
-    if not next_state.model.supports_actions():
-        for rewardmodel in next_state.model.rewards:
-            rewards.append(rewardmodel.get_state_reward(next_state))
-    else:
-        for rewardmodel in next_state.model.rewards:
-            assert action is not None
-            rewards.append(rewardmodel.get_state_action_reward(state, action))
-
-    return next_state_id, rewards, next_state.labels
+    return next_state, rewards, list(next_state.labels)
 
 
 def simulate_path(
@@ -194,52 +237,52 @@ def simulate_path(
     ) = None,
     seed: int | None = None,
 ) -> Path:
-    """
-    Simulates the model and returns the path created by the process.
-    Args:
-        model: The stormvogel model that the simulator should run on.
-        steps: The number of steps the simulator walks through the model.
-        scheduler: A stormvogel scheduler to determine what actions should be taken. Random if not provided.
-                    (instead of a stormvogel scheduler, a function from states to actions can also be provided.)
-        seed: The seed for the function that determines for each state what the next state will be. Random seed if not provided.
+    """Simulate the model and return the path created by the process.
 
-    Returns a path object.
+    :param model: The stormvogel model that the simulator should run on.
+    :param steps: The number of steps the simulator walks through the model.
+    :param scheduler: A stormvogel scheduler to determine what actions should be taken.
+        Random if not provided. A callable from states to actions can also be provided.
+    :param seed: The seed for the random state selection. Random if not provided.
+    :returns: A path object representing the simulated trajectory.
     """
 
     # we need to set the seed for choosing actions in case no scheduler is provided
     random.seed(seed)
 
     # we start adding states or state action pairs to the path
-    state_id = 0
+    state = model.states[0]
     path = []
     if not model.supports_actions():
         for i in range(steps):
             # for each step we add a state to the path
-            if not model.states[state_id].is_absorbing():
-                state_id, _, _ = step(
-                    model.get_state_by_id(state_id),
+            if not state.is_absorbing():
+                next_state, _, _ = step(
+                    state,
                     seed=seed + i if seed is not None else None,
                 )
-                path.append(model.states[state_id])
+                state = next_state
+                path.append(state)
             else:
                 break
     else:
         for i in range(steps):
             # we first choose an action (randomly or according to scheduler)
             action = (
-                get_action_at_state(model.get_state_by_id(state_id), scheduler)
+                get_action_at_state(state, scheduler)
                 if scheduler
-                else random.choice(model.get_state_by_id(state_id).available_actions())
+                else random.choice(state.available_actions())
             )
 
             # we append the next state action pair
-            if not model.states[state_id].is_absorbing():
-                state_id, _, _ = step(
-                    model.get_state_by_id(state_id),
+            if not state.is_absorbing():
+                next_state, _, _ = step(
+                    state,
                     action,
                     seed=seed + i if seed is not None else None,
                 )
-                path.append((action, model.states[state_id]))
+                state = next_state
+                path.append((action, state))
             else:
                 break
 
@@ -256,204 +299,118 @@ def simulate(
         | None
     ) = None,
     seed: int | None = None,
-) -> stormvogel.model.Model | None:
-    """
-    Simulates the model.
-    Args:
-        model: The stormvogel model that the simulator should run on
-        steps: The number of steps the simulator walks through the model
-        runs: The number of times the model gets simulated.
-        scheduler: A stormvogel scheduler to determine what actions should be taken. Random if not provided.
-                    (instead of a stormvogel scheduler, a function from states to actions can also be provided.)
-        seed: The seed for the function that determines for each state what the next state will be. Random seed if not provided.
+) -> stormvogel.model.Model:
+    """Simulate the model over multiple runs.
 
-    Returns the partial model discovered by all the runs of the simulator together
+    :param model: The stormvogel model that the simulator should run on.
+    :param steps: The number of steps the simulator walks through the model.
+    :param runs: The number of times the model gets simulated.
+    :param scheduler: A stormvogel scheduler to determine what actions should be taken.
+        Random if not provided. A callable from states to actions can also be provided.
+    :param seed: The seed for the random state selection. Random if not provided.
+    :returns: The partial model discovered by all the runs of the simulator together.
     """
 
     # we need to set the seed for choosing actions in case no scheduler is provided
     random.seed(seed)
 
-    # we keep track of all discovered states over all runs and add them to the partial model
-    # we also add the discovered rewards and actions to the partial model if present
-    partial_model = stormvogel.model.new_model(model.type, create_initial_state=False)
+    partial_model = stormvogel.model.new_model(
+        model.model_type, create_initial_state=False
+    )
 
-    # we create the initial state ourselves because we want to force the name to be 0
-    init = partial_model.new_state(name="0", labels="init")
-    init.valuations = model.get_initial_state().valuations
+    init = partial_model.new_state(labels="init")
+    init.valuations = model.initial_state.valuations
 
-    # we add each (empty) rewardmodel to the partial model
-    if model.rewards:
-        for index, reward in enumerate(model.rewards):
-            reward_model = partial_model.new_reward_model(model.rewards[index].name)
+    for reward in model.rewards:
+        partial_model.new_reward_model(reward.name)
 
-            # we already set the rewards for the initial state/stateaction
-            if model.supports_actions():
-                try:
-                    r = model.rewards[index].get_state_action_reward(
-                        model.get_initial_state(), EmptyAction
-                    )
-                    assert r is not None
-                    reward_model.set_state_action_reward(
-                        partial_model.get_initial_state(),
-                        EmptyAction,
-                        r,
-                    )
-                except RuntimeError:
-                    pass
-            else:
-                r = model.rewards[index].get_state_reward(model.get_initial_state())
-                assert r is not None
-                reward_model.set_state_reward(
-                    partial_model.get_initial_state(),
-                    r,
-                )
+    # Track discovered states and map original -> partial
+    discovered_states: set[stormvogel.model.State] = {model.states[0]}
+    discovered_transitions: set[tuple] = set()
+    state_map: dict[stormvogel.model.State, stormvogel.model.State] = {
+        model.states[0]: init
+    }
 
-    # we keep track of the following sets
-    discovered_states = {0}
-    discovered_transitions = set()
+    _copy_rewards(model, partial_model, model.initial_state, init)
 
-    # we distinguish between models with and without actions
+    def discover_state(
+        original_state: stormvogel.model.State,
+    ) -> stormvogel.model.State:
+        """Register original_state if new; return its partial model counterpart."""
+        if original_state not in discovered_states:
+            discovered_states.add(original_state)
+            new = partial_model.new_state(
+                list(original_state.labels),
+                valuations=original_state.valuations,
+            )
+            state_map[original_state] = new
+            _copy_rewards(model, partial_model, original_state, new)
+        return state_map[original_state]
+
     if not partial_model.supports_actions():
-        discovered_states_before_transitions = set()
-        # now we start stepping through the model for the given number of runs
+        discovered_states_before_transitions: set[stormvogel.model.State] = set()
         for i in range(runs):
-            # we start at state 0 and we begin taking steps
-            last_state_id = 0
+            last_state = model.states[0]
             for j in range(steps):
-                # we make a step
-                state_id, reward, labels = step(
-                    model.get_state_by_id(last_state_id),
+                next_state, _, _ = step(
+                    last_state,
                     seed=seed + i + j if seed is not None else None,
                 )
 
-                # we add to the partial model what we discovered (if new)
-                if state_id not in discovered_states:
-                    discovered_states.add(state_id)
-                    new_state = partial_model.new_state(
-                        list(labels),
-                        name=str(state_id),
-                        valuations=model.get_state_by_id(state_id).valuations,
-                    )
+                new_state = discover_state(next_state)
 
-                    # we add the rewards
-                    for index, rewardmodel in enumerate(partial_model.rewards):
-                        rewardmodel.set_state_reward(new_state, reward[index])
-                else:
-                    new_state = partial_model.get_state_by_name(str(state_id))
+                if (last_state, next_state) not in discovered_transitions:
+                    discovered_transitions.add((last_state, next_state))
+                    probability = _transition_probability(last_state, next_state)
 
-                # we also add the transitions that we travelled through, so we need to keep track of the last state
-                # and of the discovered transitions so that we don't add duplicates
-                if (last_state_id, state_id) not in discovered_transitions:
-                    discovered_transitions.add((last_state_id, state_id))
-                    choice = model.get_choices(last_state_id)
-
-                    # we calculate the transition probability
-                    probability = 0
-                    for tuple in choice.choice[stormvogel.model.EmptyAction].branch:
-                        if tuple[1].id == state_id:
-                            assert isinstance(tuple[0], float) or isinstance(
-                                tuple[0], int
-                            )
-                            probability += float(
-                                tuple[0]
-                            )  # if there are multiple transitions between the same pair of states, they collapse
-                    assert new_state is not None
-
-                    # if the starting state of the transition is known, we append the existing branch
-                    # otherwise we make a new branch
-                    if last_state_id in discovered_states_before_transitions:
-                        discovered_states_before_transitions.add(last_state_id)
-                        s = partial_model.get_state_by_name(str(last_state_id))
-                        assert s is not None
-                        branch = partial_model.choices[s.id].choice[
-                            stormvogel.modle.EmptyAction
+                    s = state_map[last_state]
+                    if last_state in discovered_states_before_transitions:
+                        branch = partial_model.choices[s].choices[
+                            stormvogel.model.EmptyAction
                         ]
-                        branch.branch.append((probability, new_state))
+                        branch.branches.distribution.append((probability, new_state))
                     else:
-                        s = partial_model.get_state_by_name(str(last_state_id))
-                        assert s is not None
-                        s.add_choice([(probability, new_state)])
+                        discovered_states_before_transitions.add(last_state)
+                        s.add_choices([(probability, new_state)])
 
-                last_state_id = state_id
+                last_state = next_state
     else:
-        # we additionally keep track of actions
-        discovered_actions = set()
-        # now we start stepping through the model for the given number of runs
+        discovered_actions: set[tuple] = set()
         for i in range(runs):
-            # we start at state 0 and we begin taking steps
-            last_state_id = 0
+            last_state = model.states[0]
             for j in range(steps):
-                # we first choose an action
                 action = (
-                    get_action_at_state(model.get_state_by_id(last_state_id), scheduler)
+                    get_action_at_state(last_state, scheduler)
                     if scheduler
-                    else random.choice(
-                        model.get_state_by_id(last_state_id).available_actions()
-                    )
+                    else random.choice(last_state.available_actions())
                 )
 
-                # we add the action to the partial model (if new)
                 assert partial_model.actions is not None
                 if action not in partial_model.actions:
                     partial_model.new_action(action.label)
 
-                # we get the new discovery
-                state_id, reward, labels = step(
-                    model.get_state_by_id(last_state_id),
+                next_state, _, _ = step(
+                    last_state,
                     action,
                     seed=seed + i + j if seed is not None else None,
                 )
 
-                # we add the rewards.
-                for index, rewardmodel in enumerate(partial_model.rewards):
-                    state = model.get_state_by_id(last_state_id)
-                    rewardmodel.set_state_action_reward(state, action, reward[index])
+                new_state = discover_state(next_state)
 
-                # we add the state to the model
-                if state_id not in discovered_states:
-                    discovered_states.add(state_id)
-                    new_state = partial_model.new_state(
-                        list(labels),
-                        name=str(state_id),
-                        valuations=model.get_state_by_id(state_id).valuations,
+                if (last_state, next_state, action) not in discovered_transitions:
+                    discovered_transitions.add((last_state, next_state, action))
+                    probability = _transition_probability(
+                        last_state, next_state, action
                     )
-                else:
-                    new_state = partial_model.get_state_by_name(str(state_id))
 
-                # we also add the transitions that we travelled through, so we need to keep track of the last state
-                # and of the discovered transitions so that we don't add duplicates
-                if (last_state_id, state_id, action) not in discovered_transitions:
-                    transitions = model.get_state_by_id(
-                        last_state_id
-                    ).get_outgoing_transitions(action)
-                    discovered_transitions.add((last_state_id, state_id, action))
-
-                    # we calculate the transition probability
-                    probability = 0
-                    assert transitions is not None
-                    for tuple in transitions:
-                        if tuple[1].id == state_id:
-                            assert isinstance(tuple[0], float) or isinstance(
-                                tuple[0], int
-                            )
-                            probability += float(
-                                tuple[0]
-                            )  # if there are multiple transitions between the same pair of action with next state, they collapse
-
-                    # if the starting state of the transition action pair is known, we append the existing branch
-                    # otherwise we make a new branch
-                    assert new_state is not None
-                    if (last_state_id, action) in discovered_actions:
-                        s = partial_model.get_state_by_name(str(last_state_id))
-                        assert s is not None
-                        branch = partial_model.choices[s.id].choice[action]
-                        branch.branch.append((probability, new_state))
+                    s = state_map[last_state]
+                    if (last_state, action) in discovered_actions:
+                        branch = partial_model.choices[s].choices[action]
+                        branch.branches.distribution.append((probability, new_state))
                     else:
-                        discovered_actions.add((last_state_id, action))
-                        s = partial_model.get_state_by_name(str(last_state_id))
-                        assert s is not None
-                        s.add_choice({action: [(probability, new_state)]})
+                        discovered_actions.add((last_state, action))
+                        s.add_choices({action: [(probability, new_state)]})
 
-                last_state_id = state_id
+                last_state = next_state
 
     return partial_model

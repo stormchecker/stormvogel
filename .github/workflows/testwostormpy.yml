@@ -29,6 +29,7 @@ jobs:
           apt-get -y install curl
           apt-get -y install git
           apt-get -y install libcairo2-dev
+          apt-get -y install nodejs
 
       - name: Configure Python
         uses: actions/setup-python@v5
@@ -49,7 +50,7 @@ jobs:
         run: poetry install
 
       - name: Run tests
-        run: poetry run pytest -vv --exclude-tags stormpy
+        run: poetry run pytest -vv
 
       - name: List kernels
         run: poetry run jupyter kernelspec list

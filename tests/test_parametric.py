@@ -2,6 +2,7 @@ import stormvogel.stormpy_utils.mapping as mapping
 import stormvogel.parametric
 import stormvogel.model
 import pytest
+from model_testing import assert_models_equal
 
 
 try:
@@ -90,12 +91,12 @@ def pmc_equal(m0, m1) -> bool:
     )
 
 
-@pytest.mark.tags("stormpy")
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_pmc_conversion():
     # Create a new model
     pmc = stormvogel.model.new_dtmc()
 
-    init = pmc.get_initial_state()
+    init = pmc.initial_state
 
     # From the initial state, we have two choices that either bring us to state A or state B
     p1 = stormvogel.parametric.Polynomial(["x", "y", "z"])
@@ -115,10 +116,10 @@ def test_pmc_conversion():
     pmc.new_state(labels=["A"])
     pmc.new_state(labels=["B"])
 
-    init.set_choice(
+    init.set_choices(
         [
-            (p1, pmc.get_states_with_label("A")[0]),
-            (p2, pmc.get_states_with_label("B")[0]),
+            (p1, next(iter(pmc.get_states_with_label("A")))),
+            (p2, next(iter(pmc.get_states_with_label("B")))),
         ]
     )
 
@@ -134,12 +135,12 @@ def test_pmc_conversion():
     # assert pmc == new_pmc
 
 
-@pytest.mark.tags("stormpy")
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_pmdp_conversion():
     # Create a new model
     pmdp = stormvogel.model.new_mdp()
 
-    init = pmdp.get_initial_state()
+    init = pmdp.initial_state
 
     # From the initial state, we have two actions with choices that either bring us to a goal state or sink state
 
@@ -167,7 +168,7 @@ def test_pmdp_conversion():
         ]
     )
 
-    pmdp.add_choice(
+    pmdp.add_choices(
         init, stormvogel.model.Choices({action_a: branch0, action_b: branch1})
     )
 
@@ -179,10 +180,10 @@ def test_pmdp_conversion():
 
     new_pmdp = mapping.stormpy_to_stormvogel(stormpy_pmdp)
 
-    assert pmdp == new_pmdp
+    assert_models_equal(pmdp, new_pmdp)
 
 
-@pytest.mark.tags("stormpy")
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_pmc_conversion_from_stormpy():
     import stormvogel.examples.stormpy_examples.stormpy_pmc
 
@@ -202,7 +203,7 @@ def test_pmc_valuations():
     # we build a simple pmc
     pmc = stormvogel.model.new_dtmc()
 
-    init = pmc.get_initial_state()
+    init = pmc.initial_state
 
     # From the initial state, we have two choices that either bring us to state A or state B
     p1 = stormvogel.parametric.Polynomial(["x", "z", "w"])
@@ -219,34 +220,34 @@ def test_pmc_valuations():
     pmc.new_state(labels=["A"])
     pmc.new_state(labels=["B"])
 
-    init.set_choice(
+    init.set_choices(
         [
-            (p1, pmc.get_states_with_label("A")[0]),
-            (r1, pmc.get_states_with_label("B")[0]),
+            (p1, next(iter(pmc.get_states_with_label("A")))),
+            (r1, next(iter(pmc.get_states_with_label("B")))),
         ]
     )
 
     # we add self loops to all states with no outgoing choices
     pmc.add_self_loops()
 
-    induced_pmc = pmc.parameter_valuation({"x": 1, "y": 2, "w": 1, "z": 5})
+    induced_pmc = pmc.get_instantiated_model({"x": 1, "y": 2, "w": 1, "z": 5})
 
     # we build what the induced pmc is supposed to look like
     new_induced_pmc = stormvogel.model.new_dtmc()
 
-    init = new_induced_pmc.get_initial_state()
+    init = new_induced_pmc.initial_state
 
     new_induced_pmc.new_state(labels=["A"])
     new_induced_pmc.new_state(labels=["B"])
 
-    init.set_choice(
+    init.set_choices(
         [
-            (20, new_induced_pmc.get_states_with_label("A")[0]),
-            (-0.06, new_induced_pmc.get_states_with_label("B")[0]),
+            (20, next(iter(new_induced_pmc.get_states_with_label("A")))),
+            (-0.06, next(iter(new_induced_pmc.get_states_with_label("B")))),
         ]
     )
 
     # we add self loops to all states with no outgoing choices
     new_induced_pmc.add_self_loops()
 
-    assert induced_pmc == new_induced_pmc
+    assert_models_equal(induced_pmc, new_induced_pmc)

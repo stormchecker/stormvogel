@@ -9,77 +9,98 @@ from time import sleep
 def naive_value_iteration(
     model: stormvogel.model.Model, epsilon: float, target_state: stormvogel.model.State
 ) -> list[list[stormvogel.model.Value]]:
-    """Run naive value iteration. The result is a 2D list where result[n][m] is the probability to be in state m at step n.
+    """Run naive value iteration.
 
-    Args:
-        model (stormvogel.model.Model): Target model.
-        steps (int): Amount of steps.
-        target_state (stormvogel.model.State): Target state of the model.
+    Return a 2D list where ``result[n][m]`` is the value of state *m* at
+    iteration *n*.
 
-    Returns:
-        list[list[float]]: The result is a 2D list where result[n][m] is the value of state m at iteration n.
+    :param model: Target model.
+    :param epsilon: Convergence threshold.
+    :param target_state: Target state of the model.
+    :returns: 2D list of values per iteration per state.
+    :raises RuntimeError: If *epsilon* is zero or negative.
     """
     if epsilon <= 0:
-        RuntimeError("The algorithm will not terminate if epsilon is zero.")
+        raise RuntimeError("The algorithm will not terminate if epsilon is zero.")
 
-    # Create a dynamic matrix (list of lists) to store the result.
-    values_matrix = [[0 for state in model.get_states()]]
-    values_matrix[0][target_state.id] = 1
+    # Create a dynamic list of dicts to store the result.
+    values_matrix: list[dict[stormvogel.model.State, float]] = [
+        {state: 0.0 for state in model.states}
+    ]
+    values_matrix[0][target_state] = 1.0
 
     terminate = False
     while not terminate:
-        old_values = values_matrix[len(values_matrix) - 1]
-        new_values = [None for state in model.get_states()]
-        for sid, state in model:
-            choices = model.get_choice(state)
+        old_values = values_matrix[-1]
+        new_values: dict[stormvogel.model.State, float] = {
+            state: 0.0 for state in model.states
+        }
+        for state in model.states:
+            choices = model.choices[state].choices.items()
             # Now we have to take a decision for an action.
             action_values = {}
             for action, branch in choices:
                 branch_value = sum(
-                    [prob * old_values[state.id] for (prob, state) in branch]  # type: ignore
+                    [
+                        prob * old_values[target_state_in_branch]
+                        for (prob, target_state_in_branch) in branch.branches
+                    ]  # type: ignore
                 )
-                action_values[action] = branch_value
+                action_values[action] = (
+                    float(branch_value)
+                    if not isinstance(branch_value, float)
+                    else branch_value
+                )
             # We take the action with the highest value.
-            new_values[sid] = max(action_values.values())
+            new_values[state] = max(action_values.values()) if action_values else 0
         values_matrix.append(new_values)  # type: ignore
         terminate = (
-            sum([abs(x - y) for (x, y) in zip(new_values, old_values)]) < epsilon  # type: ignore
+            sum([abs(new_values[s] - old_values[s]) for s in model.states]) < epsilon  # type: ignore
         )
-    return values_matrix  # type: ignore
+
+    # Convert back to list of lists for compatibility with return type and display
+    return [
+        [step_values[state] for state in model.states] for step_values in values_matrix
+    ]  # type: ignore
 
 
 def dtmc_evolution(model: stormvogel.model.Model, steps: int) -> list[list[float]]:
-    """Run DTMC evolution. The result is a 2D list where result[n][m] is the probability to be in state m at step n.
+    """Run DTMC evolution.
 
-    Args:
-        model (stormvogel.model.Model): Target model.
-        steps (int): Amount of steps.
+    Return a 2D list where ``result[n][m]`` is the probability to be in
+    state *m* at step *n*.
 
-    Returns:
-        list[list[float]]: The result is a 2D list where result[n][m] is the probability to be in state m at step n.
+    :param model: Target model.
+    :param steps: Number of steps.
+    :returns: 2D list of probabilities per step per state.
+    :raises RuntimeError: If *steps* < 2 or the model is not a DTMC.
     """
     if steps < 2:
-        RuntimeError("Need at least two steps")
-    if model.type != stormvogel.model.ModelType.DTMC:
-        RuntimeError("Only works for DTMC")
+        raise RuntimeError("Need at least two steps")
+    if model.model_type != stormvogel.model.ModelType.DTMC:
+        raise RuntimeError("Only works for DTMC")
 
-    # Create a matrix and set the value for the starting state to 1 on the first step.
-    matrix_steps_states = [[0.0 for s in model.get_states()] for x in range(steps)]
-    matrix_steps_states[0][model.get_initial_state().id] = 1
+    # Create a list of dicts to store values
+    matrix_steps_states = [{s: 0.0 for s in model.states} for _ in range(steps)]
+    matrix_steps_states[0][model.initial_state] = 1
 
     # Apply the updated values for each step.
     for current_step in range(steps - 1):
         next_step = current_step + 1
-        for s_id, s in model:
-            branch = model.get_branches(s)
+        for s in model.states:
+            branch = model.choices[s].choices[stormvogel.model.EmptyAction].branches
             for transition_prob, target in branch:
-                current_prob = matrix_steps_states[current_step][s_id]
+                current_prob = matrix_steps_states[current_step][s]
                 assert isinstance(transition_prob, (int, float))
-                matrix_steps_states[next_step][target.id] += current_prob * float(
+                matrix_steps_states[next_step][target] += current_prob * float(
                     transition_prob
                 )
 
-    return matrix_steps_states
+    # Convert to list of lists for display
+    return [
+        [step_values[state] for state in model.states]
+        for step_values in matrix_steps_states
+    ]
 
 
 def invert_2d_list(li: list[list[Any]]) -> list[list[Any]]:
@@ -95,12 +116,12 @@ def invert_2d_list(li: list[list[Any]]) -> list[list[Any]]:
 def display_value_iteration_result(
     res: list[list[float]], hor_size: int, labels: list[str]
 ):
-    """Display a value iteration results using matplotlib.
+    """Display a value iteration result using matplotlib.
 
-    Args:
-        res (list[list[float]]): 2D list where result[n][m] is the probability to be in state m at step n.
-        hor_size (int): the horizontal size of the plot, in inches.
-        labels (list[str]): the names of all the states.
+    :param res: 2D list where ``result[n][m]`` is the probability to be in
+        state *m* at step *n*.
+    :param hor_size: Horizontal size of the plot in inches.
+    :param labels: Names of all the states.
     """
     import matplotlib.pyplot as plt
 
@@ -118,7 +139,12 @@ def display_value_iteration_result(
 
 
 def arg_max(funcs, args):
-    """Takes a list of callables and arguments and return the argument that yields the highest value."""
+    """Return the argument that yields the highest value across callables.
+
+    :param funcs: List of callables.
+    :param args: List of arguments, one per callable.
+    :returns: The argument whose callable returned the highest value.
+    """
     executed = [f(x) for f, x in zip(funcs, args)]
     index = executed.index(max(executed))
     return args[index]
@@ -132,14 +158,16 @@ def policy_iteration(
     delay: int = 2,
     clear: bool = True,
 ) -> stormvogel.Result:
-    """Performs policy iteration on the given mdp.
-    Args:
-        model (Model): MDP.
-        prop (str): PRISM property string to maximize. Rembember that this is a property on the induced DTMC, not the MDP.
-        visualize (bool): Whether the intermediate and final results should be visualized. Defaults to True.
-        layout (Layout): Layout to use to show the intermediate results.
-        delay (int): Seconds to wait between each iteration.
-        clear (bool): Whether to clear the visualization of each previous iteration.
+    """Perform policy iteration on the given MDP.
+
+    :param model: MDP model.
+    :param prop: PRISM property string to maximize. Note that this is a
+        property on the induced DTMC, not the MDP.
+    :param visualize: Whether to visualize intermediate and final results.
+    :param layout: Layout used to show intermediate results.
+    :param delay: Seconds to wait between each iteration.
+    :param clear: Whether to clear the visualization of each previous iteration.
+    :returns: Result of model checking on the final induced DTMC.
     """
     old = None
     new = stormvogel.random_scheduler(model)
@@ -160,19 +188,24 @@ def policy_iteration(
                 vis.clear()
 
         choices = {
-            i: arg_max(
+            s1: arg_max(
                 [
                     lambda a: sum(
                         [
-                            (p * dtmc_result.get_result_of_state(s2.id))  # type: ignore
-                            for p, s2 in s1.get_outgoing_choice(a)  # type: ignore
+                            (
+                                p
+                                * dtmc_result.get_result_of_state(  # type: ignore
+                                    dtmc.states[model.get_state_index(target)]
+                                )
+                            )  # type: ignore
+                            for (p, target) in s1.get_outgoing_transitions(a)  # type: ignore
                         ]
                     )
                     for _ in s1.available_actions()
                 ],
                 s1.available_actions(),
             )
-            for i, s1 in model
+            for s1 in model
         }
         new = stormvogel.Scheduler(model, choices)
     if visualize:

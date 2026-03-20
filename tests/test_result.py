@@ -2,6 +2,7 @@ import stormvogel.stormpy_utils.convert_results as convert_results
 import pytest
 import stormvogel.examples.monty_hall
 from typing import cast
+from model_testing import assert_models_equal
 
 try:
     import stormpy
@@ -956,20 +957,18 @@ def test_induced_dtmc():
     branch0 = stormvogel.model.Branches([(1 / 2, state1), (1 / 2, state2)])
     branch1 = stormvogel.model.Branches([(1 / 4, state1), (3 / 4, state2)])
     transition = stormvogel.model.Choices({action0: branch0, action1: branch1})
-    mdp.set_choice(mdp.get_initial_state(), transition)
+    mdp.set_choices(mdp.initial_state, transition)
     mdp.add_self_loops()
 
     # we set rewards (because we must also check if they are carried over)
     rewardmodel = mdp.new_reward_model("r1")
-    for i in range(4):
-        pair = mdp.get_state_action_pair(i)
-        assert pair is not None
-        rewardmodel.set_state_action_reward(pair[0], pair[1], i)
+    for i, state in enumerate(mdp.states):
+        rewardmodel.set_state_reward(state, i)
 
     # we create the induced dtmc
     chosen_actions = dict()
-    for state_id, state in mdp:
-        chosen_actions[state_id] = state.available_actions()[0]
+    for state in mdp:
+        chosen_actions[state] = list(mdp.choices[state])[0][0]
     scheduler = stormvogel.result.Scheduler(mdp, chosen_actions)
 
     dtmc = scheduler.generate_induced_dtmc()
@@ -985,20 +984,102 @@ def test_induced_dtmc():
         )
     )
     transition = stormvogel.model.Choices({stormvogel.model.EmptyAction: branch0})
-    other_dtmc.set_choice(other_dtmc.get_initial_state(), transition)
+    other_dtmc.set_choices(other_dtmc.initial_state, transition)
     other_dtmc.add_self_loops()
 
     # and the rewards of the induced dtmc
     rewardmodel = other_dtmc.new_reward_model("r1")
-    rewardmodel.set_state_reward(other_dtmc.get_state_by_id(0), 0)
-    rewardmodel.set_state_reward(other_dtmc.get_state_by_id(1), 2)
-    rewardmodel.set_state_reward(other_dtmc.get_state_by_id(2), 3)
+    rewardmodel.set_state_reward(other_dtmc.states[0], 0)
+    rewardmodel.set_state_reward(other_dtmc.states[1], 1)
+    rewardmodel.set_state_reward(other_dtmc.states[2], 2)
 
-    assert dtmc == other_dtmc
+    assert_models_equal(dtmc, other_dtmc)
 
 
 def test_random_scheduler():
     lion = stormvogel.examples.create_lion_mdp()
     sched = stormvogel.result.random_scheduler(lion)
-    for i, _ in lion:
-        sched.get_action_at_state(i)
+    for state in lion:
+        sched.get_action_at_state(state)
+
+
+def test_random_scheduler_raises_on_no_actions():
+    """random_scheduler must raise ValueError when a state has no available actions."""
+    mdp = stormvogel.model.new_mdp()
+    # initial_state exists but has no choices set -> no available actions
+    with pytest.raises(ValueError, match="no available actions"):
+        stormvogel.result.random_scheduler(mdp)
+
+
+def test_random_scheduler_covers_all_states():
+    """random_scheduler must map every state, not just those with actions."""
+    mdp = stormvogel.model.new_mdp()
+    s1 = mdp.new_state()
+    action = mdp.new_action("go")
+    mdp.set_choices(
+        mdp.initial_state,
+        {action: [(1.0, s1)]},
+    )
+    mdp.add_self_loops()
+
+    sched = stormvogel.result.random_scheduler(mdp)
+    for state in mdp:
+        # Must not raise KeyError
+        sched.get_action_at_state(state)
+
+
+def test_result_eq_different_state_count():
+    """Result.__eq__ must return False, not raise IndexError, when models differ in state count."""
+    # Model A: 3 states
+    model_a = stormvogel.model.new_dtmc()
+    sa1 = model_a.new_state()
+    sa2 = model_a.new_state()
+    model_a.set_choices(model_a.initial_state, [(0.5, sa1), (0.5, sa2)])
+    model_a.add_self_loops()
+
+    # Model B: 2 states (fewer than A)
+    model_b = stormvogel.model.new_dtmc()
+    sb1 = model_b.new_state()
+    model_b.set_choices(model_b.initial_state, [(1.0, sb1)])
+    model_b.add_self_loops()
+
+    # Same number of values to bypass len(values) guard; different state counts
+    values_a: dict[stormvogel.model.State, stormvogel.model.Value] = {
+        model_a.states[0]: 1.0,
+        model_a.states[1]: 2.0,
+    }
+    values_b: dict[stormvogel.model.State, stormvogel.model.Value] = {
+        model_b.states[0]: 1.0,
+        model_b.states[1]: 2.0,
+    }
+
+    result_a = stormvogel.result.Result(model_a, values_a)
+    result_b = stormvogel.result.Result(model_b, values_b)
+
+    # Before the fix this would raise IndexError; now it returns False
+    assert result_a != result_b
+
+
+def test_result_eq_same_models():
+    """Two identical Results must still compare equal."""
+    model_a = stormvogel.model.new_dtmc()
+    s1 = model_a.new_state()
+    model_a.set_choices(model_a.initial_state, [(1.0, s1)])
+    model_a.add_self_loops()
+
+    model_b = stormvogel.model.new_dtmc()
+    s1b = model_b.new_state()
+    model_b.set_choices(model_b.initial_state, [(1.0, s1b)])
+    model_b.add_self_loops()
+
+    values_a: dict[stormvogel.model.State, stormvogel.model.Value] = {
+        state: float(i) for i, state in enumerate(model_a.states)
+    }
+    values_b: dict[stormvogel.model.State, stormvogel.model.Value] = {
+        state: float(i) for i, state in enumerate(model_b.states)
+    }
+
+    result_a = stormvogel.result.Result(model_a, values_a)
+    result_b = stormvogel.result.Result(model_b, values_b)
+
+    assert result_a == result_b
