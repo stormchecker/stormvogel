@@ -58,8 +58,6 @@ def delta(s: bird.State):
         return [(7, bird.State(x=["iron"]))]
     elif "iron" in s.x:
         return [(12, bird.State(x=["Supernova"]))]
-    else:
-        return [(0, s)]
 
 
 labels = lambda s: s.x

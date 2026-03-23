@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import cast, Any, Callable, Sequence
 import inspect
 from collections import deque
+from stormvogel.model import Variable
 
 
 @dataclass
@@ -36,9 +37,9 @@ def valid_input[ValueType: stormvogel.model.Value](
     available_actions: Callable[[Any], list[Action]] | None = None,
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
     rates: Callable[[Any], float] | None = None,
-    valuations: Callable[[Any], dict[str, float | int | bool]] | None = None,
+    valuations: Callable[[Any], dict[Variable, float | int | bool]] | None = None,
     observation_valuations: (
-        Callable[[int], dict[str, float | int | bool]] | None
+        Callable[[int], dict[Variable, float | int | bool]] | None
     ) = None,
     modeltype: stormvogel.model.ModelType = stormvogel.model.ModelType.MDP,
 ):
@@ -168,9 +169,9 @@ def build_bird[ValueType: stormvogel.model.Value](
     available_actions: Callable[[Any], list[Action]] | None = None,
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
     rates: Callable[[Any], float] | None = None,
-    valuations: Callable[[Any], dict[str, float | int | bool]] | None = None,
+    valuations: Callable[[Any], dict[Variable, float | int | bool]] | None = None,
     observation_valuations: (
-        Callable[[int], dict[str, float | int | bool]] | None
+        Callable[[int], dict[Variable, float | int | bool]] | None
     ) = None,
     modeltype: stormvogel.model.ModelType = stormvogel.model.ModelType.MDP,
     max_size: int = 10000,
@@ -442,7 +443,7 @@ def build_bird[ValueType: stormvogel.model.Value](
                             f"On input observation id {obs.alias}, the dictionary that the observation_valuations function returns contains a value {val} which is not of type int, float or bool"
                         )
 
-                obs.valuations = valuation_dict
+                model.observation_valuations[obs] = valuation_dict
 
     # we add the exit rates
     if rates is not None:

@@ -137,12 +137,15 @@ def observations_stochastic(s):
 
 
 def observation_valuations(o):
+    heads = Variable("heads")
+    tails = Variable("tails")
+    done = Variable("done")
     if o == 0:
-        return {"heads": True, "tails": False, "done": False}
+        return {heads: True, tails: False, done: False}
     elif o == 1:
-        return {"heads": False, "tails": True, "done": False}
+        return {heads: False, tails: True, done: False}
     else:
-        return {"done": True, "heads": False, "tails": False}
+        return {done: True, heads: False, tails: False}
 
 
 coin_pomdp_stochastic = bird.build_bird(

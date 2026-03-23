@@ -127,7 +127,7 @@ def dtmc_evolution(model: stormvogel.model.Model, steps: int) -> list[list[float
         next_step = current_step + 1
         for s_id, s in enumerate(model.states):
             branches = s.get_branches()
-            for transition_prob, target in branches.branches:
+            for transition_prob, target in branches:
                 current_prob = matrix_steps_states[current_step][s_id]
                 matrix_steps_states[next_step][model.get_state_index(target)] += (
                     current_prob * float(transition_prob)
