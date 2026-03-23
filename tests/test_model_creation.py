@@ -1,4 +1,5 @@
 import stormvogel.model
+from stormvogel.model.variable import Variable
 
 
 def test_mdp_creation():
@@ -7,7 +8,10 @@ def test_mdp_creation():
     init = dtmc.initial_state
     # roll die
     init.set_choices(
-        [(1 / 6, dtmc.new_state(f"rolled{i}", {"rolled": i})) for i in range(6)]
+        [
+            (1 / 6, dtmc.new_state(f"rolled{i}", {Variable("rolled"): i}))
+            for i in range(6)
+        ]
     )
 
     # we add self loops to all states with no outgoing choices

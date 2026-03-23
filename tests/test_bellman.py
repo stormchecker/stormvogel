@@ -16,4 +16,4 @@ import stormvogel.teaching.bellman as bellman
     ],
 )
 def test_teaching_bellman(input):
-    bellman.bellman_equations_maxreachprob(*input)
+    bellman.maxreachprob(*input)

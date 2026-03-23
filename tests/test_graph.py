@@ -25,8 +25,9 @@ def test_graph_creation(model):
             if action == EmptyAction:
                 continue
             assert (
-                state,
-                action,
-            ) in G.nodes, (
-                f"Mapping state: {state}, Action: {action} missing in ModelGraph"
-            )
+                (
+                    state,
+                    action,
+                )
+                in G.nodes
+            ), f"Mapping state: {state}, Action: {action} missing in ModelGraph"

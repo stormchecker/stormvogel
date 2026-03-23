@@ -24,7 +24,7 @@ class State[ValueType: Value]:
     """
 
     model: "Model[ValueType]"
-    observation_id: UUID = field(default_factory=uuid4)
+    state_id: UUID = field(default_factory=uuid4)
 
     @property
     def labels(self) -> Iterable[str]:
@@ -183,29 +183,29 @@ class State[ValueType: Value]:
         return [EmptyAction]
 
     def get_branches(
-        self, action: Action = EmptyAction
-    ) -> Distribution[ValueType, "State[ValueType]"] | None:
+        self, action: Action | None = None
+    ) -> Distribution[ValueType, "State[ValueType]"]:
         """Get the branches of this state for a specific action.
 
-        For a model without actions, ``action`` should be ``None``.
-
         :param action: The action to get branches for.
-        :returns: The branches, or ``None`` if not found.
-        :raises RuntimeError: If the model supports actions but none is provided.
+        :returns: The branches.
+        :raises RuntimeError: If the requested action does not exist for this state.
         """
-        choices = self.choices
-        assert choices is not None
+        if self not in self.model.transitions:
+            raise RuntimeError("This state does not have any choices in the model.")
 
-        # if the model supports actions we need to provide an action
-        if action != EmptyAction and self.model.supports_actions():
-            if self in self.model.transitions:
-                return choices[action]
-        elif not action and self.model.supports_actions():
-            raise RuntimeError("You need to provide a specific action")
-        else:
-            if self in self.model.transitions:
-                return choices[EmptyAction]
-        return None
+        if self.model.supports_actions():
+            if action is None:
+                if EmptyAction in self.choices.actions:
+                    return self.choices[EmptyAction]
+                raise RuntimeError("You need to provide a specific action")
+            if action in self.choices.actions:
+                return self.choices[action]
+            raise RuntimeError(f"Action {action} not found in choices for this state")
+
+        if action is not None and action != EmptyAction:
+            raise RuntimeError("This state does not support non-empty actions")
+        return self.choices[EmptyAction]
 
     def get_outgoing_transitions(
         self, action: Action | None = None
@@ -216,15 +216,15 @@ class State[ValueType: Value]:
         :returns: The distribution over successor states, or ``None`` if not found.
         :raises RuntimeError: If the model supports actions but none is provided.
         """
-        # if the model supports actions we need to provide an action
-        if action and self.model.supports_actions():
-            if self in self.model.transitions:
+        if self.model.supports_actions():
+            if action is None:
+                raise RuntimeError("You need to provide a specific action")
+            if self in self.model.transitions and action in self.choices.actions:
                 return self.choices[action]
-        elif not action and self.model.supports_actions():
-            raise RuntimeError("You need to provide a specific action")
-        else:
-            if self in self.model.transitions:
-                return self.choices[EmptyAction]
+            return None
+
+        if self in self.model.transitions and EmptyAction in self.choices.actions:
+            return self.choices[EmptyAction]
         return None
 
     def is_absorbing(self) -> bool:

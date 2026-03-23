@@ -314,9 +314,11 @@ def build_bird[ValueType: stormvogel.model.Value](
                         f"On input {state}, the available actions function returns an action that is not a string: {action}"
                     )
 
-                # Convert empty strings to None for the empty action
-                action_label = None if action == "" else action
-                stormvogel_action = model.action(action_label)
+                stormvogel_action = (
+                    stormvogel.model.EmptyAction
+                    if action == ""
+                    else model.action(action)
+                )
 
                 delta = cast(Callable[[Any, str], Any], delta)
                 tuples = delta(state, action)
@@ -328,7 +330,7 @@ def build_bird[ValueType: stormvogel.model.Value](
                 branch = add_new_choices(tuples, state)
 
                 if branch != []:
-                    choice[stormvogel_action] = stormvogel.model.Branches(branch)
+                    choice[stormvogel_action] = stormvogel.model.Distribution(branch)
         else:
             delta = cast(Callable[[Any], Any], delta)
             tuples = delta(state)
@@ -451,13 +453,10 @@ def build_bird[ValueType: stormvogel.model.Value](
                     f"On input {state}, the rates function does not return a number"
                 )
             if model.model_type.name == "CTMC":
-                if s in model.choices:
-                    for a in model.choices[s].choices:
-                        model.choices[s].choices[a] = stormvogel.model.Branches(
-                            [
-                                (v * r, t)
-                                for v, t in model.choices[s].choices[a].branches
-                            ]
+                if s in model.transitions:
+                    for a in model.transitions[s].actions:
+                        model.transitions[s][a] = stormvogel.model.Distribution(
+                            [(v * r, t) for v, t in model.transitions[s][a]]
                         )
             else:
                 pass

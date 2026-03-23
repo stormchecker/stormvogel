@@ -26,10 +26,10 @@ class Choices[ValueType: Value]:
         containing the transitions.
     """
 
-    _choices: dict[Action, Distribution[ValueType, State[ValueType]]]
+    _choices: dict[Action, Distribution[ValueType, "State[ValueType]"]]
 
     def __init__(
-        self, choices: dict[Action, Distribution[ValueType, State[ValueType]]]
+        self, choices: dict[Action, Distribution[ValueType, "State[ValueType]"]]
     ):
         if len(choices) > 1 and EmptyAction in choices:
             raise RuntimeError(
@@ -109,8 +109,7 @@ class Choices[ValueType: Value]:
                 raise RuntimeError(
                     f"Cannot add choices with overlapping actions. Action {action} is in both choices."
                 )
-            else:
-                self._choices[action] = branch
+            self._choices[action] = branch
 
     def __add__(self, other: Self | ChoicesShorthand) -> "Choices[ValueType]":
         new_choices = Choices(self._choices)

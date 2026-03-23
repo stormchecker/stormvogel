@@ -3,6 +3,7 @@ import math
 import pytest
 import re
 from model_testing import assert_models_equal
+from stormvogel.model.variable import Variable
 
 
 def test_bird_mdp():
@@ -65,10 +66,10 @@ def test_bird_mdp():
     state0 = regular_model.new_state(labels=["0"])
     other_left = regular_model.new_action("left")
     other_right = regular_model.new_action("right")
-    branch12 = model.Branches([(0.5, state1), (0.5, state2)])
-    branch10 = model.Branches([(0.5, state1), (0.5, state0)])
-    branch01 = model.Branches([(0.5, state0), (0.5, state1)])
-    branch21 = model.Branches([(0.5, state2), (0.5, state1)])
+    branch12 = model.Distribution([(0.5, state1), (0.5, state2)])
+    branch10 = model.Distribution([(0.5, state1), (0.5, state0)])
+    branch01 = model.Distribution([(0.5, state0), (0.5, state1)])
+    branch21 = model.Distribution([(0.5, state2), (0.5, state1)])
 
     regular_model.add_choices(
         state1, model.Choices({other_left: branch12, other_right: branch10})
@@ -78,13 +79,13 @@ def test_bird_mdp():
 
     rewardmodel = regular_model.new_reward_model("r1")
     for state in regular_model.states:
-        pair = regular_model.choices.get(state)
+        pair = regular_model.transitions.get(state)
         assert pair is not None
         if pair is not None:
             rewardmodel.set_state_reward(state, 1)
     rewardmodel2 = regular_model.new_reward_model("r2")
     for state in regular_model.states:
-        pair = regular_model.choices.get(state)
+        pair = regular_model.transitions.get(state)
         assert pair is not None
         if pair is not None:
             rewardmodel2.set_state_reward(state, 2)
@@ -149,10 +150,10 @@ def test_bird_mdp_int():
     state0 = regular_model.new_state(labels=["0"])
     other_left = regular_model.new_action("left")
     other_right = regular_model.new_action("right")
-    branch12 = model.Branches([(0.5, state1), (0.5, state2)])
-    branch10 = model.Branches([(0.5, state1), (0.5, state0)])
-    branch01 = model.Branches([(0.5, state0), (0.5, state1)])
-    branch21 = model.Branches([(0.5, state2), (0.5, state1)])
+    branch12 = model.Distribution([(0.5, state1), (0.5, state2)])
+    branch10 = model.Distribution([(0.5, state1), (0.5, state0)])
+    branch01 = model.Distribution([(0.5, state0), (0.5, state1)])
+    branch21 = model.Distribution([(0.5, state2), (0.5, state1)])
 
     regular_model.add_choices(
         state1,
@@ -165,13 +166,13 @@ def test_bird_mdp_int():
 
     rewardmodel = regular_model.new_reward_model("r1")
     for state in regular_model.states:
-        pair = regular_model.choices.get(state)
+        pair = regular_model.transitions.get(state)
         assert pair is not None
         if pair is not None:
             rewardmodel.set_state_reward(state, 1)
     rewardmodel2 = regular_model.new_reward_model("r2")
     for state in regular_model.states:
-        pair = regular_model.choices.get(state)
+        pair = regular_model.transitions.get(state)
         assert pair is not None
         if pair is not None:
             rewardmodel2.set_state_reward(state, 2)
@@ -264,55 +265,115 @@ def test_bird_dtmc():
     regular_model.set_choices(
         init,
         [
-            (1 / 2, regular_model.new_state(valuations={"s": 1, "d": -1})),
-            (1 / 2, regular_model.new_state(valuations={"s": 2, "d": -1})),
+            (
+                1 / 2,
+                regular_model.new_state(
+                    valuations={Variable("s"): 1, Variable("d"): -1}
+                ),
+            ),
+            (
+                1 / 2,
+                regular_model.new_state(
+                    valuations={Variable("s"): 2, Variable("d"): -1}
+                ),
+            ),
         ],
     )
     regular_model.set_choices(
         regular_model.states[1],
         [
-            (1 / 2, regular_model.new_state(valuations={"s": 3, "d": -1})),
-            (1 / 2, regular_model.new_state(valuations={"s": 4, "d": -1})),
+            (
+                1 / 2,
+                regular_model.new_state(
+                    valuations={Variable("s"): 3, Variable("d"): -1}
+                ),
+            ),
+            (
+                1 / 2,
+                regular_model.new_state(
+                    valuations={Variable("s"): 4, Variable("d"): -1}
+                ),
+            ),
         ],
     )
     regular_model.set_choices(
         regular_model.states[2],
         [
-            (1 / 2, regular_model.new_state(valuations={"s": 5, "d": -1})),
-            (1 / 2, regular_model.new_state(valuations={"s": 6, "d": -1})),
+            (
+                1 / 2,
+                regular_model.new_state(
+                    valuations={Variable("s"): 5, Variable("d"): -1}
+                ),
+            ),
+            (
+                1 / 2,
+                regular_model.new_state(
+                    valuations={Variable("s"): 6, Variable("d"): -1}
+                ),
+            ),
         ],
     )
     regular_model.set_choices(
         regular_model.states[3],
         [
             (1 / 2, regular_model.states[1]),
-            (1 / 2, regular_model.new_state(valuations={"s": 7, "d": 1})),
+            (
+                1 / 2,
+                regular_model.new_state(
+                    valuations={Variable("s"): 7, Variable("d"): 1}
+                ),
+            ),
         ],
     )
     regular_model.set_choices(
         regular_model.states[4],
         [
-            (1 / 2, regular_model.new_state(valuations={"s": 7, "d": 2})),
-            (1 / 2, regular_model.new_state(valuations={"s": 7, "d": 3})),
+            (
+                1 / 2,
+                regular_model.new_state(
+                    valuations={Variable("s"): 7, Variable("d"): 2}
+                ),
+            ),
+            (
+                1 / 2,
+                regular_model.new_state(
+                    valuations={Variable("s"): 7, Variable("d"): 3}
+                ),
+            ),
         ],
     )
     regular_model.set_choices(
         regular_model.states[5],
         [
-            (1 / 2, regular_model.new_state(valuations={"s": 7, "d": 4})),
-            (1 / 2, regular_model.new_state(valuations={"s": 7, "d": 5})),
+            (
+                1 / 2,
+                regular_model.new_state(
+                    valuations={Variable("s"): 7, Variable("d"): 4}
+                ),
+            ),
+            (
+                1 / 2,
+                regular_model.new_state(
+                    valuations={Variable("s"): 7, Variable("d"): 5}
+                ),
+            ),
         ],
     )
     regular_model.set_choices(
         regular_model.states[6],
         [
             (1 / 2, regular_model.states[2]),
-            (1 / 2, regular_model.new_state(valuations={"s": 7, "d": 6})),
+            (
+                1 / 2,
+                regular_model.new_state(
+                    valuations={Variable("s"): 7, Variable("d"): 6}
+                ),
+            ),
         ],
     )
     regular_model.set_choices(
         regular_model.states[7],
-        [(1, regular_model.new_state(valuations={"s": 7, "d": 0}))],
+        [(1, regular_model.new_state(valuations={Variable("s"): 7, Variable("d"): 0}))],
     )
     regular_model.set_choices(regular_model.states[8], [(1, regular_model.states[13])])
     regular_model.set_choices(regular_model.states[9], [(1, regular_model.states[13])])
@@ -561,10 +622,10 @@ def test_bird_pomdp():
     )
     other_left = regular_model.new_action("left")
     other_right = regular_model.new_action("right")
-    branch12 = model.Branches([(0.5, state1), (0.5, state2)])
-    branch10 = model.Branches([(0.5, state1), (0.5, state0)])
-    branch01 = model.Branches([(0.5, state0), (0.5, state1)])
-    branch21 = model.Branches([(0.5, state2), (0.5, state1)])
+    branch12 = model.Distribution([(0.5, state1), (0.5, state2)])
+    branch10 = model.Distribution([(0.5, state1), (0.5, state0)])
+    branch01 = model.Distribution([(0.5, state0), (0.5, state1)])
+    branch21 = model.Distribution([(0.5, state2), (0.5, state1)])
 
     regular_model.add_choices(
         state1, model.Choices({other_left: branch12, other_right: branch10})
@@ -574,13 +635,13 @@ def test_bird_pomdp():
 
     rewardmodel = regular_model.new_reward_model("r1")
     for state in regular_model.states:
-        pair = regular_model.choices.get(state)
+        pair = regular_model.transitions.get(state)
         assert pair is not None
         if pair is not None:
             rewardmodel.set_state_reward(state, 1)
     rewardmodel2 = regular_model.new_reward_model("r2")
     for state in regular_model.states:
-        pair = regular_model.choices.get(state)
+        pair = regular_model.transitions.get(state)
         assert pair is not None
         if pair is not None:
             rewardmodel2.set_state_reward(state, 2)
@@ -761,10 +822,10 @@ def test_bird_ctmc_rates_preserve_distribution():
 
     # Every branch's .branches must remain a Distribution, not a plain list.
     for s in bird_model.states:
-        for action, branches in bird_model.choices[s]:
+        for action, branches in bird_model.transitions[s]:
             assert isinstance(
-                branches.branches, Distribution
-            ), f"branches.branches is {type(branches.branches)}, expected Distribution"
+                branches, Distribution
+            ), f"branches is {type(branches)}, expected Distribution"
 
     # Verify the rates were multiplied into the transition values.
     # State "a" had transitions (0.4, b) and (0.6, c) with rate 10,

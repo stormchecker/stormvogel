@@ -4,6 +4,7 @@ import stormvogel.examples.nuclear_fusion_ctmc
 import stormvogel.examples.monty_hall_pomdp
 from stormvogel.examples.lion import create_lion_mdp
 import stormvogel.model
+from stormvogel.model.variable import Variable
 import stormvogel.simulator as simulator
 from model_testing import assert_models_equal, assert_paths_equal
 
@@ -25,12 +26,21 @@ def test_simulate():
     # we make the partial model that should be created by the simulator
     other_dtmc = stormvogel.model.new_dtmc()
     init = other_dtmc.initial_state
-    init.valuations = {"rolled": 0}
+    init.valuations = {Variable("rolled"): 0}
     init.set_choices(
         [
-            (1 / 6, other_dtmc.new_state("rolled2", valuations={"rolled": 2})),
-            (1 / 6, other_dtmc.new_state("rolled4", valuations={"rolled": 4})),
-            (1 / 6, other_dtmc.new_state("rolled5", valuations={"rolled": 5})),
+            (
+                1 / 6,
+                other_dtmc.new_state("rolled2", valuations={Variable("rolled"): 2}),
+            ),
+            (
+                1 / 6,
+                other_dtmc.new_state("rolled4", valuations={Variable("rolled"): 4}),
+            ),
+            (
+                1 / 6,
+                other_dtmc.new_state("rolled5", valuations={Variable("rolled"): 5}),
+            ),
         ]
     )
 
@@ -121,7 +131,7 @@ def test_simulate():
     satisfied.set_choices(
         stormvogel.model.Choices(
             {
-                hunt: stormvogel.model.Branches(
+                hunt: stormvogel.model.Distribution(
                     [(0.5, satisfied), (0.3, full), (0.2, hungry)]
                 ),
             }
@@ -131,7 +141,7 @@ def test_simulate():
     hungry.set_choices(
         stormvogel.model.Choices(
             {
-                hunt: stormvogel.model.Branches(
+                hunt: stormvogel.model.Distribution(
                     [(0.2, full), (0.5, satisfied), (0.2, starving)]
                 ),
             }
@@ -141,7 +151,7 @@ def test_simulate():
     full.set_choices(
         stormvogel.model.Choices(
             {
-                hunt: stormvogel.model.Branches(
+                hunt: stormvogel.model.Distribution(
                     [
                         (0.5, full),
                         (0.5, satisfied),
@@ -154,7 +164,7 @@ def test_simulate():
     starving.set_choices(
         stormvogel.model.Choices(
             {
-                hunt: stormvogel.model.Branches(0.2, hungry),
+                hunt: stormvogel.model.Distribution([(0.2, hungry)]),
             }
         )
     )

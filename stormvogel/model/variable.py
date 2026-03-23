@@ -13,4 +13,7 @@ class Variable:
         return str(self.label) < str(other.label)
 
     def __repr__(self):
-        return f"Variable with name {self.label}"
+        return f"Variable with label {self.label}"
+
+    def __str__(self):
+        return self.label

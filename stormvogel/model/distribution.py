@@ -21,15 +21,12 @@ class Distribution[ValueType: Value, SupportType]:
         elif isinstance(distribution, Distribution):
             self._distribution = dict(distribution._distribution)
         elif isinstance(distribution, list):
-            seen: set[SupportType] = set()
             self._distribution = {}
             for v, s in distribution:
-                if s in seen:
-                    raise RuntimeError(
-                        f"Duplicate support element {s} in distribution."
-                    )
-                seen.add(s)
-                self._distribution[s] = v
+                if s in self._distribution:
+                    self._distribution[s] += v  # type: ignore[operator]
+                else:
+                    self._distribution[s] = v
         else:
             raise RuntimeError(
                 f"Distribution expects a dict, list of tuples, or None, got {type(distribution)}"

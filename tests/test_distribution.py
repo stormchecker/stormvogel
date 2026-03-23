@@ -41,7 +41,7 @@ def test_is_not_stochastic():
 def test_distribution_properties():
     d = Distribution([(0.6, "a"), (0.4, "b")])
     assert d.support == {"a", "b"}
-    assert d.values == [0.6, 0.4]
+    assert d.probabilities == [0.6, 0.4]
     assert len(d) == 2
 
 
@@ -61,7 +61,7 @@ def test_distribution_add():
 def test_distribution_add_type_error():
     d = Distribution([(1.0, "a")])
     with pytest.raises(TypeError):
-        _ = d + 1
+        _ = d + 1  # type: ignore
 
 
 def test_distribution_str():

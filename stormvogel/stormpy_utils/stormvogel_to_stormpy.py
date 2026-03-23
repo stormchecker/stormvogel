@@ -156,12 +156,18 @@ def build_matrix(
     # we build the matrix
     row_index = 0
     for state in model.states:
-        if state not in model.choices:
+        transition = model.transitions.get(state)
+        if transition is None:
+            if not nondeterministic:
+                row_index += 1
             continue
-        transition = (state, model.choices[state])
+
         if nondeterministic:
             builder.new_row_group(row_index)
-        for action in transition[1]:
+
+        has_action = False
+        for action in transition:
+            has_action = True
             branches = list(action[1])
             branches.sort(key=lambda t: t[1].model.get_state_index(t[1]))
             for branch in branches:
@@ -178,6 +184,15 @@ def build_matrix(
                     choice_labeling.add_label_to_choice(action[0].label, row_index)
             row_index += 1
 
+        # Keep matrix row count aligned with state count, even for dead-end deterministic states.
+        if not has_action and not nondeterministic:
+            if model.supports_rates():
+                builder.add_next_value(
+                    row=row_index,
+                    column=model.stormpy_id[state],
+                    value=value_to_stormpy(0, variables, model),
+                )
+            row_index += 1
     return builder.build()
 
 
@@ -192,7 +207,7 @@ def build_choice_labeling(model: Model):
         if action.label is not None:
             labels.add(action.label)
 
-    choice_count = sum(len(choices.choices) for choices in model.choices.values())
+    choice_count = sum(len(choices) for choices in model.transitions.values())
 
     assert stormpy is not None
 
@@ -321,7 +336,6 @@ def build_observations(model: Model) -> list[int]:
         assert obs is not None and not isinstance(obs, Distribution)
         observations.append(known_aliases.index(obs.alias))
 
-    model.observations = [model.observation(a) for a in known_aliases]
     return observations
 
 
@@ -567,9 +581,9 @@ def build_ma(
         assert model.markovian_states is not None
         if state in model.markovian_states:
             rate_sum = 0.0
-            if state in model.choices:
-                for action in model.choices[state].choices:
-                    for val, tgt in model.choices[state].choices[action].branches:
+            if state in model.transitions:
+                for _action, branch in model.transitions[state]:
+                    for val, _tgt in branch:
                         rate_sum += float(val)
             exit_rates.append(rate_sum)
         else:
@@ -650,7 +664,7 @@ def stormvogel_to_stormpy(
     assert stormpy is not None
 
     # we throw the neccessary errors first
-    if not _all_states_outgoing_transition(model):
+    if not model.supports_rates() and not _all_states_outgoing_transition(model):
         raise RuntimeError(
             "This model has states with no outgoing transitions.\nUse the add_self_loops() function to add self loops to all states with no outgoing transition."
         )

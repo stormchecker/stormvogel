@@ -1,4 +1,5 @@
 import stormvogel.model
+from stormvogel.model.variable import Variable
 
 
 def create_monty_hall_pomdp():
@@ -14,7 +15,7 @@ def create_monty_hall_pomdp():
                 1 / 3,
                 pomdp.new_state(
                     "carchosen",
-                    {"car_pos": i},
+                    {Variable("car_pos"): i},
                     observation=pomdp.observation("carchosen"),
                 ),
             )
@@ -30,7 +31,7 @@ def create_monty_hall_pomdp():
                     pomdp.action(f"open{i}"),
                     pomdp.new_state(
                         "open",
-                        s.valuations | {"chosen_pos": i},
+                        s.valuations | {Variable("chosen_pos"): i},
                         observation=pomdp.observation("open"),
                     ),
                 )
@@ -40,8 +41,8 @@ def create_monty_hall_pomdp():
 
     # the other goat is revealed
     for s in pomdp.get_states_with_label("open"):
-        car_pos = s.valuations["car_pos"]
-        chosen_pos = s.valuations["chosen_pos"]
+        car_pos = s.valuations[Variable("car_pos")]
+        chosen_pos = s.valuations[Variable("chosen_pos")]
         assert isinstance(car_pos, int) and isinstance(chosen_pos, int)
         other_pos = {0, 1, 2} - {car_pos, chosen_pos}
         s.set_choices(
@@ -50,7 +51,7 @@ def create_monty_hall_pomdp():
                     1 / len(other_pos),
                     pomdp.new_state(
                         "goatrevealed",
-                        s.valuations | {"reveal_pos": i},
+                        s.valuations | {Variable("reveal_pos"): i},
                         observation=pomdp.observation(f"goatrevealed{i}"),
                     ),
                 )
@@ -60,9 +61,9 @@ def create_monty_hall_pomdp():
 
     # we must choose whether we want to switch
     for s in pomdp.get_states_with_label("goatrevealed"):
-        car_pos = s.valuations["car_pos"]
-        chosen_pos = s.valuations["chosen_pos"]
-        reveal_pos = s.valuations["reveal_pos"]
+        car_pos = s.valuations[Variable("car_pos")]
+        chosen_pos = s.valuations[Variable("chosen_pos")]
+        reveal_pos = s.valuations[Variable("reveal_pos")]
         assert isinstance(reveal_pos, int) and isinstance(chosen_pos, int)
         other_pos = list({0, 1, 2} - {reveal_pos, chosen_pos})[0]
         s.set_choices(
@@ -71,7 +72,7 @@ def create_monty_hall_pomdp():
                     pomdp.action("stay"),
                     pomdp.new_state(
                         ["done"] + (["target"] if chosen_pos == car_pos else []),
-                        s.valuations | {"chosen_pos": chosen_pos},
+                        s.valuations | {Variable("chosen_pos"): chosen_pos},
                         observation=pomdp.observation("stay"),
                     ),
                 ),
@@ -79,7 +80,7 @@ def create_monty_hall_pomdp():
                     pomdp.action("switch"),
                     pomdp.new_state(
                         ["done"] + (["target"] if other_pos == car_pos else []),
-                        s.valuations | {"chosen_pos": other_pos},
+                        s.valuations | {Variable("chosen_pos"): other_pos},
                         observation=pomdp.observation("switch"),
                     ),
                 ),

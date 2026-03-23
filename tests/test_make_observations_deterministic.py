@@ -1,5 +1,4 @@
 from stormvogel.model.model import new_pomdp
-from stormvogel.model.branches import Branches
 from stormvogel.model.action import Action
 from stormvogel.model.observation import Observation
 from stormvogel.model.distribution import Distribution
@@ -9,15 +8,16 @@ def test_make_observations_deterministic():
     model = new_pomdp(create_initial_state=False)
 
     # Create initial state with an action leading to a state with multiple observations
-    s0 = model.new_state(observation=Observation("init"))
+    init_obs = model.new_observation("init")
+    obs1 = model.new_observation("obs1")
+    obs2 = model.new_observation("obs2")
+    s0 = model.new_state(labels=["init"], observation=init_obs)
 
-    obs_dist = Distribution([(0.3, Observation("obs1")), (0.7, Observation("obs2"))])
+    obs_dist = Distribution([(0.3, obs1), (0.7, obs2)])
     s1 = model.new_state(observation=obs_dist)
 
     action1 = Action("action1")
-
-    model.initial_states = [s0]
-    model.choices[s0].choices[action1] = Branches([(1.0, s1)])
+    s0.set_choices({action1: [(1.0, s1)]})
 
     # Apply method
     model.make_observations_deterministic()
@@ -34,7 +34,7 @@ def test_make_observations_deterministic():
     assert obs_set == {"obs1", "obs2"}
 
     # Check that transitions from s0 have been distributed correctly
-    s0_transitions = list(model.choices[s0].choices[action1])
+    s0_transitions = list(model.transitions[s0][action1])
     assert len(s0_transitions) == 2
 
     prob_obs1 = next(
@@ -54,8 +54,9 @@ def test_make_observations_deterministic():
 
 def test_observation_id_distinct():
     """Each Observation instance must get its own UUID, not a shared one."""
-    obs_a = Observation(alias="a")
-    obs_b = Observation(alias="b")
+    model = new_pomdp(create_initial_state=False)
+    obs_a = model.new_observation("a")
+    obs_b = model.new_observation("b")
     assert obs_a.observation_id != obs_b.observation_id
 
 
@@ -63,6 +64,7 @@ def test_observation_id_explicit_preserved():
     """An explicitly supplied observation_id must not be overwritten."""
     from uuid import uuid4
 
+    model = new_pomdp(create_initial_state=False)
     explicit = uuid4()
-    obs = Observation(alias="x", observation_id=explicit)
+    obs = Observation(model=model, observation_id=explicit)
     assert obs.observation_id == explicit

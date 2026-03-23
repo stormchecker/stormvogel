@@ -221,7 +221,8 @@ class Model[ValueType: Value]:
             for state in self:
                 for action in state.available_actions():
                     transitions = state.get_outgoing_transitions(action)
-                    assert transitions is not None
+                    if transitions is None or len(transitions) == 0:
+                        return False
                     for transition in transitions:
                         if isinstance(transition[0], Number) and transition[0] <= 0:
                             return False
@@ -673,13 +674,10 @@ class Model[ValueType: Value]:
 
     @property
     def variables(self) -> set[Variable]:
-        """Get the set of all variables present in this model (corresponding to valuations)."""
+        """Get the set of all variables present in this model (corresponding to state valuations)."""
         variables: set[Variable] = set()
         for state in self.states:
             variables = variables | set(state.valuations.keys())
-            variables = variables | set(
-                self.state_observations.get(state, {}).valuations.keys()
-            )
         return variables
 
     def get_default_rewards(self) -> RewardModel:

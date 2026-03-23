@@ -150,7 +150,7 @@ class ModelGraph(networkx.DiGraph):
                 props = state_properties(state)
             G.add_state(state, **props)
 
-        for state, choice in model.choices.items():
+        for state, choice in model.transitions.items():
             for action, branch in choice:
                 action_props = dict()
                 if action_properties is not None:

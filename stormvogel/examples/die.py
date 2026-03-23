@@ -1,4 +1,5 @@
 import stormvogel.model
+from stormvogel.model.variable import Variable
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
@@ -9,14 +10,16 @@ def create_die_dtmc():
     dtmc = stormvogel.model.new_dtmc()
 
     init = dtmc.initial_state
-    init.add_valuation("rolled", 0)
+    init.add_valuation(Variable("rolled"), 0)
 
     # From the initial state, add the transition to 6 new states with probability 1/6th.
     init.set_choices(
         [
             (
                 1 / 6,
-                dtmc.new_state(labels=f"rolled{i + 1}", valuations={"rolled": i + 1}),
+                dtmc.new_state(
+                    labels=f"rolled{i + 1}", valuations={Variable("rolled"): i + 1}
+                ),
             )
             for i in range(6)
         ]

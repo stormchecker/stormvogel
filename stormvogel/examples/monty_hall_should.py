@@ -1,4 +1,5 @@
 import stormvogel.model
+from stormvogel.model.variable import Variable
 
 
 def create_monty_hall_mdp2():
@@ -8,7 +9,10 @@ def create_monty_hall_mdp2():
 
     # first choose car position
     init.set_choices(
-        [(1 / 3, mdp.new_state("carchosen", {"car_pos": i})) for i in range(3)]
+        [
+            (1 / 3, mdp.new_state("carchosen", {Variable("car_pos"): i}))
+            for i in range(3)
+        ]
     )
 
     # we choose a door in each case
@@ -17,7 +21,9 @@ def create_monty_hall_mdp2():
             [
                 (
                     mdp.action(f"open{i}"),
-                    mdp.new_state(["open", f"o_{i}"], s.valuations | {"chosen_pos": i}),
+                    mdp.new_state(
+                        ["open", f"o_{i}"], s.valuations | {Variable("chosen_pos"): i}
+                    ),
                 )
                 for i in range(3)
             ]
@@ -25,8 +31,8 @@ def create_monty_hall_mdp2():
 
     # the other goat is revealed
     for s in mdp.get_states_with_label("open"):
-        car_pos = s.valuations["car_pos"]
-        chosen_pos = s.valuations["chosen_pos"]
+        car_pos = s.valuations[Variable("car_pos")]
+        chosen_pos = s.valuations[Variable("chosen_pos")]
         assert isinstance(car_pos, int) and isinstance(chosen_pos, int)
         other_pos = {0, 1, 2} - {car_pos, chosen_pos}
         s.set_choices(
@@ -40,7 +46,7 @@ def create_monty_hall_mdp2():
                             if chosen_pos == car_pos
                             else ["should_switch"]
                         ),
-                        s.valuations | {"reveal_pos": i},
+                        s.valuations | {Variable("reveal_pos"): i},
                     ),
                 )
                 for i in other_pos
@@ -49,9 +55,9 @@ def create_monty_hall_mdp2():
 
     # we must choose whether we want to switch
     for s in mdp.get_states_with_label("gr"):
-        car_pos = s.valuations["car_pos"]
-        chosen_pos = s.valuations["chosen_pos"]
-        reveal_pos = s.valuations["reveal_pos"]
+        car_pos = s.valuations[Variable("car_pos")]
+        chosen_pos = s.valuations[Variable("chosen_pos")]
+        reveal_pos = s.valuations[Variable("reveal_pos")]
         assert isinstance(reveal_pos, int) and isinstance(chosen_pos, int)
         other_pos = list({0, 1, 2} - {reveal_pos, chosen_pos})[0]
         s.set_choices(
@@ -60,14 +66,14 @@ def create_monty_hall_mdp2():
                     mdp.action("stay"),
                     mdp.new_state(
                         ["done"] + (["target"] if chosen_pos == car_pos else ["lost"]),
-                        s.valuations | {"chosen_pos": chosen_pos},
+                        s.valuations | {Variable("chosen_pos"): chosen_pos},
                     ),
                 ),
                 (
                     mdp.action("switch"),
                     mdp.new_state(
                         ["done"] + (["target"] if other_pos == car_pos else ["lost"]),
-                        s.valuations | {"chosen_pos": other_pos},
+                        s.valuations | {Variable("chosen_pos"): other_pos},
                     ),
                 ),
             ]

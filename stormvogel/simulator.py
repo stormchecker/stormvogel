@@ -365,10 +365,13 @@ def simulate(
 
                     s = state_map[last_state]
                     if last_state in discovered_states_before_transitions:
-                        branch = partial_model.choices[s].choices[
+                        branch = partial_model.transitions[s][
                             stormvogel.model.EmptyAction
                         ]
-                        branch.branches.distribution.append((probability, new_state))
+                        if new_state in branch:
+                            branch[new_state] = branch[new_state] + probability
+                        else:
+                            branch[new_state] = probability
                     else:
                         discovered_states_before_transitions.add(last_state)
                         s.add_choices([(probability, new_state)])
@@ -386,7 +389,7 @@ def simulate(
                 )
 
                 assert partial_model.actions is not None
-                if action not in partial_model.actions:
+                if action not in partial_model.actions and action.label is not None:
                     partial_model.new_action(action.label)
 
                 next_state, _, _ = step(
@@ -405,8 +408,11 @@ def simulate(
 
                     s = state_map[last_state]
                     if (last_state, action) in discovered_actions:
-                        branch = partial_model.choices[s].choices[action]
-                        branch.branches.distribution.append((probability, new_state))
+                        branch = partial_model.transitions[s][action]
+                        if new_state in branch:
+                            branch[new_state] = branch[new_state] + probability
+                        else:
+                            branch[new_state] = probability
                     else:
                         discovered_actions.add((last_state, action))
                         s.add_choices({action: [(probability, new_state)]})

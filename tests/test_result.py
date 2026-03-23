@@ -954,8 +954,8 @@ def test_induced_dtmc():
     state2 = mdp.new_state()
     action0 = mdp.new_action("0")
     action1 = mdp.new_action("1")
-    branch0 = stormvogel.model.Branches([(1 / 2, state1), (1 / 2, state2)])
-    branch1 = stormvogel.model.Branches([(1 / 4, state1), (3 / 4, state2)])
+    branch0 = stormvogel.model.Distribution([(1 / 2, state1), (1 / 2, state2)])
+    branch1 = stormvogel.model.Distribution([(1 / 4, state1), (3 / 4, state2)])
     transition = stormvogel.model.Choices({action0: branch0, action1: branch1})
     mdp.set_choices(mdp.initial_state, transition)
     mdp.add_self_loops()
@@ -968,7 +968,7 @@ def test_induced_dtmc():
     # we create the induced dtmc
     chosen_actions = dict()
     for state in mdp:
-        chosen_actions[state] = list(mdp.choices[state])[0][0]
+        chosen_actions[state] = list(mdp.transitions[state])[0][0]
     scheduler = stormvogel.result.Scheduler(mdp, chosen_actions)
 
     dtmc = scheduler.generate_induced_dtmc()
@@ -977,7 +977,7 @@ def test_induced_dtmc():
     other_dtmc = stormvogel.model.new_dtmc()
     state1 = other_dtmc.new_state()
     state2 = other_dtmc.new_state()
-    branch0 = stormvogel.model.Branches(
+    branch0 = stormvogel.model.Distribution(
         cast(
             list[tuple[stormvogel.model.Value, stormvogel.model.State]],
             [(1 / 2, state1), (1 / 2, state2)],

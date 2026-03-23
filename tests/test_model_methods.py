@@ -64,7 +64,7 @@ def test_choices_from_shorthand():
     dtmc = stormvogel.model.new_dtmc()
     state = dtmc.new_state()
     transition_shorthand = [(1 / 2, state)]
-    branch = stormvogel.model.Branches(
+    branch = stormvogel.model.Distribution(
         cast(
             list[tuple[stormvogel.model.Value, stormvogel.model.State]],
             transition_shorthand,
@@ -88,7 +88,7 @@ def test_choices_from_shorthand():
     state = mdp.new_state()
     action = mdp.new_action("action")
     transition_shorthand = [(action, state)]
-    branch = stormvogel.model.Branches(
+    branch = stormvogel.model.Distribution(
         cast(list[tuple[stormvogel.model.Value, stormvogel.model.State]], [(1, state)])
     )
     transition = stormvogel.model.Choices({action: branch})
@@ -127,7 +127,7 @@ def test_choices_from_shorthand_dict_state():
         action0: [(1 / 2, state1), (1 / 2, state2)],
         action1: [(1 / 2, state1), (1 / 2, state2)],
     }
-    branch = stormvogel.model.Branches(
+    branch = stormvogel.model.Distribution(
         cast(
             list[tuple[stormvogel.model.Value, stormvogel.model.State]],
             [(1 / 2, state1), (1 / 2, state2)],
@@ -226,13 +226,13 @@ def test_remove_state():
     state2 = mdp.new_state()
     action0 = mdp.new_action("0")
     action1 = mdp.new_action("1")
-    branch0 = stormvogel.model.Branches(
+    branch0 = stormvogel.model.Distribution(
         cast(
             list[tuple[stormvogel.model.Value, stormvogel.model.State]],
             [(1 / 2, state1), (1 / 2, state2)],
         )
     )
-    branch1 = stormvogel.model.Branches(
+    branch1 = stormvogel.model.Distribution(
         cast(
             list[tuple[stormvogel.model.Value, stormvogel.model.State]],
             [(1 / 4, state1), (3 / 4, state2)],
@@ -417,14 +417,16 @@ def test_add_choices():
         == "You cannot add a choice with an empty action to a choice which has no empty action. Use set_choice instead."
     )
 
-    # Empty action case, add the branches together.
+    # Overlapping empty action should fail consistently.
     mdp5 = stormvogel.model.new_mdp()
     state5 = mdp5.new_state()
     mdp5.set_choices(mdp5.initial_state, [(0.4, state5)])
-    mdp5.add_choices(mdp5.initial_state, [(0.6, state5)])
-    assert mdp5.get_branches(mdp5.initial_state).branches.distribution == [
-        (1, state5),
-    ]
+    with pytest.raises(RuntimeError) as excinfo:
+        mdp5.add_choices(mdp5.initial_state, [(0.6, state5)])
+    assert (
+        str(excinfo.value)
+        == "Cannot add choices with overlapping actions. Action EmptyAction is in both choices."
+    )
 
     # Non-empty action case, add the actions to the list.
     mdp6 = stormvogel.model.new_mdp()
@@ -435,7 +437,7 @@ def test_add_choices():
     mdp6.add_choices(mdp6.initial_state, [(action6b, state6)])
     # print(mdp6.get_choice(mdp6.initial_state).choice)
     # print([(action6a, state6), (action6b, state6)])
-    assert len(mdp6.choices[mdp6.initial_state].choices) == 2
+    assert len(mdp6.transitions[mdp6.initial_state]) == 2
 
 
 def test_get_sub_model():
@@ -447,7 +449,7 @@ def test_get_sub_model():
     # we build what the submodel should look like
     new_dtmc = stormvogel.model.new_dtmc()
     init = new_dtmc.initial_state
-    init.valuations = {"rolled": 0}
+    init.valuations = {Variable("rolled"): 0}
     init.set_choices(
         [
             (1 / 6, new_dtmc.new_state(f"rolled{i + 1}", {Variable("rolled"): i + 1}))
@@ -474,7 +476,11 @@ def test_get_state_reward():
 def test_valuation_methods():
     # first we test the get_variables function
     mdp = stormvogel.examples.monty_hall.create_monty_hall_mdp()
-    assert mdp.variables == {"car_pos", "chosen_pos", "reveal_pos"}
+    assert mdp.variables == {
+        Variable("car_pos"),
+        Variable("chosen_pos"),
+        Variable("reveal_pos"),
+    }
 
     # we test the unassigned_variables function + the add_valuation_at_remaining_states function on the die model
     dtmc = stormvogel.model.new_dtmc()
@@ -492,7 +498,7 @@ def test_valuation_methods():
     )
     dtmc.add_self_loops()
 
-    assert list(dtmc.unassigned_variables()) == [(init, "rolled")]
+    assert list(dtmc.unassigned_variables()) == [(init, Variable("rolled"))]
 
     dtmc.add_valuation_at_remaining_states()
 

@@ -155,13 +155,13 @@ def test_pmdp_conversion():
 
     action_a = pmdp.new_action("a")
     action_b = pmdp.new_action("b")
-    branch0 = stormvogel.model.Branches(
+    branch0 = stormvogel.model.Distribution(
         [
             (p1, goal),
             (p2, sink),
         ]
     )
-    branch1 = stormvogel.model.Branches(
+    branch1 = stormvogel.model.Distribution(
         [
             (p1, sink),
             (p2, goal),

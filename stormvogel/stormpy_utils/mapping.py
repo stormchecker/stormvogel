@@ -14,7 +14,9 @@ from stormvogel.model.model import (
 )
 from stormvogel.model.state import State
 from stormvogel.model.choices import Choices, choices_from_shorthand
+from stormvogel.model.action import EmptyAction
 from stormvogel.model.value import Value, Interval
+from stormvogel.model.variable import Variable
 
 try:
     import stormpy
@@ -247,7 +249,9 @@ def stormpy_to_stormvogel(
             for state_id, state in enumerate(model.states):
                 v = json.loads(str(valuations.get_json(state_id)))
                 if v is not None:
-                    state.valuations = v
+                    state.valuations = {
+                        Variable(str(key)): value for key, value in v.items()
+                    }
 
     def map_dtmc(sparsedtmc: stormpy.storage.SparseDtmc) -> Model:
         """Convert a stormpy DTMC to a stormvogel model.
@@ -313,11 +317,12 @@ def stormpy_to_stormvogel(
 
                 if sparsemdp.has_choice_labeling():
                     labels = sparsemdp.choice_labeling.get_labels_of_choice(i)
-                    actionlabel = ",".join(sorted(labels)) if labels else str(i)
+                    if labels:
+                        action = model.action(",".join(sorted(labels)))
+                    else:
+                        action = EmptyAction
                 else:
-                    actionlabel = str(i)
-
-                action = model.action(actionlabel)
+                    action = model.action(str(i))
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsemdp),
@@ -363,15 +368,15 @@ def stormpy_to_stormvogel(
             row = matrix.get_row(state.id)
             # In stormpy CTMCs, the transition values are already the individual rates (exit_rate * probability)
             # No need to multiply by exit_rate again
-            choiceshorthand = [
-                (
-                    value_to_stormvogel(x.value(), sparsectmc),
-                    model.states[x.column],
-                )
-                for x in row
-            ]
-            choices = choices_from_shorthand(choiceshorthand)
-            model.set_choices(model.states[state.id], choices)
+            choiceshorthand: list[tuple[Value, State]] = []
+            for x in row:
+                value = value_to_stormvogel(x.value(), sparsectmc)
+                if value == 0:
+                    continue
+                choiceshorthand.append((value, model.states[x.column]))
+            if choiceshorthand:
+                choices = choices_from_shorthand(choiceshorthand)
+                model.set_choices(model.states[state.id], choices)
 
         # we add self loops to all states with no outgoing transitions
         model.add_self_loops()
@@ -413,11 +418,12 @@ def stormpy_to_stormvogel(
 
                 if sparsepomdp.has_choice_labeling():
                     labels = sparsepomdp.choice_labeling.get_labels_of_choice(i)
-                    actionlabel = ",".join(sorted(labels)) if labels else str(i)
+                    if labels:
+                        action = model.action(",".join(sorted(labels)))
+                    else:
+                        action = EmptyAction
                 else:
-                    actionlabel = str(i)
-
-                action = model.action(actionlabel)
+                    action = model.action(str(i))
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsepomdp),
@@ -476,11 +482,12 @@ def stormpy_to_stormvogel(
 
                 if sparsema.has_choice_labeling():
                     labels = sparsema.choice_labeling.get_labels_of_choice(i)
-                    actionlabel = ",".join(sorted(labels)) if labels else str(i)
+                    if labels:
+                        action = model.action(",".join(sorted(labels)))
+                    else:
+                        action = EmptyAction
                 else:
-                    actionlabel = str(i)
-
-                action = model.action(actionlabel)
+                    action = model.action(str(i))
                 branch = [
                     (
                         value_to_stormvogel(x.value(), sparsema),

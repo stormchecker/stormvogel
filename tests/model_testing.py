@@ -10,6 +10,7 @@ from stormvogel.model.model import Model
 from stormvogel.model.choices import Choices
 from stormvogel.model.observation import Observation
 from stormvogel.simulator import Path
+from stormvogel.model.variable import Variable
 
 
 # ---------------------------------------------------------------------------
@@ -20,7 +21,7 @@ from stormvogel.simulator import Path
 def _norm_choices(choices: Choices, idx: dict[int, int]) -> dict:
     """Normalize a Choices into {action: [(value, target_index), ...]} sorted by target index."""
     return {
-        a: [(v, idx[id(s)]) for v, s in sorted(b.branches, key=lambda t: idx[id(t[1])])]
+        a: [(v, idx[id(s)]) for v, s in sorted(b, key=lambda t: idx[id(t[1])])]
         for a, b in choices
     }
 
@@ -36,6 +37,18 @@ def _obs_eq(o1, o2) -> bool:
     if isinstance(o1, Observation):
         return o1.alias == o2.alias and o1.valuations == o2.valuations
     return True  # Distribution or unknown — skip deep comparison
+
+
+def _norm_valuation_keys(valuations: dict) -> dict[str, object]:
+    normalized: dict[str, object] = {}
+    for key, value in valuations.items():
+        key_str = key.label if isinstance(key, Variable) else str(key)
+        prefix = "Variable with name "
+        if key_str.startswith(prefix):
+            normalized[key_str[len(prefix) :]] = value
+        else:
+            normalized[key_str] = value
+    return normalized
 
 
 def models_equal(a: Model, b: Model) -> tuple[bool, str]:
@@ -54,18 +67,20 @@ def models_equal(a: Model, b: Model) -> tuple[bool, str]:
     for i, (s1, s2) in enumerate(zip(a.states, b.states)):
         if set(s1.labels) != set(s2.labels):
             return False, f"state[{i}] labels: {set(s1.labels)} != {set(s2.labels)}"
-        if a.state_valuations.get(s1) != b.state_valuations.get(s2):
+        valuations1 = _norm_valuation_keys(a.state_valuations.get(s1, {}))
+        valuations2 = _norm_valuation_keys(b.state_valuations.get(s2, {}))
+        if valuations1 != valuations2:
             return False, (
                 f"state[{i}] valuations: "
                 f"{a.state_valuations.get(s1)} != {b.state_valuations.get(s2)}"
             )
-        c1 = s1 in a.choices
-        c2 = s2 in b.choices
+        c1 = s1 in a.transitions and len(a.transitions[s1]) > 0
+        c2 = s2 in b.transitions and len(b.transitions[s2]) > 0
         if c1 != c2:
             return False, f"state[{i}] has_choices mismatch: {c1} vs {c2}"
         if c1:
-            nc1 = _norm_choices(a.choices[s1], a_idx)
-            nc2 = _norm_choices(b.choices[s2], b_idx)
+            nc1 = _norm_choices(a.transitions[s1], a_idx)
+            nc2 = _norm_choices(b.transitions[s2], b_idx)
             if nc1 != nc2:
                 return False, f"state[{i}] choices differ:\n  {nc1}\n  {nc2}"
 
