@@ -73,7 +73,7 @@ vis = show(
 #
 # ### Storm, Stormpy and Stormvogel
 # * [Storm](https://www.stormchecker.org/) is a probabilistic model checker, written in C++, whose primary goal is to provide the fastest algorithms for standard probabilistic model checking queries. This goal comes at a cost of a steep learning curve.
-# * [Stormpy](https://moves-rwth.github.io/stormpy/) is an low-level API with Python bindings for Storm that allows developers working with Storm to quickly prototype new algorithms.  It is structured mostly similarly to Storm itself.
+# * [Stormpy](https://stormchecker.github.io/stormpy/) is an low-level API with Python bindings for Storm that allows developers working with Storm to quickly prototype new algorithms.  It is structured mostly similarly to Storm itself.
 # * Stormvogel is a collection of Python APIs and visualization tools with ease-of-use as top priority: The goal of Stormvogel is to provide an accessible way to do probabilistic model checking and to provide educational tools about model checking. It can be easily interfaced with Stormpy to profit from high-performance model checking.
 #
 # ## What does Stormvogel provide?

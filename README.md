@@ -1,6 +1,6 @@
 # Stormvogel 🐦: An interactive approach to probabilistic model checking in Python
 
-The state-of-the-art model checking tools that are currently available are optimized to be efficient. The result of this is that they are quite hard to learn and use. Stormvogel flattens the learning cuve by providing easy and user-friendly APIs for creating probabilistic Markov models, and tools to visualize and debug them. It supports seemless conversion to the powerful [Storm(py) model checker](https://moves-rwth.github.io/stormpy/#stormpy-api-reference) out of the box.
+The state-of-the-art model checking tools that are currently available are optimized to be efficient. The result of this is that they are quite hard to learn and use. Stormvogel flattens the learning cuve by providing easy and user-friendly APIs for creating probabilistic Markov models, and tools to visualize and debug them. It supports seemless conversion to the powerful [Storm(py) model checker](https://stormchecker.github.io/stormpy/api) out of the box.
 
 ## Features
 * Easy APIs for constructing Markov models in dedicated data structures. Currently, DTMCs, MDPs, CTMCs, POMDPs and Markov Automata are supported. This also includes parametric variants. Interval models are in development.
@@ -40,7 +40,7 @@ Note that you might have to tweak these steps a bit to get it to work on your pa
     pip install stormpy
     pip install . # Install stormvogel
     ```
-    If installing stormpy fails in poetry, you can also try to follow the official [stormpy installation instructions](https://moves-rwth.github.io/stormpy/installation.html), and run `poetry shell` on top of the `virtualenv` environment that they describe there.
+    If installing stormpy fails in poetry, you can also try to follow the official [stormpy installation instructions](https://stormchecker.github.io/stormpy/installation.html), and run `poetry shell` on top of the `virtualenv` environment that they describe there.
 4. Install `pre-commit` hook: `pre-commit install`
 
 ## Testing
