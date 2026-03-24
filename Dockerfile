@@ -21,7 +21,7 @@ COPY . /app
 WORKDIR /app
 
 # Load existing virtual environment
-RUN poetry env use /opt/venv/bin/python
+RUN poetry env use system
 
 # Install project dependencies
 RUN poetry install
