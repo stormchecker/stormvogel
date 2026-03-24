@@ -162,5 +162,3 @@ for sid in range(0, 4):
     state.set_choices([(p, commu_model.states[sid_]) for p, sid_ in TRANSITIONS[sid]])
 
 show(commu_model)
-
-# %%

@@ -57,5 +57,5 @@ with pyproject_path.open("rb") as f:
 version = pyproject["tool"]["poetry"]["version"]
 if _release_url and _release_tag:
     html_title = "stormvogel"
-
-html_title = f"stormvogel v{version}"
+else:
+    html_title = f"stormvogel v{version}"

@@ -2,7 +2,7 @@ FROM python:3.12-slim
 
 # Install dependencies
 RUN apt-get update && \
-    apt-get -y install curl git vim nano libcairo2-dev
+    apt-get -y install curl git vim nano libcairo2-dev graphviz
 
 # Copy the project files into the container
 COPY . /app
