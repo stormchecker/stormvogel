@@ -17,8 +17,8 @@ permissions:
   id-token: write
 
 env:
-  PYTHON_VERSION: '3.12'
-  PRECOMMIT_VERSION: '3.7.1'
+  PYTHON_VERSION: '3.11'
+  POETRY_VERSION: '1.8.3'
 
 jobs:
   get-tag:
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     container:
-      image: movesrwth/stormpy:ci-debug
+      image: python:3.12
     strategy:
       matrix:
         include:
@@ -64,6 +64,7 @@ jobs:
           apt-get -y install git
           apt-get -y install pandoc
           apt-get -y install libcairo2-dev
+          apt-get -y install nodejs
 
       - name: Configure Python
         uses: actions/setup-python@v5
@@ -76,6 +77,9 @@ jobs:
           version: ${{ env.POETRY_VERSION }}
           virtualenvs-create: true
           virtualenvs-in-project: true
+
+      - name: Load existing venv
+        run: poetry env use system
 
       - name: Install project dependencies
         run: poetry install

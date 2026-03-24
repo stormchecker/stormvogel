@@ -17,7 +17,7 @@ jobs:
   test:
     runs-on: ubuntu-22.04
     container:
-      image: movesrwth/stormpy:ci-debug
+      image: python:3.12
     steps:
       - uses: actions/checkout@v4
 
@@ -41,7 +41,7 @@ jobs:
           virtualenvs-in-project: true
 
       - name: Load existing venv
-        run: poetry env use /opt/venv/bin/python
+        run: poetry env use system
 
       - name: Install dependencies
         run: poetry install
