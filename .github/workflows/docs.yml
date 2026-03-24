@@ -95,6 +95,8 @@ jobs:
             docs/**/*.py
           excluded-files: |
             docs/conf.py
+            docs/**/orchard/orchard_builder.py
+            docs/**/orchard/orchard_game_stormvogel.py
 
       - name: Generate documentation notebooks from jupytext
         run: |
