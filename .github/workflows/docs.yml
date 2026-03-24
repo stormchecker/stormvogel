@@ -37,7 +37,7 @@ jobs:
   build:
     needs: get-tag
     runs-on: ubuntu-22.04
-    timeout-minutes: 240
+    timeout-minutes: 90
     container:
       image: movesrwth/stormpy:ci-debug
     strategy:
@@ -80,15 +80,8 @@ jobs:
       - name: Install project dependencies
         run: poetry install
 
-      - name: Install stormpy from git master
-        run: |
-          poetry run pip install -v \
-            git+https://github.com/moves-rwth/stormpy.git@master \
-            --config-settings=cmake.define.ALLOW_STORM_SYSTEM=OFF \
-            --config-settings=cmake.define.STORM_GIT_TAG=master
-
       - name: Install extra dependencies
-        run: poetry run pip install pyscipopt paynt
+        run: poetry run pip install stormpy pyscipopt paynt
 
       - name: Glob python files in docs folder
         uses: tj-actions/glob@v22
