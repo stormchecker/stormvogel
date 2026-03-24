@@ -100,6 +100,8 @@ class Model[ValueType: Value]:
             else:
                 self.new_state(["init"])
 
+    # Properties
+
     @property
     def actions(self) -> Iterable[Action]:
         """Extract the actions from a model that supports actions.
@@ -136,18 +138,56 @@ class Model[ValueType: Value]:
                         seen.add(o)
                         yield o
 
-    def summary(self):
-        """Give a short summary of the model."""
-        choices_bit = (
-            f"{sum(len(choices) for choices in self.transitions.values())} choices, "
-            if self.supports_actions()
-            else ""
-        )
-        return (
-            f"{self.model_type} model with {len(self.states)} states, "
-            + choices_bit
-            + f"and {len(self.state_labels)} distinct labels."
-        )
+    @property
+    def parameters(self) -> set[str]:
+        """Return the set of parameters of this model."""
+        parameters = set()
+        for _, choice in self.transitions.items():
+            for _, branch in choice:
+                for transition in branch:
+                    if isinstance(transition[0], Parametric):
+                        parameters = parameters.union(transition[0].get_variables())
+        return parameters
+
+    @property
+    def initial_state(self) -> State:
+        """Get the initial state (the state with label ``"init"``).
+
+        :raises RuntimeError: If the model does not have exactly one initial state.
+        """
+
+        if "init" not in self.state_labels or len(self.state_labels["init"]) != 1:
+            raise RuntimeError(
+                "Model does not have exactly one initial state with label 'init'."
+            )
+        return next(iter(self.state_labels["init"]))
+
+    @property
+    def variables(self) -> set[Variable]:
+        """Get the set of all variables present in this model (corresponding to state valuations)."""
+        variables: set[Variable] = set()
+        for state in self.states:
+            variables = variables | set(state.valuations.keys())
+        return variables
+
+    @property
+    def nr_states(self) -> int:
+        """Return the number of states in this model.
+
+        Note that not all states need to be reachable.
+        """
+        return len(self.states)
+
+    @property
+    def nr_choices(self) -> int:
+        """Return the number of choices in the model (summed over all states)."""
+        return sum(state.nr_choices for state in self.states)
+
+    @property
+    def sorted_states(self):
+        return sorted(self.states, key=lambda state: state.friendly_name or "")
+
+    # Model capability checks
 
     def supports_actions(self) -> bool:
         """Return whether this model supports actions."""
@@ -172,17 +212,6 @@ class Model[ValueType: Value]:
                             return self._is_interval
             self._is_interval = False
         return self._is_interval
-
-    @property
-    def parameters(self) -> set[str]:
-        """Return the set of parameters of this model."""
-        parameters = set()
-        for _, choice in self.transitions.items():
-            for _, branch in choice:
-                for transition in branch:
-                    if isinstance(transition[0], Parametric):
-                        parameters = parameters.union(transition[0].get_variables())
-        return parameters
 
     def is_parametric(self) -> bool:
         """Return whether this model contains parametric transition values."""
@@ -228,200 +257,58 @@ class Model[ValueType: Value]:
                             return False
         return True
 
-    def normalize(self):
-        """Normalize the model.
+    # State management
 
-        For states where outgoing transition probabilities do not sum to 1,
-        divide each probability by the sum. For rate-based models, only add
-        self-loops.
+    def new_state(
+        self,
+        labels: list[str] | str | None = None,
+        valuations: dict[Variable, Any] | None = None,
+        observation: Observation | Distribution[ValueType, Observation] | None = None,
+    ) -> State:
+        """Create a new state and return it.
 
-        :raises RuntimeError: If the model is parametric or an interval model.
+        :param labels: Labels to assign to the new state.
+        :param valuations: Variable-value pairs to assign as valuations.
+        :param observation: Observation to assign (required for models that
+            support observations).
+        :returns: The newly created state.
+        :raises RuntimeError: If the model supports observations but none is
+            provided, or if an observation is provided but not supported.
         """
-        if self.is_parametric() or self.is_interval_model():
+        if self.supports_observations() and observation is None:
             raise RuntimeError(
-                "normalize method undefined for parametric or interval models"
+                "Tried to create a state in a model that supports observations without providing an observation."
+            )
+        if observation is not None and not self.supports_observations():
+            raise RuntimeError(
+                "Tried to set an observation on a model that does not support observations."
             )
 
-        if not self.supports_rates():
-            self.add_self_loops()
-            for state in self:
-                for action in state.available_actions():
-                    # we first calculate the sum
-                    sum_prob = 0
-                    transitions = state.get_outgoing_transitions(action)
-                    assert transitions is not None
-                    for t in transitions:
-                        if isinstance(t[0], Number):
-                            sum_prob += t[0]
-
-                    # then we divide each value by the sum
-                    new_distr = Distribution()
-                    for t in transitions:
-                        if isinstance(t[0], Number):
-                            new_distr[t[1]] = t[0] / sum_prob
-                    self.transitions[state][action] = new_distr
-        else:
-            # for ctmcs and mas we currently only add self loops
-            self.add_self_loops()
-
-    def get_sub_model(self, states: Iterable[State], normalize: bool = True) -> "Model":
-        """Return a submodel containing only the given states.
-
-        :param states: The states to keep in the submodel.
-        :param normalize: Whether to normalize the submodel after construction.
-        :returns: A new model containing only the specified states.
-        """
-        keep_ids = {s.state_id for s in states}
-        sub_model = deepcopy(self)
-        remove = [state for state in sub_model if state.state_id not in keep_ids]
-        for state in remove:
-            sub_model.remove_state(state, normalize=False, suppress_warning=True)
-
-        if normalize:
-            sub_model.normalize()
-        return sub_model
-
-    def get_instantiated_model(self, values: dict[str, Number]) -> "Model":
-        """Evaluate all parametric transitions with the given values and return the instantiated model.
-
-        :param values: Mapping from parameter names to their numeric values.
-        :returns: A new model with all parametric transitions evaluated.
-        """
-        evaluated_model = deepcopy(self)
-        for state, transition in evaluated_model.transitions.items():
-            for action, branch in transition:
-                new_distr = Distribution()
-                for val, target in branch:
-                    if isinstance(val, Parametric):
-                        new_distr[target] = val.evaluate(values)
-                    else:
-                        new_distr[target] = val
-                evaluated_model.transitions[state][action] = new_distr
-        return evaluated_model
-
-    def add_self_loops(self):
-        """Add self-loops to all states that do not have an outgoing transition."""
-        if self.supports_rates():
-            return
-        for state in self:
-            if not state.has_choices():  # state has no outgoing transitions
-                self.set_choices(state, [(float(1), state)])
-
-    def add_valuation_at_remaining_states(
-        self, variables: list[Variable] | None = None, value: Any = 0
-    ):
-        """Set a dummy value for variables in all states where they are unassigned.
-
-        :param variables: List of variable names to set. If ``None``, all
-            variables in the model are used.
-        :param value: The value to assign to unassigned variables.
-        """
-
-        # we either set it at all variables or just at a given subset of variables
-        if variables is not None:
-            v = variables
-        else:
-            v = self.variables
-
-        # we set the values
-        for state in self:
-            for var in v:
-                if var not in state.valuations.keys():
-                    state.valuations[var] = value
-
-    def unassigned_variables(self) -> Iterator[tuple[State, Variable]]:
-        """Yield tuples of state-variable pairs that are unassigned."""
-        variables = self.variables
-        for state in self:
-            for variable in variables:
-                if variable not in state.valuations:
-                    yield (state, variable)
-
-    def iterate_transitions(self) -> Iterator[tuple[ValueType, State]]:
-        """Iterate through all transitions in all choices of the model."""
-        for choice in self.transitions.values():
-            for _action, branch in choice:
-                for transition in branch:
-                    yield transition
-
-    def has_zero_transition(self) -> bool:
-        """Check whether the model has transitions with probability zero."""
-        for choice in self.transitions.values():
-            if choice.has_zero_transition():
-                return True
-        return False
-
-    def add_markovian_state(self, markovian_state: State):
-        """Add a state to the markovian states.
-
-        :param markovian_state: The state to mark as markovian.
-        :raises RuntimeError: If the model is not a Markov automaton.
-        """
-        if self.model_type == ModelType.MA and self.markovian_states is not None:
-            self.markovian_states.add(markovian_state)
-        else:
-            raise RuntimeError("This model is not a MA")
-
-    def set_choices(self, s: State, choices: Choices | ChoicesShorthand) -> None:
-        """Set the choices for a state.
-
-        :param s: The state to set choices for.
-        :param choices: The choices to assign.
-        :raises RuntimeError: If any transition probability is zero.
-        """
         self._is_interval = None
         self._is_parametric = None
-        if not isinstance(choices, Choices):
-            choices = choices_from_shorthand(choices)
+        self._state_index_cache = None
+        state = State(self)
 
-        if choices.has_zero_transition():
-            raise RuntimeError("All transition probabilities should be nonzero.")
+        self.states.append(state)
 
-        self.transitions[s] = choices
+        self.state_valuations[state] = dict()
 
-    def add_choices(self, s: State, choices: Choices | ChoicesShorthand) -> None:
-        """Add new choices from a state to the model.
+        if labels is not None and isinstance(labels, list):
+            for label in labels:
+                state.add_label(label)
+        elif labels is not None and isinstance(labels, str):
+            state.add_label(labels)
 
-        If no choice currently exists, the result is the same as
-        :meth:`set_choices`.
+        if valuations is not None:
+            for var, val in valuations.items():
+                state.add_valuation(var, val)
 
-        :param s: The state to add choices to.
-        :param choices: The choices to add.
-        :raises RuntimeError: If any transition probability is zero.
-        """
-        self._is_interval = None
-        self._is_parametric = None
-        if s not in self.transitions:
-            self.transitions[s] = Choices(dict())
-        self.transitions[s].add(choices)
+        self.transitions[state] = Choices(dict())
 
-    def get_successor_states(self, state: State) -> set[State]:
-        """Return the set of successor states of the given state.
+        if observation is not None:
+            state.observation = observation
 
-        :param state: The state whose successors to retrieve.
-        :returns: The set of successor states.
-        """
-        result = set()
-        for _, branch in self.transitions[state]:
-            for _, target in branch:
-                result.add(target)
-        return result
-
-    def get_distribution(
-        self, state: State
-    ) -> Distribution[ValueType, State[ValueType]]:
-        """Get the distribution at the given state.
-
-        Only intended for distribution with EmptyAction; raises an error otherwise.
-
-        :param state: The state to retrieve branches for.
-        :returns: The branches for the empty action at this state.
-        :raises RuntimeError: If the state has non-empty choices.
-        """
-        choices = self.transitions[state]
-        if not choices.has_empty_action():
-            raise RuntimeError("Called get_distribution on a non-empty choice.")
-        return choices[EmptyAction]
+        return state
 
     def remove_state(
         self,
@@ -513,56 +400,36 @@ class Model[ValueType: Value]:
         self._state_index_cache = {s: i for i, s in enumerate(self.states)}
         return self._state_index_cache.get(state, -1)
 
-    def new_state(
-        self,
-        labels: list[str] | str | None = None,
-        valuations: dict[Variable, Any] | None = None,
-        observation: Observation | Distribution[ValueType, Observation] | None = None,
-    ) -> State:
-        """Create a new state and return it.
+    def add_label(self, label: str):
+        """Add a label to the model.
 
-        :param labels: Labels to assign to the new state.
-        :param valuations: Variable-value pairs to assign as valuations.
-        :param observation: Observation to assign (required for models that
-            support observations).
-        :returns: The newly created state.
-        :raises RuntimeError: If the model supports observations but none is
-            provided, or if an observation is provided but not supported.
+        :param label: The label to add.
         """
-        if self.supports_observations() and observation is None:
-            raise RuntimeError(
-                "Tried to create a state in a model that supports observations without providing an observation."
-            )
-        if observation is not None and not self.supports_observations():
-            raise RuntimeError(
-                "Tried to set an observation on a model that does not support observations."
-            )
+        if label in self.state_labels:
+            raise RuntimeError(f"Label {label} already exists in the model.")
+        self.state_labels[label] = set()
 
-        self._is_interval = None
-        self._is_parametric = None
-        self._state_index_cache = None
-        state = State(self)
+    def get_states_with_label(self, label: str) -> set[State]:
+        """Get all states with a given label.
 
-        self.states.append(state)
+        :param label: The label to search for.
+        :returns: The set of states that carry the label.
+        """
+        return self.state_labels[label]
 
-        self.state_valuations[state] = dict()
+    def get_state_by_id(self, state_id: UUID) -> State:
+        """Get a state by its UUID.
 
-        if labels is not None and isinstance(labels, list):
-            for label in labels:
-                state.add_label(label)
-        elif labels is not None and isinstance(labels, str):
-            state.add_label(labels)
+        :param state_id: The UUID of the state.
+        :returns: The matching state.
+        :raises RuntimeError: If no state with the given id is found.
+        """
+        for state in self.states:
+            if state.state_id == state_id:
+                return state
+        raise RuntimeError(f"State with id {state_id} not found.")
 
-        if valuations is not None:
-            for var, val in valuations.items():
-                state.add_valuation(var, val)
-
-        self.transitions[state] = Choices(dict())
-
-        if observation is not None:
-            state.observation = observation
-
-        return state
+    # Observation management
 
     def new_observation(
         self, alias: str, valuations: dict[Variable, Any] | None = None
@@ -618,160 +485,6 @@ class Model[ValueType: Value]:
                 return obs
         return self.new_observation(alias)
 
-    def new_action(self, label: str) -> Action:
-        """Create a new action with the given label.
-
-        :param label: The label for the new action.
-        :returns: The newly created action.
-        """
-        return Action(label)
-
-    def action(self, label: str) -> Action:
-        """Alias of new_action."""
-        return self.new_action(label)
-
-    def get_states_with_label(self, label: str) -> set[State]:
-        """Get all states with a given label.
-
-        :param label: The label to search for.
-        :returns: The set of states that carry the label.
-        """
-        return self.state_labels[label]
-
-    def get_state_by_id(self, state_id: UUID) -> State:
-        """Get a state by its UUID.
-
-        :param state_id: The UUID of the state.
-        :returns: The matching state.
-        :raises RuntimeError: If no state with the given id is found.
-        """
-        for state in self.states:
-            if state.state_id == state_id:
-                return state
-        raise RuntimeError(f"State with id {state_id} not found.")
-
-    @property
-    def initial_state(self) -> State:
-        """Get the initial state (the state with label ``"init"``).
-
-        :raises RuntimeError: If the model does not have exactly one initial state.
-        """
-
-        if "init" not in self.state_labels or len(self.state_labels["init"]) != 1:
-            raise RuntimeError(
-                "Model does not have exactly one initial state with label 'init'."
-            )
-        return next(iter(self.state_labels["init"]))
-
-    def add_label(self, label: str):
-        """Add a label to the model.
-
-        :param label: The label to add.
-        """
-        if label in self.state_labels:
-            raise RuntimeError(f"Label {label} already exists in the model.")
-        self.state_labels[label] = set()
-
-    @property
-    def variables(self) -> set[Variable]:
-        """Get the set of all variables present in this model (corresponding to state valuations)."""
-        variables: set[Variable] = set()
-        for state in self.states:
-            variables = variables | set(state.valuations.keys())
-        return variables
-
-    def get_default_rewards(self) -> RewardModel:
-        """Get the default reward model.
-
-        :returns: The first reward model.
-        :raises RuntimeError: If there are no reward models.
-        """
-        if len(self.rewards) == 0:
-            raise RuntimeError("This model has no reward models.")
-        return self.rewards[0]
-
-    def get_rewards(self, name: str) -> RewardModel:
-        """Get the reward model with the specified name.
-
-        :param name: The name of the reward model.
-        :returns: The matching reward model.
-        :raises RuntimeError: If no reward model with the given name exists.
-        """
-        for model in self.rewards:
-            if model.name == name:
-                return model
-        raise RuntimeError(f"Reward model {name} not present in model.")
-
-    def new_reward_model(self, name: str) -> RewardModel:
-        """Create a reward model with the specified name, add it, and return it.
-
-        :param name: The name for the new reward model.
-        :returns: The newly created reward model.
-        :raises RuntimeError: If a reward model with the given name already exists.
-        """
-        for model in self.rewards:
-            if model.name == name:
-                raise RuntimeError(f"Reward model {name} already present in model.")
-        reward_model = RewardModel(name, self, {})
-        self.rewards.append(reward_model)
-        return reward_model
-
-    @deprecated(version="0.10.0", reason="use model_type instead.")
-    def get_type(self) -> ModelType:
-        """Get the type of this model."""
-        return self.model_type
-
-    @property
-    def nr_states(self) -> int:
-        """Return the number of states in this model.
-
-        Note that not all states need to be reachable.
-        """
-        return len(self.states)
-
-    @property
-    def nr_choices(self) -> int:
-        """Return the number of choices in the model (summed over all states)."""
-        return sum(state.nr_choices for state in self.states)
-
-    def to_dot(self) -> str:
-        """Generate a dot representation of this model."""
-        dot = "digraph model {\n"
-        for state in self:
-            dot += f'{state.state_id} [ label = "{state.state_id}: {", ".join(state.labels)}" ];\n'
-        for state_id, transition in self.transitions.items():
-            for action, branch in transition:
-                if action != EmptyAction:
-                    dot += f'{state_id}{action.label} [ label = "", shape=point ];\n'
-        for state_id, transition in self.transitions.items():
-            for action, branch in transition:
-                if action == EmptyAction:
-                    # Only draw probabilities
-                    for prob, target in branch:
-                        dot += (
-                            f'{state_id} -> {target.state_id} [ label = "{prob}" ];\n'
-                        )
-                else:
-                    # Draw actions, then probabilities
-                    dot += f'{state_id} -> {state_id}{action.label} [ label = "{action.label}" ];\n'
-                    for prob, target in branch:
-                        dot += f'{state_id}{action.label} -> {target.state_id} [ label = "{prob}" ];\n'
-        dot += "}"
-        return dot
-
-    def __str__(self) -> str:
-        return self.summary()
-
-    @property
-    def sorted_states(self):
-        return sorted(self.states, key=lambda state: state.friendly_name or "")
-
-    def __getitem__(self, state_index: int):
-        return self.states[state_index]
-
-    def __iter__(self):
-        return iter(self.states)
-
     def make_observations_deterministic(self):
         """Make observations deterministic by splitting states with multiple observations.
 
@@ -825,6 +538,315 @@ class Model[ValueType: Value]:
                 # Remove labels for this state
                 for label in state.labels:
                     self.state_labels[label].remove(state)
+
+    # Action management
+
+    def new_action(self, label: str) -> Action:
+        """Create a new action with the given label.
+
+        :param label: The label for the new action.
+        :returns: The newly created action.
+        """
+        return Action(label)
+
+    def action(self, label: str) -> Action:
+        """Alias of new_action."""
+        return self.new_action(label)
+
+    def add_markovian_state(self, markovian_state: State):
+        """Add a state to the markovian states.
+
+        :param markovian_state: The state to mark as markovian.
+        :raises RuntimeError: If the model is not a Markov automaton.
+        """
+        if self.model_type == ModelType.MA and self.markovian_states is not None:
+            self.markovian_states.add(markovian_state)
+        else:
+            raise RuntimeError("This model is not a MA")
+
+    # Transition/choices management
+
+    def set_choices(self, s: State, choices: Choices | ChoicesShorthand) -> None:
+        """Set the choices for a state.
+
+        :param s: The state to set choices for.
+        :param choices: The choices to assign.
+        :raises RuntimeError: If any transition probability is zero.
+        """
+        self._is_interval = None
+        self._is_parametric = None
+        if not isinstance(choices, Choices):
+            choices = choices_from_shorthand(choices)
+
+        if choices.has_zero_transition():
+            raise RuntimeError("All transition probabilities should be nonzero.")
+
+        self.transitions[s] = choices
+
+    def add_choices(self, s: State, choices: Choices | ChoicesShorthand) -> None:
+        """Add new choices from a state to the model.
+
+        If no choice currently exists, the result is the same as
+        :meth:`set_choices`.
+
+        :param s: The state to add choices to.
+        :param choices: The choices to add.
+        :raises RuntimeError: If any transition probability is zero.
+        """
+        self._is_interval = None
+        self._is_parametric = None
+        if s not in self.transitions:
+            self.transitions[s] = Choices(dict())
+        self.transitions[s].add(choices)
+
+    def add_self_loops(self):
+        """Add self-loops to all states that do not have an outgoing transition."""
+        if self.supports_rates():
+            return
+        for state in self:
+            if not state.has_choices():  # state has no outgoing transitions
+                self.set_choices(state, [(float(1), state)])
+
+    def get_successor_states(self, state: State) -> set[State]:
+        """Return the set of successor states of the given state.
+
+        :param state: The state whose successors to retrieve.
+        :returns: The set of successor states.
+        """
+        result = set()
+        for _, branch in self.transitions[state]:
+            for _, target in branch:
+                result.add(target)
+        return result
+
+    def get_distribution(
+        self, state: State
+    ) -> Distribution[ValueType, State[ValueType]]:
+        """Get the distribution at the given state.
+
+        Only intended for distribution with EmptyAction; raises an error otherwise.
+
+        :param state: The state to retrieve branches for.
+        :returns: The branches for the empty action at this state.
+        :raises RuntimeError: If the state has non-empty choices.
+        """
+        choices = self.transitions[state]
+        if not choices.has_empty_action():
+            raise RuntimeError("Called get_distribution on a non-empty choice.")
+        return choices[EmptyAction]
+
+    def iterate_transitions(self) -> Iterator[tuple[ValueType, State]]:
+        """Iterate through all transitions in all choices of the model."""
+        for choice in self.transitions.values():
+            for _action, branch in choice:
+                for transition in branch:
+                    yield transition
+
+    def has_zero_transition(self) -> bool:
+        """Check whether the model has transitions with probability zero."""
+        for choice in self.transitions.values():
+            if choice.has_zero_transition():
+                return True
+        return False
+
+    # Reward management
+
+    def new_reward_model(self, name: str) -> RewardModel:
+        """Create a reward model with the specified name, add it, and return it.
+
+        :param name: The name for the new reward model.
+        :returns: The newly created reward model.
+        :raises RuntimeError: If a reward model with the given name already exists.
+        """
+        for model in self.rewards:
+            if model.name == name:
+                raise RuntimeError(f"Reward model {name} already present in model.")
+        reward_model = RewardModel(name, self, {})
+        self.rewards.append(reward_model)
+        return reward_model
+
+    def get_default_rewards(self) -> RewardModel:
+        """Get the default reward model.
+
+        :returns: The first reward model.
+        :raises RuntimeError: If there are no reward models.
+        """
+        if len(self.rewards) == 0:
+            raise RuntimeError("This model has no reward models.")
+        return self.rewards[0]
+
+    def get_rewards(self, name: str) -> RewardModel:
+        """Get the reward model with the specified name.
+
+        :param name: The name of the reward model.
+        :returns: The matching reward model.
+        :raises RuntimeError: If no reward model with the given name exists.
+        """
+        for model in self.rewards:
+            if model.name == name:
+                return model
+        raise RuntimeError(f"Reward model {name} not present in model.")
+
+    # Model operations
+
+    def summary(self):
+        """Give a short summary of the model."""
+        choices_bit = (
+            f"{sum(len(choices) for choices in self.transitions.values())} choices, "
+            if self.supports_actions()
+            else ""
+        )
+        return (
+            f"{self.model_type} model with {len(self.states)} states, "
+            + choices_bit
+            + f"and {len(self.state_labels)} distinct labels."
+        )
+
+    def normalize(self):
+        """Normalize the model.
+
+        For states where outgoing transition probabilities do not sum to 1,
+        divide each probability by the sum. For rate-based models, only add
+        self-loops.
+
+        :raises RuntimeError: If the model is parametric or an interval model.
+        """
+        if self.is_parametric() or self.is_interval_model():
+            raise RuntimeError(
+                "normalize method undefined for parametric or interval models"
+            )
+
+        if not self.supports_rates():
+            self.add_self_loops()
+            for state in self:
+                for action in state.available_actions():
+                    # we first calculate the sum
+                    sum_prob = 0
+                    transitions = state.get_outgoing_transitions(action)
+                    assert transitions is not None
+                    for t in transitions:
+                        if isinstance(t[0], Number):
+                            sum_prob += t[0]
+
+                    # then we divide each value by the sum
+                    new_distr = Distribution()
+                    for t in transitions:
+                        if isinstance(t[0], Number):
+                            new_distr[t[1]] = t[0] / sum_prob
+                    self.transitions[state][action] = new_distr
+        else:
+            # for ctmcs and mas we currently only add self loops
+            self.add_self_loops()
+
+    def get_sub_model(self, states: Iterable[State], normalize: bool = True) -> "Model":
+        """Return a submodel containing only the given states.
+
+        :param states: The states to keep in the submodel.
+        :param normalize: Whether to normalize the submodel after construction.
+        :returns: A new model containing only the specified states.
+        """
+        keep_ids = {s.state_id for s in states}
+        sub_model = deepcopy(self)
+        remove = [state for state in sub_model if state.state_id not in keep_ids]
+        for state in remove:
+            sub_model.remove_state(state, normalize=False, suppress_warning=True)
+
+        if normalize:
+            sub_model.normalize()
+        return sub_model
+
+    def get_instantiated_model(self, values: dict[str, Number]) -> "Model":
+        """Evaluate all parametric transitions with the given values and return the instantiated model.
+
+        :param values: Mapping from parameter names to their numeric values.
+        :returns: A new model with all parametric transitions evaluated.
+        """
+        evaluated_model = deepcopy(self)
+        for state, transition in evaluated_model.transitions.items():
+            for action, branch in transition:
+                new_distr = Distribution()
+                for val, target in branch:
+                    if isinstance(val, Parametric):
+                        new_distr[target] = val.evaluate(values)
+                    else:
+                        new_distr[target] = val
+                evaluated_model.transitions[state][action] = new_distr
+        return evaluated_model
+
+    def add_valuation_at_remaining_states(
+        self, variables: list[Variable] | None = None, value: Any = 0
+    ):
+        """Set a dummy value for variables in all states where they are unassigned.
+
+        :param variables: List of variable names to set. If ``None``, all
+            variables in the model are used.
+        :param value: The value to assign to unassigned variables.
+        """
+
+        # we either set it at all variables or just at a given subset of variables
+        if variables is not None:
+            v = variables
+        else:
+            v = self.variables
+
+        # we set the values
+        for state in self:
+            for var in v:
+                if var not in state.valuations.keys():
+                    state.valuations[var] = value
+
+    def unassigned_variables(self) -> Iterator[tuple[State, Variable]]:
+        """Yield tuples of state-variable pairs that are unassigned."""
+        variables = self.variables
+        for state in self:
+            for variable in variables:
+                if variable not in state.valuations:
+                    yield (state, variable)
+
+    # Output
+
+    def to_dot(self) -> str:
+        """Generate a dot representation of this model."""
+        dot = "digraph model {\n"
+        for state in self:
+            dot += f'{state.state_id} [ label = "{state.state_id}: {", ".join(state.labels)}" ];\n'
+        for state_id, transition in self.transitions.items():
+            for action, branch in transition:
+                if action != EmptyAction:
+                    dot += f'{state_id}{action.label} [ label = "", shape=point ];\n'
+        for state_id, transition in self.transitions.items():
+            for action, branch in transition:
+                if action == EmptyAction:
+                    # Only draw probabilities
+                    for prob, target in branch:
+                        dot += (
+                            f'{state_id} -> {target.state_id} [ label = "{prob}" ];\n'
+                        )
+                else:
+                    # Draw actions, then probabilities
+                    dot += f'{state_id} -> {state_id}{action.label} [ label = "{action.label}" ];\n'
+                    for prob, target in branch:
+                        dot += f'{state_id}{action.label} -> {target.state_id} [ label = "{prob}" ];\n'
+        dot += "}"
+        return dot
+
+    # Dunder methods
+
+    def __str__(self) -> str:
+        return self.summary()
+
+    def __getitem__(self, state_index: int):
+        return self.states[state_index]
+
+    def __iter__(self):
+        return iter(self.states)
+
+    # Deprecated
+
+    @deprecated(version="0.10.0", reason="use model_type instead.")
+    def get_type(self) -> ModelType:
+        """Get the type of this model."""
+        return self.model_type
 
 
 def new_dtmc(create_initial_state: bool = True) -> Model:
