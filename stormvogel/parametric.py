@@ -39,7 +39,7 @@ class Polynomial:
 
         assert isinstance(exponents, tuple)
 
-        key = frozenset((self.variables[i], exp) for i, exp in enumerate(exponents))
+        key = frozenset(zip(self.variables, exponents))
 
         if key in self.terms:
             raise RuntimeError(

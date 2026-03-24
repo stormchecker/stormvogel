@@ -848,6 +848,11 @@ class Model[ValueType: Value]:
         """Get the type of this model."""
         return self.model_type
 
+    @deprecated(version="0.12.0", reason="use initial_state instead.")
+    def get_initial_state(self) -> State:
+        """Get the initial state of this model."""
+        return self.initial_state
+
 
 def new_dtmc(create_initial_state: bool = True) -> Model:
     """Create a DTMC.

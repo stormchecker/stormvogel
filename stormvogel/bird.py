@@ -1,3 +1,5 @@
+import warnings
+
 import stormvogel.model
 from dataclasses import dataclass
 from typing import cast, Any, Callable, Sequence
@@ -120,9 +122,14 @@ def valid_input[ValueType: stormvogel.model.Value](
         sig = inspect.signature(rewards)
         num_params = len(sig.parameters)
         if num_params != 1:
-            raise ValueError(
-                f"The rewards function must take exactly one argument (state), but it takes {num_params} arguments"
-            )
+            if num_params == 2:
+                warnings.warn(
+                    "State-action rewards are not supported in this version of stormvogel. Will assign None to the second parameter of your reward function."
+                )
+            else:
+                raise ValueError(
+                    f"The rewards function must take exactly one argument (state), but it takes {num_params} arguments"
+                )
 
     if labels is not None:
         sig = inspect.signature(labels)
@@ -363,7 +370,17 @@ def build_bird[ValueType: stormvogel.model.Value](
 
     # we add the rewards
     if rewards is not None:
-        rewards_1 = cast(Callable[[Any], dict[str, ValueType]], rewards)
+        # TODO: Support state-action rewards in the future.
+        sig = inspect.signature(rewards)
+        num_params = len(sig.parameters)
+
+        if num_params == 2:
+
+            def rewards_1(s: Any) -> dict[str, ValueType]:
+                return rewards(s, None)  # type: ignore
+        else:
+            rewards_1 = cast(Callable[[Any], dict[str, ValueType]], rewards)  # type: ignore
+
         for name in rewards_1(init).keys():
             model.new_reward_model(name)
 
