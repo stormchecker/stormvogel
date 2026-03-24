@@ -39,7 +39,8 @@ jobs:
           virtualenvs-in-project: true
 
       - name: Load existing venv
-        run: poetry env use /opt/venv/bin/python
+        run: poetry env use system
+
 
       - name: Install dependencies
         run: poetry install
