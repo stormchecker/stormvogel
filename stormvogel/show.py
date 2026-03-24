@@ -2,7 +2,7 @@
 
 from typing import Callable, Any, TYPE_CHECKING
 import stormvogel.model
-from stormvogel.layout import Layout, DEFAULT, SV
+from stormvogel.layout import Layout, DEFAULT
 import stormvogel.result
 from stormvogel.visualization import JSVisualization, MplVisualization
 
@@ -103,9 +103,7 @@ def show(
             ipd.display(ipd.HTML(filename="model.html"))
         return vis
     elif engine == "mpl":
-        vis = MplVisualization(
-            model=model, result=result, scheduler=scheduler, layout=layout
-        )
+        vis = MplVisualization(model=model, result=result, scheduler=scheduler)
         vis.show()
         return vis
     else:
@@ -117,6 +115,6 @@ def show_bird() -> JSVisualization:
     m = stormvogel.model.new_dtmc(create_initial_state=False)
     m.new_state(labels=["init", "🐦"])
     m.add_self_loops()
-    vis = show(m, show_editor=False, do_init_server=False, layout=SV())
+    vis = show(m, show_editor=False, do_init_server=False)
     assert isinstance(vis, JSVisualization)
     return vis

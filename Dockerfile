@@ -1,4 +1,4 @@
-FROM movesrwth/stormpy:stable
+FROM python:3.12-slim
 
 # Install dependencies
 RUN apt-get update && \
@@ -25,6 +25,9 @@ RUN poetry env use /opt/venv/bin/python
 
 # Install project dependencies
 RUN poetry install
+
+# Install stormpy, paynt, and pyscipopt
+RUN pip install stormpy paynt pyscipopt
 
 # create /root/.jupyter directory
 RUN mkdir -p /root/.jupyter

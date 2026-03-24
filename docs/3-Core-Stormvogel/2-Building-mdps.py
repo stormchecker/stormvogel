@@ -1,0 +1,196 @@
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.2
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
+
+# %% [markdown]
+# # Building MDPs
+# In Stormvogel, a **Markov Decision Process (MDP)** consists of:
+# * states $S$,
+# * actions $A$,
+# * an initial state $s_0$,
+# * a mapping from states to sets of *enabled actions*,
+# * a successor distribution $P(s,a)$ for every state $s$ and every enabled action $a$, i.e., sets of transitions between states $s$ and $s'$, each annotated with an action and a probability.
+# * state labels $L(s)$.
+#
+#
+# Here we show how to construct a simple example mdp using the bird API and the model builder API.
+# The idea is that you can choose to study (you will likely pass the exam but you have less free time) or not to study (you will have more free time but risk failing the exam).
+
+# %% [markdown]
+# ## The study dilemma
+# This little MDP is supposed to help you decide whether you should stuy or not.
+
+# %% [markdown]
+# ### Bird API
+# For MDPs, you specify the availaible actions in `available_actions`. An action here is simply a string. You specify the transition of a state-action pair in `delta`.
+
+# %%
+from stormvogel import *
+
+
+def available_actions(s):
+    if s == "init":
+        return ["study", "don't study"]
+    else:
+        return [""]
+
+
+def delta(s, a):
+    if a == "study":
+        return [(1, "did study")]
+    elif a == "don't study":
+        return [(1, "did not study")]
+    elif s == "did study":
+        return [(9 / 10, "pass test"), (1 / 10, "fail test")]
+    elif s == "did not study":
+        return [(2 / 5, "pass test"), (3 / 5, "fail test")]
+    else:
+        return [(1, "end")]
+
+
+def labels(s):
+    return s
+
+
+# For rewards, you have to provide a dict. This enables multiple reward models if you use a non-singleton list.
+def rewards(s: bird.State):
+    if s == "pass test":
+        return {"R": 100}
+    elif s == "did not study":
+        return {"R": 15}
+    else:
+        return {"R": 0}
+
+
+bird_study = bird.build_bird(
+    delta=delta,
+    init="init",
+    available_actions=available_actions,
+    labels=labels,
+    modeltype=ModelType.MDP,
+    rewards=rewards,
+)
+show(bird_study)
+
+# %% [markdown]
+# ### Model API
+
+# %%
+from stormvogel import *
+
+mdp = stormvogel.model.new_mdp()
+
+init = mdp.initial_state
+study = mdp.action("study")
+not_study = mdp.action("don't study")
+
+did_study = mdp.new_state("did study")
+did_not_study = mdp.new_state("did not study")
+
+pass_test = mdp.new_state("pass test")
+fail_test = mdp.new_state("fail test")
+end = mdp.new_state("end")
+
+init.set_choices(
+    {
+        study: [(1, did_study)],
+        not_study: [(1, did_not_study)],
+    }
+)
+
+did_study.set_choices([(9 / 10, pass_test), (1 / 10, fail_test)])
+did_not_study.set_choices([(4 / 10, pass_test), (6 / 10, fail_test)])
+
+pass_test.set_choices([(1, end)])
+fail_test.set_choices([(1, end)])
+
+mdp.add_self_loops()
+
+reward_model = mdp.new_reward_model("R")
+reward_model.set_state_reward(pass_test, 100)
+reward_model.set_state_reward(fail_test, 0)
+reward_model.set_state_reward(did_not_study, 15)
+reward_model.set_unset_rewards(0)
+
+show(mdp)
+
+# %% [markdown]
+# ## Grid model
+# An MDP model that consists of a 3x3 grid. The direction to walk is chosen by an action.
+
+# %% [markdown]
+# ### Bird API
+
+# %%
+N = 3
+
+ACTION_SEMANTICS = {"l": (-1, 0), "r": (1, 0), "u": (0, -1), "d": (0, 1)}
+
+
+def available_actions(s):
+    res = []
+    if s[0] > 0:
+        res.append("l")
+    if s[0] < N - 1:
+        res.append("r")
+    if s[1] > 0:
+        res.append("u")
+    if s[1] < N - 1:
+        res.append("d")
+    return res
+
+
+def pairwise_plus(t1, t2):
+    return (t1[0] + t2[0], t1[1] + t2[1])
+
+
+def delta(s, a):
+    return [(1, pairwise_plus(s, ACTION_SEMANTICS[a]))]
+
+
+def labels(s):
+    return [str(s)]
+
+
+m1 = bird.build_bird(
+    init=(0, 0), available_actions=available_actions, labels=labels, delta=delta
+)
+show(m1)
+
+# %% [markdown]
+# ### Model API
+
+# %%
+grid_model = stormvogel.model.new_mdp(create_initial_state=False)
+
+for x in range(N):
+    for y in range(N):
+        labels = [f"({x},{y})"]
+        if x == 0 and y == 0:
+            labels.append("init")
+        grid_model.new_state(labels)
+
+for x in range(N):
+    for y in range(N):
+        state_tile_label = str((x, y)).replace(" ", "")
+        state = next(iter(grid_model.get_states_with_label(state_tile_label)))
+        av = available_actions((x, y))
+        for a in av:
+            target_tile_label = str(pairwise_plus((x, y), ACTION_SEMANTICS[a])).replace(
+                " ", ""
+            )
+            target_state = next(
+                iter(grid_model.get_states_with_label(target_tile_label))
+            )
+            state.add_choices([(grid_model.action(a), target_state)])
+show(grid_model)

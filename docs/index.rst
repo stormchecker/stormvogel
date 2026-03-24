@@ -40,45 +40,33 @@ Stormvogel provides easy and user-friendly APIs for creating, visualizing, and d
 
 .. toctree::
    :maxdepth: 2
-   :caption: Model Construction
+   :caption: Orchard Tutorial
    :glob:
 
-   1-Model-Construction/*
+   2-Orchard-Tutorial/*
 
 .. toctree::
    :maxdepth: 2
-   :caption: Visualization
+   :caption: Core Stormvogel Concepts
    :glob:
 
-   2-Visualization/*
+   3-Core-Stormvogel/*
+
 
 .. toctree::
    :maxdepth: 2
-   :caption: Model Analysis
+   :caption: Stormvogel Goes To The Gym
    :glob:
 
-   3-Model-Analysis/*
+   4-Stormvogel-And-Gym/*
+
 
 .. toctree::
    :maxdepth: 2
-   :caption: Reinforcement Learning
+   :caption: Advanced Features
    :glob:
 
-   4-Reinforcement-Learning/*
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Tools and Utilities
-   :glob:
-
-   5-Tools-and-Utilities/*
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Tips and Tricks
-   :glob:
-
-   6-Tips-and-Tricks/*
+   5-Advanced/*
 
 
 Version info:

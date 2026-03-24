@@ -4,9 +4,7 @@ from stormvogel.layout import PACKAGE_ROOT_DIR
 
 
 # An html template on which a Network is based.
-def generate_html(
-    nodes_js: str, edges_js: str, options_js: str, name: str, width: int, height: int
-) -> str:
+def generate_html(nodes_js: str, edges_js: str, options_js: str, name: str) -> str:
     """Generate HTML that renders the network.
 
     Two scripts are generated:
@@ -38,8 +36,6 @@ def generate_html(
     <script>{svg_canvas_library}</script>
     <style type="text/css">
       #{name} {{
-        width: {width}px;
-        height: {height}px;
         border: 1px solid lightgray;
       }}
     </style>

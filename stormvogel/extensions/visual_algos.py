@@ -180,7 +180,7 @@ def policy_iteration(
 
         if visualize:
             vis = stormvogel.visualization.JSVisualization(
-                model, layout=layout, scheduler=old, result=dtmc_result
+                model, scheduler=old, result=dtmc_result
             )
             vis.show()
             sleep(delay)
@@ -210,5 +210,5 @@ def policy_iteration(
         new = stormvogel.Scheduler(model, choices)
     if visualize:
         print("Value iteration done:")
-        stormvogel.show(model, layout=layout, scheduler=new, result=dtmc_result)  # type: ignore
+        stormvogel.show(model, scheduler=new, result=dtmc_result)  # type: ignore
     return dtmc_result  # type: ignore
