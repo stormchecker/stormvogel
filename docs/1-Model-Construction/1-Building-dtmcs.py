@@ -23,7 +23,7 @@
 # In this notebook, we demonstrate how to construct two simple DTMCs from different sources.
 # In particular, we show how to construct a model using our `bird` API and the `model` API.
 # Beyond these APIs,  stormvogel supports seamless conversion to and from stormpy. This means that you can also use any way of building models that is supported by stormpy.
-# This includes the [PRISM](https://www.prismmodelchecker.org/) language and the [JANI](https://www.stormchecker.org/files/BDHHJT17.pdf) modelling language, as well as [stormpy's own APIs](https://moves-rwth.github.io/stormpy/).
+# This includes the [PRISM](https://www.prismmodelchecker.org/) language and the [JANI](https://www.stormchecker.org/files/BDHHJT17.pdf) modelling language, as well as [stormpy's own APIs](https://stormchecker.github.io/stormpy/).
 # For these, we refer to their respective documentations.
 #
 # **Note:** unfortunately, the visualisation of the DTMC is not always correct when it is rendered out of view. To re-center, you can simply double-click inside the window.
