@@ -14,7 +14,7 @@ class Polynomial:
     :param variables: Variables of the polynomial as a list of strings.
     """
 
-    terms: dict[tuple, float]
+    terms: dict[frozenset, float]
     variables: list[str]
 
     def __init__(self, variables: list[str]):
@@ -39,7 +39,9 @@ class Polynomial:
 
         assert isinstance(exponents, tuple)
 
-        if exponents in self.terms.keys():
+        key = frozenset((self.variables[i], exp) for i, exp in enumerate(exponents))
+
+        if key in self.terms:
             raise RuntimeError(
                 "There is already a term with these exponents in this polynomial"
             )
@@ -52,7 +54,7 @@ class Polynomial:
                 raise RuntimeError(
                     f"The length of the exponents tuple should be: {my_dimension}"
                 )
-        self.terms[exponents] = float(coefficient)
+        self.terms[key] = float(coefficient)
 
     def get_dimension(self) -> int:
         """Return the number of different variables present."""
@@ -71,7 +73,7 @@ class Polynomial:
         if self.terms is not {}:
             largest = 0
             for term in self.terms.keys():
-                current = sum(list(term))
+                current = sum(exp for _, exp in term)
                 if current > largest:
                     largest = current
             return largest
@@ -86,8 +88,8 @@ class Polynomial:
         result = 0
         for exponents, coefficient in self.terms.items():
             term = coefficient
-            for variable, exponent in enumerate(exponents):
-                term *= values[self.variables[variable]] ** exponent
+            for var_name, exponent in exponents:
+                term *= values[var_name] ** exponent
             result += term
         return result
 
@@ -102,12 +104,12 @@ class Polynomial:
                     s += f"{coefficient}*"
 
                 # we print the variables with their corresponding powers
-                # if the tuple only consists of zeroes then we are left with 1
+                # if the frozenset only contains zeroes then we are left with 1
                 all_zero = True
-                for variable, exponent in enumerate(exponents):
+                for var_name, exponent in sorted(exponents):
                     if exponent != 0:
                         all_zero = False
-                        s += f"{self.variables[variable]}"
+                        s += f"{var_name}"
                         if exponent != 1:
                             s += f"^{exponent}"
                 if all_zero:
@@ -124,7 +126,13 @@ class Polynomial:
             return self_deg < other_deg
 
         # if the degrees are equal we compare the terms lexicografically
-        return sorted(self.terms.items()) < sorted(other.terms.items())
+        def term_key(item):
+            exponents, coefficient = item
+            return (sorted(exponents), coefficient)
+
+        return sorted(self.terms.items(), key=term_key) < sorted(
+            other.terms.items(), key=term_key
+        )
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, Polynomial):

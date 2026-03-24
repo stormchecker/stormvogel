@@ -3,6 +3,7 @@ import math
 import pytest
 import re
 from model_testing import assert_models_equal
+import stormvogel
 from stormvogel.model.variable import Variable
 
 
@@ -212,42 +213,46 @@ def test_bird_dtmc():
             case 7:
                 return [(1, bird.State(s=7, d=0))]
 
-    def valuations(s: bird.State) -> dict[str, float | int | bool]:
+    def valuations(
+        s: bird.State,
+    ) -> dict[stormvogel.model.Variable, float | int | bool]:
+        s_var = stormvogel.model.Variable("s")
+        d_var = stormvogel.model.Variable("d")
         match s.s:
             case 0:
-                return {"s": 0, "d": -1}
+                return {s_var: 0, d_var: -1}
             case 1:
-                return {"s": 1, "d": -1}
+                return {s_var: 1, d_var: -1}
             case 2:
-                return {"s": 2, "d": -1}
+                return {s_var: 2, d_var: -1}
             case 3:
-                return {"s": 3, "d": -1}
+                return {s_var: 3, d_var: -1}
             case 4:
-                return {"s": 4, "d": -1}
+                return {s_var: 4, d_var: -1}
             case 5:
-                return {"s": 5, "d": -1}
+                return {s_var: 5, d_var: -1}
             case 6:
-                return {"s": 6, "d": -1}
+                return {s_var: 6, d_var: -1}
             case 7:
                 match s.d:
                     case 0:
-                        return {"s": 7, "d": 0}
+                        return {s_var: 7, d_var: 0}
                     case 1:
-                        return {"s": 7, "d": 1}
+                        return {s_var: 7, d_var: 1}
                     case 2:
-                        return {"s": 7, "d": 2}
+                        return {s_var: 7, d_var: 2}
                     case 3:
-                        return {"s": 7, "d": 3}
+                        return {s_var: 7, d_var: 3}
                     case 4:
-                        return {"s": 7, "d": 4}
+                        return {s_var: 7, d_var: 4}
                     case 5:
-                        return {"s": 7, "d": 5}
+                        return {s_var: 7, d_var: 5}
                     case 6:
-                        return {"s": 7, "d": 6}
+                        return {s_var: 7, d_var: 6}
                     case _:
-                        return {"s": -1, "d": -1}
+                        return {s_var: -1, d_var: -1}
             case _:
-                return {"s": -1, "d": -1}
+                return {s_var: -1, d_var: -1}
 
     bird_model = bird.build_bird(
         delta=delta,

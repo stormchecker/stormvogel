@@ -3,6 +3,11 @@ import pytest
 import stormvogel.examples as examples
 import stormvogel.teaching.bellman as bellman
 
+try:
+    import stormpy
+except ImportError:
+    stormpy = None
+
 
 @pytest.mark.parametrize(
     "input",
@@ -15,5 +20,6 @@ import stormvogel.teaching.bellman as bellman
         # examples.create_study_mdp(),
     ],
 )
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_teaching_bellman(input):
     bellman.maxreachprob(*input)

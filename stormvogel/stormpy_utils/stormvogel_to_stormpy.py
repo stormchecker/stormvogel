@@ -23,19 +23,15 @@ def convert_polynomial_to_stormpy(
     assert stormpy is not None
 
     terms = []
+    var_str_map = {str(var): var for var in variables}
     for exponent, coefficient in polynomial.terms.items():
         if coefficient != 0:
             stormpy_term = stormpy.pycarl.cln.Term(
                 stormpy.pycarl.cln.Rational(coefficient)
             )
-            assert isinstance(exponent, tuple)
-            for index, exp in enumerate(exponent):
+            for var_name, exp in exponent:
                 for i in range(exp):
-                    stormpy_term *= variables[
-                        [str(var) for var in variables].index(
-                            polynomial.variables[index]
-                        )
-                    ]
+                    stormpy_term *= var_str_map[var_name]
             terms.append(stormpy_term)
     polynomial = stormpy.pycarl.cln.Polynomial(terms)
     factorized_polynomial = stormpy.pycarl.cln.FactorizedPolynomial(

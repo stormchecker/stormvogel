@@ -106,6 +106,8 @@ def test_choices_from_shorthand():
 
 def test_state_str():
     dtmc = stormvogel.model.new_dtmc()
+    dtmc.add_label("a")
+    dtmc.add_label("b")
     state = dtmc.new_state()
     state.set_labels({"a", "b"})
     s1 = str(state)
