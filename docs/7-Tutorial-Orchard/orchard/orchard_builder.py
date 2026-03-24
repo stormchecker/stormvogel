@@ -1,7 +1,7 @@
 import stormpy
 import stormvogel
 
-from examples.orchard_game_stormvogel import (
+from .orchard_game_stormvogel import (
     Orchard,
     available_actions,
     delta,
@@ -68,7 +68,7 @@ def build_prism():
     Builds the model from the prism program language model.
     :return: A tuple of the explicit MDP and the programmatic description.
     """
-    prism_program = stormpy.parse_prism_program("examples/orchard_stormvogel.pm")
+    prism_program = stormpy.parse_prism_program("orchard/orchard_stormvogel.pm")
     constants = "NUM_FRUIT=4,DISTANCE_RAVEN=5"
     prism_program = stormpy.preprocess_symbolic_input(prism_program, [], constants)[
         0
