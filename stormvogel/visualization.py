@@ -545,8 +545,6 @@ class JSVisualization(VisualizationBase):
             self._generate_edge_js(),
             self._get_options(),
             self.name,
-            self.layout.layout["misc"].get("width", 800),
-            self.layout.layout["misc"].get("height", 600),
         )
 
     def generate_iframe(self) -> str:

@@ -32,13 +32,6 @@ class RewardModel[ValueType: Value]:
         :param state_action: If ``True``, the vector has one entry per (state, action)
             pair; only the first entry for each state is used.
         """
-        if state_action:
-            # Give a warning if this flag is true
-            import warnings
-
-            warnings.warn(
-                "Warning: Only using first entry of state-action reward vector."
-            )
         combined_id = 0
         self.rewards = dict()
         for s in self.model:
@@ -53,6 +46,12 @@ class RewardModel[ValueType: Value]:
                 and self.model.supports_actions()
                 and s in self.model.transitions
             ):
+                # check that all entries for this state have the same reward, otherwise raise an error
+                for _ in s.available_actions():
+                    if vector[combined_id] != self.rewards[s]:
+                        raise ValueError(
+                            f"Reward vector has different values for different actions of state {s}."
+                        )
                 combined_id += len(list(s.available_actions()))
             else:
                 combined_id += 1
