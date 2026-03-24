@@ -55,7 +55,7 @@ def delta(s, a):
 labels = lambda s: list(s)
 
 
-def rewards(s, a):
+def rewards(s):
     if "correct" in s:
         return {"R": 100}
     return {"R": 0}
@@ -107,10 +107,16 @@ vis3 = show(coin_pomdp)
 import stormvogel.result
 
 taken_actions = {}
-for id, state in coin_pomdp.states.items():
-    taken_actions[id] = state.available_actions()[0]
+for i, state in enumerate(coin_pomdp.states):
+    taken_actions[state] = state.available_actions()[0]
 scheduler2 = stormvogel.result.Scheduler(coin_pomdp, taken_actions)
-values = {0: 50, 1: 50, 2: 50, 3: 100.0, 4: 0.0}
+values = {
+    coin_pomdp.states[0]: 50,
+    coin_pomdp.states[1]: 50,
+    coin_pomdp.states[2]: 50,
+    coin_pomdp.states[3]: 100.0,
+    coin_pomdp.states[4]: 0.0,
+}
 result2 = stormvogel.result.Result(coin_pomdp, values, scheduler2)
 
 vis4 = show(coin_pomdp, result=result2)
@@ -131,12 +137,15 @@ def observations_stochastic(s):
 
 
 def observation_valuations(o):
+    heads = Variable("heads")
+    tails = Variable("tails")
+    done = Variable("done")
     if o == 0:
-        return {"heads": True, "tails": False, "done": False}
+        return {heads: True, tails: False, done: False}
     elif o == 1:
-        return {"heads": False, "tails": True, "done": False}
+        return {heads: False, tails: True, done: False}
     else:
-        return {"done": True, "heads": False, "tails": False}
+        return {done: True, heads: False, tails: False}
 
 
 coin_pomdp_stochastic = bird.build_bird(

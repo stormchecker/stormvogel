@@ -14,7 +14,7 @@ jobs:
   test:
     runs-on: ubuntu-22.04
     container:
-      image: movesrwth/stormpy:ci-debug
+      image: python:3.12
     steps:
       - uses: actions/checkout@v4
 
@@ -24,6 +24,7 @@ jobs:
           apt-get -y install curl
           apt-get -y install git
           apt-get -y install libcairo2-dev
+          apt-get -y install nodejs
 
       - name: Configure Python
         uses: actions/setup-python@v5
@@ -38,10 +39,14 @@ jobs:
           virtualenvs-in-project: true
 
       - name: Load existing venv
-        run: poetry env use /opt/venv/bin/python
+        run: poetry env use system
+
 
       - name: Install dependencies
         run: poetry install
+
+      - name: Install stormpy
+        run: poetry run pip install stormpy
 
       - name: Run tests
         run: poetry run pytest -vv

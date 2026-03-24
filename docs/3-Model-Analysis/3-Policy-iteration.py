@@ -57,40 +57,55 @@ def policy_iteration(
         dtmc_result = model_checking(dtmc, prop=prop)
 
         if visualize:
+            mapped_values = {
+                model.states[i]: dtmc_result.values.get(dtmc.states[i])
+                for i in range(len(model.states))
+            }
+            mapped_result = Result(model, mapped_values, old)
             vis = JSVisualization(
-                model, layout=layout, scheduler=old, result=dtmc_result
+                model, layout=layout, scheduler=old, result=mapped_result
             )
             vis.show()
             sleep(delay)
             if clear:
                 vis.clear()
 
-        choices = {
-            i: arg_max(
-                [
-                    lambda a: sum(
-                        [
-                            (p * dtmc_result.get_result_of_state(s2.id))
-                            for p, s2 in s1.get_outgoing_transitions(a)
-                        ]
-                    )
-                    for _ in s1.available_actions()
-                ],
-                s1.available_actions(),
-            )
-            for i, s1 in model.states.items()
-        }
+        choices = {}
+        for i, s1 in enumerate(model.states):
+
+            def compute_val(a):
+                val = 0
+                for p, s2 in s1.get_outgoing_transitions(a):
+                    # We get the state index in the original model, and look up in DTMC
+                    s2_idx = model.get_state_index(s2)
+                    dtmc_s2 = dtmc.states[s2_idx]
+                    val += p * dtmc_result.get_result_of_state(dtmc_s2)
+                return val
+
+            # arg_max evaluates the functions over the arguments, so we pass a list of lambdas
+            lambdas = [
+                (lambda a, compute_val=compute_val: compute_val(a))
+                for _ in s1.available_actions()
+            ]
+            best_action = arg_max(lambdas, s1.available_actions())
+            choices[s1] = best_action
+
         new = Scheduler(model, choices)
     if visualize:
         print("Value iteration done:")
-        show(model, layout=layout, scheduler=new, result=dtmc_result)
+        mapped_values = {
+            model.states[i]: dtmc_result.values.get(dtmc.states[i])
+            for i in range(len(model.states))
+        }
+        mapped_result = Result(model, mapped_values, new)
+        show(model, layout=layout, scheduler=new, result=mapped_result)
     return dtmc_result
 
 
 # %%
 lion = examples.create_lion_mdp()
 prop = 'P=?[F "full"]'
-res = policy_iteration(lion, prop, layout=Layout("layouts/lion_policy.json"))
+res = policy_iteration(lion, prop, layout=Layout("layouts/lion.json"))
 
 # %% [markdown]
 # Policy iteration is also available under `stormvogel.extensions.visual_algos`.

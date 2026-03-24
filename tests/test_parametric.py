@@ -2,6 +2,7 @@ import stormvogel.stormpy_utils.mapping as mapping
 import stormvogel.parametric
 import stormvogel.model
 import pytest
+from model_testing import assert_models_equal
 
 
 try:
@@ -10,92 +11,12 @@ except ImportError:
     stormpy = None
 
 
-def pmc_equal(m0, m1) -> bool:
-    """
-    outputs true if the pmc models are the same and false otherwise
-    Note: this function is only here because the equality functions in storm do not work currently.
-    """
-    assert stormpy is not None
-
-    # check if states are the same:
-    states_equal = True
-    for i in range(m0.nr_states):
-        actions_equal = True
-        for j in range(len(m0.states[i].actions)):
-            if not m0.states[i].actions[j] == m1.states[i].actions[j]:
-                actions_equal = True
-        if not (
-            m0.states[i].id == m1.states[i].id
-            and m0.states[i].labels == m1.states[i].labels
-            and actions_equal
-        ):
-            states_equal = False
-
-    # check if the matrices are the same:
-    # TODO check for semantic equivalence and not just syntactic
-
-    # TODO it is not comparing them correctly although upon checking manually they are equal
-    print(m0.transition_matrix, m1.transition_matrix)
-    matrices_equal = True  # str(m0.transition_matrix) == str(m1.transition_matrix)
-
-    # check if model types are equal:
-    types_equal = m0.model_type == m1.model_type
-
-    # check if reward models are equal:
-    reward_models_equal = True
-    for key in m0.reward_models.keys():
-        for i in range(m0.nr_states):
-            if (
-                m0.reward_models[key].has_state_rewards
-                and m1.reward_models[key].has_state_rewards
-            ):
-                if not m0.reward_models[key].get_state_reward(i) == m1.reward_models[
-                    key
-                ].get_state_reward(i):
-                    reward_models_equal = False
-            if (
-                m0.reward_models[key].has_state_action_rewards
-                and m1.reward_models[key].has_state_action_rewards
-            ):
-                if not m0.reward_models[key].get_state_action_reward(
-                    i
-                ) == m1.reward_models[key].get_state_action_reward(i):
-                    reward_models_equal = False
-
-    # check if exit rates are equal (in case of ctmcs):
-    exit_rates_equal = (
-        not m0.model_type == stormpy.ModelType.CTMC or m0.exit_rates == m1.exit_rates
-    )
-
-    # check if observations are equal (in case of pomdps):
-    observations_equal = (
-        not m0.model_type == stormpy.ModelType.POMDP
-        or m0.observations == m1.observations
-    )
-
-    # check if markovian states are equal (in case of mas):
-    markovian_states_equal = (
-        not m0.model_type == stormpy.ModelType.MA
-        or m0.markovian_states == m1.markovian_states
-    )
-
-    return (
-        matrices_equal
-        and types_equal
-        and states_equal
-        and reward_models_equal
-        and exit_rates_equal
-        and observations_equal
-        and markovian_states_equal
-    )
-
-
-@pytest.mark.tags("stormpy")
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_pmc_conversion():
     # Create a new model
     pmc = stormvogel.model.new_dtmc()
 
-    init = pmc.get_initial_state()
+    init = pmc.initial_state
 
     # From the initial state, we have two choices that either bring us to state A or state B
     p1 = stormvogel.parametric.Polynomial(["x", "y", "z"])
@@ -110,15 +31,13 @@ def test_pmc_conversion():
     # p3.add_term((2,), 2)
     # r1 = stormvogel.parametric.RationalFunction(p2,p3)
 
-    # TODO make it work for proper rational functions
-
     pmc.new_state(labels=["A"])
     pmc.new_state(labels=["B"])
 
-    init.set_choice(
+    init.set_choices(
         [
-            (p1, pmc.get_states_with_label("A")[0]),
-            (p2, pmc.get_states_with_label("B")[0]),
+            (p1, next(iter(pmc.get_states_with_label("A")))),
+            (p2, next(iter(pmc.get_states_with_label("B")))),
         ]
     )
 
@@ -129,17 +48,15 @@ def test_pmc_conversion():
     stormpy_pmc = mapping.stormvogel_to_stormpy(pmc)
     new_pmc = mapping.stormpy_to_stormvogel(stormpy_pmc)
 
-    print(pmc, new_pmc)
-    # TODO this test is nondeterministic (probably has to do with gathering of variables in stormpy)
-    # assert pmc == new_pmc
+    assert_models_equal(pmc, new_pmc)
 
 
-@pytest.mark.tags("stormpy")
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_pmdp_conversion():
     # Create a new model
     pmdp = stormvogel.model.new_mdp()
 
-    init = pmdp.get_initial_state()
+    init = pmdp.initial_state
 
     # From the initial state, we have two actions with choices that either bring us to a goal state or sink state
 
@@ -154,20 +71,20 @@ def test_pmdp_conversion():
 
     action_a = pmdp.new_action("a")
     action_b = pmdp.new_action("b")
-    branch0 = stormvogel.model.Branches(
+    branch0 = stormvogel.model.Distribution(
         [
             (p1, goal),
             (p2, sink),
         ]
     )
-    branch1 = stormvogel.model.Branches(
+    branch1 = stormvogel.model.Distribution(
         [
             (p1, sink),
             (p2, goal),
         ]
     )
 
-    pmdp.add_choice(
+    pmdp.add_choices(
         init, stormvogel.model.Choices({action_a: branch0, action_b: branch1})
     )
 
@@ -179,10 +96,10 @@ def test_pmdp_conversion():
 
     new_pmdp = mapping.stormpy_to_stormvogel(stormpy_pmdp)
 
-    assert pmdp == new_pmdp
+    assert_models_equal(pmdp, new_pmdp)
 
 
-@pytest.mark.tags("stormpy")
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_pmc_conversion_from_stormpy():
     import stormvogel.examples.stormpy_examples.stormpy_pmc
 
@@ -192,17 +109,16 @@ def test_pmc_conversion_from_stormpy():
     stormvogel_pmc = stormvogel.mapping.stormpy_to_stormvogel(stormpy_pmc)
     assert stormvogel_pmc is not None
     new_stormpy_pmc = stormvogel.mapping.stormvogel_to_stormpy(stormvogel_pmc)
-    assert pmc_equal(stormpy_pmc, new_stormpy_pmc)
+    new_stormvogel_pmc = stormvogel.mapping.stormpy_to_stormvogel(new_stormpy_pmc)
+    assert_models_equal(stormvogel_pmc, new_stormvogel_pmc)
 
 
-# TODO one more test from stormpy for an mdp
-
-
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_pmc_valuations():
     # we build a simple pmc
     pmc = stormvogel.model.new_dtmc()
 
-    init = pmc.get_initial_state()
+    init = pmc.initial_state
 
     # From the initial state, we have two choices that either bring us to state A or state B
     p1 = stormvogel.parametric.Polynomial(["x", "z", "w"])
@@ -219,34 +135,34 @@ def test_pmc_valuations():
     pmc.new_state(labels=["A"])
     pmc.new_state(labels=["B"])
 
-    init.set_choice(
+    init.set_choices(
         [
-            (p1, pmc.get_states_with_label("A")[0]),
-            (r1, pmc.get_states_with_label("B")[0]),
+            (p1, next(iter(pmc.get_states_with_label("A")))),
+            (r1, next(iter(pmc.get_states_with_label("B")))),
         ]
     )
 
     # we add self loops to all states with no outgoing choices
     pmc.add_self_loops()
 
-    induced_pmc = pmc.parameter_valuation({"x": 1, "y": 2, "w": 1, "z": 5})
+    induced_pmc = pmc.get_instantiated_model({"x": 1, "y": 2, "w": 1, "z": 5})
 
     # we build what the induced pmc is supposed to look like
     new_induced_pmc = stormvogel.model.new_dtmc()
 
-    init = new_induced_pmc.get_initial_state()
+    init = new_induced_pmc.initial_state
 
     new_induced_pmc.new_state(labels=["A"])
     new_induced_pmc.new_state(labels=["B"])
 
-    init.set_choice(
+    init.set_choices(
         [
-            (20, new_induced_pmc.get_states_with_label("A")[0]),
-            (-0.06, new_induced_pmc.get_states_with_label("B")[0]),
+            (20, next(iter(new_induced_pmc.get_states_with_label("A")))),
+            (-0.06, next(iter(new_induced_pmc.get_states_with_label("B")))),
         ]
     )
 
     # we add self loops to all states with no outgoing choices
     new_induced_pmc.add_self_loops()
 
-    assert induced_pmc == new_induced_pmc
+    assert_models_equal(induced_pmc, new_induced_pmc)

@@ -1,11 +1,12 @@
-"""Layout stores and manages loading/saving of the layout file, and the schema file.
-This schema file may be used by the LayoutEditor to create an editor for this Layout.
-The Layout object also provides methods to manipulate the layout and the schema, such as setting node positions from a NetworkX layout.
+"""Store and manage loading/saving of the layout file and the schema file.
+
+The schema file may be used by the LayoutEditor to create an editor for this Layout.
+The Layout object also provides methods to manipulate the layout and the schema,
+such as setting node positions from a NetworkX layout.
 """
 
 from typing import Any, Self
 
-import numpy.typing as npt
 import stormvogel.rdict
 
 import os
@@ -18,17 +19,18 @@ PACKAGE_ROOT_DIR = os.path.dirname(
 
 
 class Layout:
-    """Create a Layout object that stores the layout and schema.
-    Upon creation, the layout and schema dicts are loaded from "layouts/default.json" and "layouts/schema.json", unless specified otherwise.
-    You can load a custom layout file by setting either path or relative_path, or provide a custom layout dict instead.
+    """Store the layout and schema for a visualization.
 
-    Args:
-        path (str, optional): Path to a custom layout file.
-            Leave to None for a default layout. Defaults to None.
-        path_relative (bool, optional): If set to True, then stormvogel will look for a custom layout
-            file relative to the current working directory. Defaults to True.
-        layout_dict (dict, optional): If set, this dictionary is used as the layout instead of the
-            file specified in path. Whenever keys are not present here, their default values from "layouts/default.json" are used.
+    Upon creation, the layout and schema dicts are loaded from
+    ``layouts/default.json`` and ``layouts/schema.json``, unless specified otherwise.
+    Load a custom layout file by setting either *path* or *path_relative*, or provide
+    a custom layout dict instead.
+
+    :param path: Path to a custom layout file. Leave as ``None`` for the default layout.
+    :param path_relative: If ``True``, stormvogel looks for a custom layout file
+        relative to the current working directory.
+    :param layout_dict: If set, this dictionary is used as the layout instead of the
+        file specified in *path*. Missing keys are filled from ``layouts/default.json``.
     """
 
     def __init__(
@@ -58,7 +60,13 @@ class Layout:
 
     def load(self, path: str | None = None, path_relative: bool = True) -> None:
         """Load the layout and schema file at the specified path.
-        They are stored as self.layout and self.schema respectively."""
+
+        They are stored as :attr:`layout` and :attr:`schema` respectively.
+
+        :param path: Path to the layout file, or ``None`` for the default layout.
+        :param path_relative: If ``True``, *path* is resolved relative to the current
+            working directory.
+        """
         if path is None:
             self.layout: dict = self.default_dict
         else:
@@ -76,18 +84,31 @@ class Layout:
         self.load_schema()
 
     def add_active_group(self, group: str) -> None:
-        """The user can specify which groups of states can be edited seperately. We refer to such groups as active groups.
-        Make a group active if it is not already."""
+        """Make a group active if it is not already.
+
+        The user can specify which groups of states can be edited separately.
+        Such groups are referred to as active groups.
+
+        :param group: Name of the group to activate.
+        """
         if group not in self.layout["edit_groups"]["groups"]:
             self.layout["edit_groups"]["groups"].append(group)
 
     def remove_active_group(self, group: str) -> None:
-        """Make a group inactive if it is not already."""
+        """Make a group inactive if it is not already.
+
+        :param group: Name of the group to deactivate.
+        """
         if group in self.layout["edit_groups"]["groups"]:
             self.layout["edit_groups"]["groups"].remove(group)
 
     def set_possible_groups(self, groups: set[str]) -> None:
-        """Set the groups of states that the user can choose to make active, under edit_groups in the layout editor."""
+        """Set the groups of states that the user can choose to make active.
+
+        These appear under ``edit_groups`` in the layout editor.
+
+        :param groups: Set of group names to make available.
+        """
         self.schema["edit_groups"]["groups"]["__kwargs"]["allowed_tags"] = list(groups)
 
         # Save changes to the schema. The visualization object will handle putting nodes into the correct groups.
@@ -111,12 +132,13 @@ class Layout:
                 self.schema["groups"][g] = {"__use_macro": "__group_macro"}
 
     def save(self, path: str, path_relative: bool = True) -> None:
-        """Save this layout as a json file. Raises runtime error if a filename does not end in json, and OSError if file not found.
+        """Save this layout as a JSON file.
 
-        Args:
-            path (str): Path to your layout file.
-            path_relative (bool, optional): If set to true, then stormvogel will create a custom layout
-                file relative to the current working directory. Defaults to True.
+        :param path: Path to the layout file. Must end in ``.json``.
+        :param path_relative: If ``True``, *path* is resolved relative to the current
+            working directory.
+        :raises RuntimeError: If the filename does not end in ``.json``.
+        :raises OSError: If the file cannot be written.
         """
         if path[-5:] != ".json":
             raise RuntimeError("File name should end in .json")
@@ -128,7 +150,13 @@ class Layout:
             json.dump(self.layout, f, indent=2)
 
     def set_value(self, path: list[str], value: Any) -> None:
-        """Set a value in the layout. Also works if a key in the path does not exist."""
+        """Set a value in the layout.
+
+        Also works if a key in the path does not exist.
+
+        :param path: List of keys forming the path to the value.
+        :param value: The value to set.
+        """
         stormvogel.rdict.rset(self.layout, path, value, create_new_keys=True)
 
     def __str__(self) -> str:
@@ -140,19 +168,21 @@ class Layout:
         """
         self.layout["physics"] = self.layout["misc"]["enable_physics"]
 
-    def set_nx_pos(self, pos: dict[int, npt.NDArray], scale: float = 500) -> Self:
-        """Apply NetworkX layout positions to this layout and set physics to false.
+    def set_nx_pos(self, pos: dict, scale: float = 500) -> Self:
+        """Apply NetworkX layout positions to this layout and disable physics.
 
-        Args:
-            pos (dict[int, NDArray]): A dictionary of node positions from a NetworkX graph.
-            scale (float): Scaling factor for the positions. Defaults to 500.
+        :param pos: Dictionary of node positions from a NetworkX graph.
+        :param scale: Scaling factor for the positions.
+        :returns: This :class:`Layout` instance, for chaining.
         """
+        from stormvogel.graph import node_key
+
         self.set_value(["misc", "enable_physics"], False)
         self.set_value(["physics"], False)
         self.set_value(
             ["positions"],
             {
-                k: {"x": float(x * scale), "y": float(y * scale)}
+                node_key(k): {"x": float(x * scale), "y": float(y * scale)}
                 for k, (x, y) in pos.items()
             },
         )

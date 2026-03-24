@@ -11,14 +11,18 @@ except ImportError:
 def convert_scheduler_to_stormvogel(
     model: stormvogel.model.Model, stormpy_scheduler: "stormpy.storage.Scheduler"
 ):
-    """Converts a stormpy scheduler to a stormvogel scheduler"""
-    taken_actions = {}
-    for state in model.states.values():
-        av_act = state.available_actions()
-        choice = stormpy_scheduler.get_choice(state.id)
-        action_index = choice.get_deterministic_choice()
-        taken_actions[state.id] = av_act[action_index]
+    """Convert a stormpy scheduler to a stormvogel scheduler.
 
+    :param model: The stormvogel model associated with the scheduler.
+    :param stormpy_scheduler: The stormpy scheduler to convert.
+    :returns: A stormvogel :class:`~stormvogel.result.Scheduler`.
+    """
+    taken_actions = {}
+    for stormpy_state_id, state in enumerate(model.states):
+        av_act = state.available_actions()
+        choice = stormpy_scheduler.get_choice(stormpy_state_id)
+        action_index = choice.get_deterministic_choice()
+        taken_actions[state] = av_act[action_index]
     return stormvogel.result.Scheduler(model, taken_actions)
 
 
@@ -31,8 +35,13 @@ def convert_model_checking_result(
     ],
     with_scheduler: bool = True,
 ) -> stormvogel.result.Result | None:
-    """
-    Takes a model checking result from stormpy and its associated model and converts it to a stormvogel representation
+    """Convert a stormpy model checking result to a stormvogel result.
+
+    :param model: The stormvogel model associated with the result.
+    :param stormpy_result: The stormpy model checking result.
+    :param with_scheduler: Whether to include the scheduler in the result.
+    :returns: The converted stormvogel result, or ``None`` if conversion fails.
+    :raises RuntimeError: If the result type is unsupported.
     """
     assert stormpy is not None
 
@@ -43,10 +52,13 @@ def convert_model_checking_result(
         or type(stormpy_result) == stormpy.ExplicitParametricQuantitativeCheckResult
     ):
         values = {
-            index: value for (index, value) in enumerate(stormpy_result.get_values())
+            model.states[index]: value
+            for (index, value) in enumerate(stormpy_result.get_values())
         }
     elif type(stormpy_result) == stormpy.ExplicitQualitativeCheckResult:
-        values = {i: stormpy_result.at(i) for i in range(0, len(model.states))}
+        values = {
+            model.states[i]: stormpy_result.at(i) for i in range(0, len(model.states))
+        }
     else:
         raise RuntimeError("Unsupported result type")
 
@@ -66,3 +78,55 @@ def convert_model_checking_result(
         )
 
     return stormvogel_result
+
+
+def map_result_to_original_model(
+    result: stormvogel.result.Result,
+    original_model: stormvogel.model.Model,
+    recreated_model: stormvogel.model.Model,
+) -> stormvogel.result.Result:
+    """Map a model checking result back to the original model states.
+
+    Remap state references from the recreated model to the original model
+    to preserve object identities.
+
+    :param result: The model checking result using recreated model states.
+    :param original_model: The original stormvogel model.
+    :param recreated_model: The recreated model whose states appear in the result.
+    :returns: A new result with state references mapped to the original model.
+    """
+    if len(original_model.states) != len(recreated_model.states):
+        return result
+
+    mapped_values = {}
+    for index, state in enumerate(original_model.states):
+        eq_state = recreated_model.states[index]
+        mapped_values[state] = result.values[eq_state]
+
+    mapped_scheduler = None
+    if result.scheduler is not None:
+        mapped_taken_actions = {}
+        for index, state in enumerate(original_model.states):
+            eq_state = recreated_model.states[index]
+            eq_action = result.scheduler.taken_actions[eq_state]
+            # Map action label and branch counts, fallback if action structure changes
+            mapped_action = None
+            for a in state.available_actions():
+                if a.label == eq_action.label:
+                    mapped_action = a
+                    break
+            if mapped_action is None and len(state.available_actions()) > 0:
+                # Fallback: Just take the same index if order didn't change
+                try:
+                    act_idx = eq_state.available_actions().index(eq_action)
+                    mapped_action = state.available_actions()[act_idx]
+                except ValueError:
+                    mapped_action = state.available_actions()[0]
+            if mapped_action is not None:
+                mapped_taken_actions[state] = mapped_action
+
+        mapped_scheduler = stormvogel.result.Scheduler(
+            original_model, mapped_taken_actions
+        )
+
+    return stormvogel.result.Result(original_model, mapped_values, mapped_scheduler)

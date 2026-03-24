@@ -6,32 +6,42 @@ Number = int | float | Fraction
 
 @dataclass
 class Polynomial:
-    """
-    Represents polynomials, to be used as values for parametric models.
+    """Represent a polynomial, to be used as a value for parametric models.
+
     Polynomials are represented as a dictionary with n-dimensional tuples as keys.
 
-    Args:
-        terms: terms of the polynomial (dictionary that relates exponents to coefficients)
-        variables: variables of the polynomial as a list of strings
+    :param terms: Terms of the polynomial (dictionary that relates exponents to coefficients).
+    :param variables: Variables of the polynomial as a list of strings.
     """
 
-    terms: dict[tuple, float]
+    terms: dict[frozenset, float]
     variables: list[str]
 
     def __init__(self, variables: list[str]):
         self.terms = dict()
         self.variables = variables
 
+    def is_zero(self) -> bool:
+        """Returns whether this polynomial is the zero polynomial."""
+        return all(coefficient == 0 for coefficient in self.terms.values())
+
     # TODO exponents may also be a single integer
     def add_term(self, exponents: tuple[int, ...], coefficient: float):
-        """
-        adds a term to the polynomial
-        example: add_term((1,2,3,4), 5) means we add 5*(x1^1*x2^2*x3^3*x4^4)
+        """Add a term to the polynomial.
+
+        Example: ``add_term((1,2,3,4), 5)`` means we add ``5*(x1^1*x2^2*x3^3*x4^4)``.
+
+        :param exponents: Tuple of exponents for each variable.
+        :param coefficient: Coefficient of the term.
+        :raises RuntimeError: If a term with the given exponents already exists,
+            or if the exponents tuple has the wrong dimension.
         """
 
         assert isinstance(exponents, tuple)
 
-        if exponents in self.terms.keys():
+        key = frozenset(zip(self.variables, exponents))
+
+        if key in self.terms:
             raise RuntimeError(
                 "There is already a term with these exponents in this polynomial"
             )
@@ -44,34 +54,42 @@ class Polynomial:
                 raise RuntimeError(
                     f"The length of the exponents tuple should be: {my_dimension}"
                 )
-        self.terms[exponents] = float(coefficient)
+        self.terms[key] = float(coefficient)
 
     def get_dimension(self) -> int:
-        """returns the number of different variables present"""
+        """Return the number of different variables present."""
         return len(self.variables)
 
     def get_variables(self) -> set[str]:
-        """returns the set of parameters"""
+        """Return the set of parameters."""
         return set(self.variables)
 
     def get_degree(self) -> int | None:
-        """returns the degree of the polynomial"""
+        """Return the degree of the polynomial.
+
+        :returns: The degree of the polynomial.
+        :raises RuntimeError: If the polynomial has no terms.
+        """
         if self.terms is not {}:
             largest = 0
             for term in self.terms.keys():
-                current = sum(list(term))
+                current = sum(exp for _, exp in term)
                 if current > largest:
                     largest = current
             return largest
         raise RuntimeError("A polynomial without terms does not have a degree.")
 
     def evaluate(self, values: dict[str, Number]) -> float:
-        """evaluates the polynomial with the given values for the variables"""
+        """Evaluate the polynomial with the given values for the variables.
+
+        :param values: Mapping from variable names to their values.
+        :returns: The result of evaluating the polynomial.
+        """
         result = 0
         for exponents, coefficient in self.terms.items():
             term = coefficient
-            for variable, exponent in enumerate(exponents):
-                term *= values[self.variables[variable]] ** exponent
+            for var_name, exponent in exponents:
+                term *= values[var_name] ** exponent
             result += term
         return result
 
@@ -86,12 +104,12 @@ class Polynomial:
                     s += f"{coefficient}*"
 
                 # we print the variables with their corresponding powers
-                # if the tuple only consists of zeroes then we are left with 1
+                # if the frozenset only contains zeroes then we are left with 1
                 all_zero = True
-                for variable, exponent in enumerate(exponents):
+                for var_name, exponent in sorted(exponents):
                     if exponent != 0:
                         all_zero = False
-                        s += f"{self.variables[variable]}"
+                        s += f"{var_name}"
                         if exponent != 1:
                             s += f"^{exponent}"
                 if all_zero:
@@ -108,7 +126,13 @@ class Polynomial:
             return self_deg < other_deg
 
         # if the degrees are equal we compare the terms lexicografically
-        return sorted(self.terms.items()) < sorted(other.terms.items())
+        def term_key(item):
+            exponents, coefficient = item
+            return (sorted(exponents), coefficient)
+
+        return sorted(self.terms.items(), key=term_key) < sorted(
+            other.terms.items(), key=term_key
+        )
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, Polynomial):
@@ -121,13 +145,12 @@ class Polynomial:
 
 
 class RationalFunction:
-    """
-    Represents rational functions, to be used as values for parametric models
+    """Represent a rational function, to be used as a value for parametric models.
+
     Rational functions are represented as a pair of polynomials.
 
-     Args:
-        numerator: Polynomial in the numerator
-        denominator: Polynomial in the denominator
+    :param numerator: Polynomial in the numerator.
+    :param denominator: Polynomial in the denominator.
     """
 
     numerator: Polynomial
@@ -145,16 +168,24 @@ class RationalFunction:
         else:
             raise RuntimeError("dividision by 0 is not allowed")
 
+    def is_zero(self) -> bool:
+        """Returns whether this rational function is the zero function."""
+        return self.numerator.is_zero()
+
     def get_dimension(self) -> int:
-        """returns the number of different variables present"""
+        """Return the number of different variables present."""
         return max(self.numerator.get_dimension(), self.denominator.get_dimension())
 
     def get_variables(self) -> set[str]:
-        "returns the total set of variables of this rational function"
+        """Return the total set of variables of this rational function."""
         return set(self.numerator.variables).union(set(self.denominator.variables))
 
     def evaluate(self, values: dict[str, Number]) -> float:
-        """evaluates the rational function with the given values"""
+        """Evaluate the rational function with the given values.
+
+        :param values: Mapping from variable names to their values.
+        :returns: The result of evaluating the rational function.
+        """
         return self.numerator.evaluate(values) / self.denominator.evaluate(values)
 
     def __str__(self) -> str:

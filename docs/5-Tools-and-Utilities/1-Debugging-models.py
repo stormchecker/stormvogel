@@ -62,13 +62,13 @@ max_res = stormpy.compute_prob01max_states(
 min_res = stormpy.compute_prob01min_states(
     sp_mdp, to_bit_vector({0, 1}, sp_mdp), to_bit_vector({2}, sp_mdp)
 )
-print(0, mdp[0].labels)
-print(1, mdp[1].labels)
+print(0, list(mdp[0].labels))
+print(1, list(mdp[1].labels))
 # Note that for a DTMC, we can use `compute_prob01_states`.
-max_0 = set(max_res[0])
-max_1 = set(max_res[1])
-min_0 = set(min_res[0])
-min_1 = set(min_res[1])
+max_0 = {mdp[i] for i in max_res[0]}
+max_1 = {mdp[i] for i in max_res[1]}
+min_0 = {mdp[i] for i in min_res[0]}
+min_1 = {mdp[i] for i in min_res[1]}
 
 # %%
 vis = show(mdp, layout=Layout("layouts/mec.json"))

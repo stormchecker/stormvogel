@@ -18,16 +18,44 @@ permissions:
 
 env:
   PYTHON_VERSION: '3.11'
-  PRECOMMIT_VERSION: '3.7.1'
+  POETRY_VERSION: '1.8.3'
 
 jobs:
-  pre-commit:
+  get-tag:
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
-    container:
-      image: movesrwth/stormpy:ci-debug
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: tag
+        run: |
+          TAG=$(git tag --sort=version:refname | grep -E '^v[0-9]' | tail -1)
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+  build:
+    needs: get-tag
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    container:
+      image: python:3.12
+    strategy:
+      matrix:
+        include:
+          - ref: ''
+            name: latest
+            release_url: 'https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ needs.get-tag.outputs.tag }}/'
+            release_tag: ${{ needs.get-tag.outputs.tag }}
+          - ref: ${{ needs.get-tag.outputs.tag }}
+            name: ${{ needs.get-tag.outputs.tag }}
+            release_url: ''
+            release_tag: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+          fetch-depth: 0
 
       - name: Install dependencies
         run: |
@@ -36,6 +64,7 @@ jobs:
           apt-get -y install git
           apt-get -y install pandoc
           apt-get -y install libcairo2-dev
+          apt-get -y install nodejs
 
       - name: Configure Python
         uses: actions/setup-python@v5
@@ -50,10 +79,13 @@ jobs:
           virtualenvs-in-project: true
 
       - name: Load existing venv
-        run: poetry env use /opt/venv/bin/python
+        run: poetry env use system
 
-      - name: Install dependencies
+      - name: Install project dependencies
         run: poetry install
+
+      - name: Install extra dependencies
+        run: poetry run pip install stormpy pyscipopt paynt
 
       - name: Glob python files in docs folder
         uses: tj-actions/glob@v22
@@ -63,6 +95,8 @@ jobs:
             docs/**/*.py
           excluded-files: |
             docs/conf.py
+            docs/**/orchard/orchard_builder.py
+            docs/**/orchard/orchard_game_stormvogel.py
 
       - name: Generate documentation notebooks from jupytext
         run: |
@@ -79,26 +113,64 @@ jobs:
         env:
           DOCUMENTATION: 1
         run: |
-         poetry run jupyter nbconvert --execute --to notebook --inplace ${{ steps.glob.outputs.paths }} --ExecutePreprocessor.kernel_name=python3
+          poetry run jupyter nbconvert --execute --to notebook --inplace ${{ steps.glob.outputs.paths }} --ExecutePreprocessor.kernel_name=python3
 
       - name: Generate docs
         working-directory: docs/
-        run: make html
+        env:
+          RELEASE_DOCS_URL: ${{ matrix.release_url }}
+          RELEASE_TAG: ${{ matrix.release_tag }}
+        run: poetry run make html
 
       - name: Copy gifs
-        run: cp -r docs/4-Reinforcement-Learning/gifs docs/_build/html/4-Reinforcement-Learning/
+        run: cp -r docs/4-Reinforcement-Learning/gifs docs/_build/html/4-Reinforcement-Learning/ || true
+
+      - name: Upload docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-${{ matrix.name }}
+          path: docs/_build/html/
+
+  deploy:
+    needs: [get-tag, build]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download latest docs
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-latest
+          path: site/latest/
+
+      - name: Download release docs
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-${{ needs.get-tag.outputs.tag }}
+          path: site/${{ needs.get-tag.outputs.tag }}/
+
+      - name: Create root redirect
+        run: |
+          cat > site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta http-equiv="refresh" content="0; url=latest/" />
+            </head>
+            <body>
+              <p>Redirecting to <a href="latest/">latest documentation</a>…</p>
+            </body>
+          </html>
+          EOF
 
       - name: Setup Pages
-        if: github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
-        if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "docs/_build/html/"
+          path: site/
 
       - name: Deploy to GitHub Pages
-        if: github.ref == 'refs/heads/main'
         id: deployment
         uses: actions/deploy-pages@v4

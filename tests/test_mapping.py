@@ -12,6 +12,7 @@ import stormvogel.examples.stormpy_examples.stormpy_ma
 import pytest
 import re
 from typing import Union
+from model_testing import assert_models_equal
 
 try:
     import stormpy
@@ -33,9 +34,24 @@ def sparse_equal(
     states_equal = True
     for i in range(m0.nr_states):
         actions_equal = True
-        for j in range(len(m0.states[i].actions)):
-            if not m0.states[i].actions[j] == m1.states[i].actions[j]:
-                actions_equal = True
+        if len(m0.states[i].actions) != len(m1.states[i].actions):
+            actions_equal = False
+        else:
+            for j in range(len(m0.states[i].actions)):
+                a0 = m0.states[i].actions[j]
+                a1 = m1.states[i].actions[j]
+                if a0.id != a1.id:
+                    actions_equal = False
+                else:
+                    t0 = list(a0.transitions)
+                    t1 = list(a1.transitions)
+                    if len(t0) != len(t1):
+                        actions_equal = False
+                    else:
+                        for e0, e1 in zip(t0, t1):
+                            if e0.column != e1.column or e0.value() != e1.value():
+                                actions_equal = False
+                                break
         if not (
             m0.states[i].id == m1.states[i].id
             and m0.states[i].labels == m1.states[i].labels
@@ -61,14 +77,6 @@ def sparse_equal(
                 if not m0.reward_models[key].get_state_reward(i) == m1.reward_models[
                     key
                 ].get_state_reward(i):
-                    reward_models_equal = False
-            if (
-                m0.reward_models[key].has_state_action_rewards
-                and m1.reward_models[key].has_state_action_rewards
-            ):
-                if not m0.reward_models[key].get_state_action_reward(
-                    i
-                ) == m1.reward_models[key].get_state_action_reward(i):
                     reward_models_equal = False
 
     # check if exit rates are equal (in case of ctmcs):
@@ -99,149 +107,141 @@ def sparse_equal(
     )
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormpy_to_stormvogel_and_back_dtmc():
-    if stormpy is not None:
-        # we test it for an example stormpy representation of a dtmc
-        stormpy_dtmc = stormvogel.examples.stormpy_examples.stormpy_dtmc.example_building_dtmcs_01()
-        # print(stormpy_dtmc.transition_matrix)
-        stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
-        # print(stormvogel_dtmc)
-        assert stormvogel_dtmc is not None
-        new_stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
-        # print(new_stormpy_dtmc.transition_matrix)
+    assert stormpy is not None
+    # we test it for an example stormpy representation of a dtmc
+    stormpy_dtmc = (
+        stormvogel.examples.stormpy_examples.stormpy_dtmc.example_building_dtmcs_01()
+    )
+    # print(stormpy_dtmc.transition_matrix)
+    stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
+    # print(stormvogel_dtmc)
+    assert stormvogel_dtmc is not None
+    new_stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
+    # print(new_stormpy_dtmc.transition_matrix)
 
-        assert sparse_equal(stormpy_dtmc, new_stormpy_dtmc)
+    assert sparse_equal(stormpy_dtmc, new_stormpy_dtmc)
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormvogel_to_stormpy_and_back_dtmc():
-    if stormpy is not None:
-        # we test it for the die dtmc
-        stormvogel_dtmc = stormvogel.examples.die.create_die_dtmc()
+    assert stormpy is not None
+    # we test it for the die dtmc
+    stormvogel_dtmc = stormvogel.examples.die.create_die_dtmc()
 
-        # we test if rewardmodels work:
-        rewardmodel = stormvogel_dtmc.new_reward_model("rewardmodel")
-        for stateid, _ in stormvogel_dtmc:
-            rewardmodel.rewards[(stateid, stormvogel.model.EmptyAction)] = 1
-        rewardmodel2 = stormvogel_dtmc.new_reward_model("rewardmodel2")
-        for stateid, _ in stormvogel_dtmc:
-            rewardmodel2.rewards[(stateid, stormvogel.model.EmptyAction)] = 2
+    # we test if rewardmodels work:
+    rewardmodel = stormvogel_dtmc.new_reward_model("rewardmodel")
+    for state in stormvogel_dtmc:
+        rewardmodel.set_state_reward(state, 1)
+    rewardmodel2 = stormvogel_dtmc.new_reward_model("rewardmodel2")
+    for state in stormvogel_dtmc:
+        rewardmodel2.set_state_reward(state, 2)
 
-        # print(stormvogel_dtmc)
-        stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
-        # print(stormpy_dtmc)
-        new_stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
-        # print(new_stormvogel_dtmc)
+    # print(stormvogel_dtmc)
+    stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
+    # print(stormpy_dtmc)
+    new_stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
+    # print(new_stormvogel_dtmc)
 
-        assert new_stormvogel_dtmc == stormvogel_dtmc
+    assert_models_equal(new_stormvogel_dtmc, stormvogel_dtmc)
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormpy_to_stormvogel_and_back_mdp():
-    if stormpy is not None:
-        # we test it for an example stormpy representation of an mdp
-        stormpy_mdp = (
-            stormvogel.examples.stormpy_examples.stormpy_mdp.example_building_mdps_01()
-        )
-        # print(stormpy_mdp)
-        stormvogel_mdp = mapping.stormpy_to_stormvogel(stormpy_mdp)
-        # print(stormvogel_mdp)
-        assert stormvogel_mdp is not None
-        new_stormpy_mdp = mapping.stormvogel_to_stormpy(stormvogel_mdp)
-        # print(new_stormpy_mdp)
+    # we test it for an example stormpy representation of an mdp
+    stormpy_mdp = (
+        stormvogel.examples.stormpy_examples.stormpy_mdp.example_building_mdps_01()
+    )
+    # print(stormpy_mdp)
+    stormvogel_mdp = mapping.stormpy_to_stormvogel(stormpy_mdp)
+    # print(stormvogel_mdp)
+    assert stormvogel_mdp is not None
+    new_stormpy_mdp = mapping.stormvogel_to_stormpy(stormvogel_mdp)
+    # print(new_stormpy_mdp)
 
-        assert sparse_equal(stormpy_mdp, new_stormpy_mdp)
+    assert sparse_equal(stormpy_mdp, new_stormpy_mdp)
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormvogel_to_stormpy_and_back_mdp():
-    if stormpy is not None:
-        # we test it for monty hall mdp
-        stormvogel_mdp = stormvogel.examples.monty_hall.create_monty_hall_mdp()
+    assert stormpy is not None
+    # we test it for monty hall mdp
+    stormvogel_mdp = stormvogel.examples.monty_hall.create_monty_hall_mdp()
 
-        # we additionally test if reward models work
-        rewardmodel = stormvogel_mdp.new_reward_model("rewardmodel")
-        rewardmodel.set_from_rewards_vector(list(range(67)))
-        rewardmodel2 = stormvogel_mdp.new_reward_model("rewardmodel2")
-        rewardmodel2.set_from_rewards_vector(list(range(67)))
+    # we additionally test if reward models work
+    rewardmodel = stormvogel_mdp.new_reward_model("rewardmodel")
+    rewardmodel.set_from_rewards_vector(list(range(67)))
+    rewardmodel2 = stormvogel_mdp.new_reward_model("rewardmodel2")
+    rewardmodel2.set_from_rewards_vector(list(range(67)))
 
-        # print(stormvogel_mdp)
-        stormpy_mdp = mapping.stormvogel_to_stormpy(stormvogel_mdp)
-        # print(stormpy_mdp)
-        new_stormvogel_mdp = mapping.stormpy_to_stormvogel(stormpy_mdp)
+    # print(stormvogel_mdp)
+    stormpy_mdp = mapping.stormvogel_to_stormpy(stormvogel_mdp)
+    # print(stormpy_mdp)
+    new_stormvogel_mdp = mapping.stormpy_to_stormvogel(stormpy_mdp)
 
-        # rew0 = sorted(stormvogel_mdp.rewards)[0].rewards
-        # rew1 = sorted(new_stormvogel_mdp.rewards)[0].rewards
-        # for k,v in rew0.items():
-        #     if v != rew1[k]:
-        #         print("original:", v, "\tsv:", rew1[k])
-        # print(rew0 == rew1)
-        # quit()
-
-        # print(new_stormvogel_mdp)
-        # print(sorted(stormvogel_mdp.rewards)[0] == sorted(new_stormvogel_mdp.rewards)[0])
-        # quit()
-        # print(sorted(stormvogel_mdp.rewards)[0].rewards)
-        # print()
-        # print(sorted(new_stormvogel_mdp.rewards)[0].rewards)
-        # print(sorted(new_stormvogel_mdp.rewards)[0].rewards == sorted(stormvogel_mdp.rewards)[0].rewards)
-        # print(sorted(new_stormvogel_mdp.rewards)[0] == sorted(stormvogel_mdp.rewards)[0])
-        # print(new_stormvogel_mdp == stormvogel_mdp)
-        # quit()
-
-        assert new_stormvogel_mdp == stormvogel_mdp
+    assert_models_equal(new_stormvogel_mdp, stormvogel_mdp)
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormvogel_to_stormpy_and_back_ctmc():
-    if stormpy is not None:
-        # we create a stormpy representation of an example ctmc
-        stormvogel_ctmc = (
-            stormvogel.examples.nuclear_fusion_ctmc.create_nuclear_fusion_ctmc()
-        )
-        # print(stormvogel_ctmc)
-        stormpy_ctmc = mapping.stormvogel_to_stormpy(stormvogel_ctmc)
-        # print(stormpy_ctmc)
-        new_stormvogel_ctmc = mapping.stormpy_to_stormvogel(stormpy_ctmc)
-        # print(new_stormvogel_ctmc)
+    assert stormpy is not None
+    # we create a stormpy representation of an example ctmc
+    stormvogel_ctmc = (
+        stormvogel.examples.nuclear_fusion_ctmc.create_nuclear_fusion_ctmc()
+    )
+    # print(stormvogel_ctmc)
+    stormpy_ctmc = mapping.stormvogel_to_stormpy(stormvogel_ctmc)
+    # print(stormpy_ctmc)
+    new_stormvogel_ctmc = mapping.stormpy_to_stormvogel(stormpy_ctmc)
+    # print(new_stormvogel_ctmc)
 
-        assert new_stormvogel_ctmc == stormvogel_ctmc
+    assert_models_equal(new_stormvogel_ctmc, stormvogel_ctmc)
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormpy_to_stormvogel_and_back_ctmc():
-    if stormpy is not None:
-        # we create a stormpy representation of an example ctmc
-        stormpy_ctmc = stormvogel.examples.stormpy_examples.stormpy_ctmc.example_building_ctmcs_01()
-        # print(stormpy_ctmc)
-        stormvogel_ctmc = mapping.stormpy_to_stormvogel(stormpy_ctmc)
-        # print(stormvogel_ctmc)
-        assert stormvogel_ctmc is not None
-        new_stormpy_ctmc = mapping.stormvogel_to_stormpy(stormvogel_ctmc)
-        # print(new_stormpy_ctmc)
+    assert stormpy is not None
+    # we create a stormpy representation of an example ctmc
+    stormpy_ctmc = (
+        stormvogel.examples.stormpy_examples.stormpy_ctmc.example_building_ctmcs_01()
+    )
+    # print(stormpy_ctmc)
+    stormvogel_ctmc = mapping.stormpy_to_stormvogel(stormpy_ctmc)
+    # print(stormvogel_ctmc)
+    assert stormvogel_ctmc is not None
+    new_stormpy_ctmc = mapping.stormvogel_to_stormpy(stormvogel_ctmc)
+    # print(new_stormpy_ctmc)
 
-        assert sparse_equal(stormpy_ctmc, new_stormpy_ctmc)
+    assert sparse_equal(stormpy_ctmc, new_stormpy_ctmc)
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormvogel_to_stormpy_and_back_pomdp():
-    if stormpy is not None:
-        # we create a stormpy representation of an example pomdp
-        stormvogel_pomdp = (
-            stormvogel.examples.monty_hall_pomdp.create_monty_hall_pomdp()
-        )
-        stormpy_pomdp = mapping.stormvogel_to_stormpy(stormvogel_pomdp)
-        new_stormvogel_pomdp = mapping.stormpy_to_stormvogel(stormpy_pomdp)
+    assert stormpy is not None
+    # we create a stormpy representation of an example pomdp
+    stormvogel_pomdp = stormvogel.examples.monty_hall_pomdp.create_monty_hall_pomdp()
+    stormpy_pomdp = mapping.stormvogel_to_stormpy(stormvogel_pomdp)
+    new_stormvogel_pomdp = mapping.stormpy_to_stormvogel(stormpy_pomdp)
 
-        assert new_stormvogel_pomdp == stormvogel_pomdp
+    assert_models_equal(new_stormvogel_pomdp, stormvogel_pomdp)
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormpy_to_stormvogel_and_back_pomdp():
-    if stormpy is not None:
-        # we create a stormpy representation of an example pomdp
-        stormpy_pomdp = stormvogel.examples.stormpy_examples.stormpy_pomdp.example_building_pomdps_01()
-        # print(stormpy_pomdp)
-        stormvogel_pomdp = mapping.stormpy_to_stormvogel(stormpy_pomdp)
-        # print(stormvogel_pomdp)
-        assert stormvogel_pomdp is not None
-        new_stormpy_pomdp = mapping.stormvogel_to_stormpy(stormvogel_pomdp)
-        # print(new_stormpy_pomdp)
+    assert stormpy is not None
+    # we create a stormpy representation of an example pomdp
+    stormpy_pomdp = (
+        stormvogel.examples.stormpy_examples.stormpy_pomdp.example_building_pomdps_01()
+    )
+    # print(stormpy_pomdp)
+    stormvogel_pomdp = mapping.stormpy_to_stormvogel(stormpy_pomdp)
+    # print(stormvogel_pomdp)
+    assert stormvogel_pomdp is not None
+    new_stormpy_pomdp = mapping.stormvogel_to_stormpy(stormvogel_pomdp)
+    # print(new_stormpy_pomdp)
 
-        assert sparse_equal(stormpy_pomdp, new_stormpy_pomdp)
+    assert sparse_equal(stormpy_pomdp, new_stormpy_pomdp)
 
 
 # TODO for some reason, this test crashes but only in Github workflows?
@@ -251,10 +251,10 @@ def test_stormpy_to_stormvogel_and_back_pomdp():
 #     # Create a new model
 #     stormvogel_ma = stormvogel.model.new_ma("example ma")
 #
-#     init = stormvogel_ma.get_initial_state()
+#     init = stormvogel_ma.initial_state
 #
 #     # We have 5 actions
-#     init.set_choice(
+#     init.set_choices(
 #         [
 #             (
 #                 stormvogel_ma.action(f"{i}"),
@@ -266,9 +266,9 @@ def test_stormpy_to_stormvogel_and_back_pomdp():
 #
 #     # We add the rates and markovian states
 #     stormvogel_ma.markovian_states = [
-#         stormvogel_ma.get_state_by_id(0),
-#         stormvogel_ma.get_state_by_id(3),
-#         stormvogel_ma.get_state_by_id(4),
+#         stormvogel_ma.states[0],
+#         stormvogel_ma.states[3],
+#         stormvogel_ma.states[4],
 #     ]
 #     stormvogel_ma.exit_rates = {i: 0 for i in range(6)}
 #
@@ -284,141 +284,142 @@ def test_stormpy_to_stormvogel_and_back_pomdp():
 #     assert new_stormvogel_ma == stormvogel_ma
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormpy_to_stormvogel_and_back_ma():
-    if stormpy is not None:
-        # we create a stormpy representation of an example ma
-        stormpy_ma = (
-            stormvogel.examples.stormpy_examples.stormpy_ma.example_building_mas_01()
-        )
-        # print(stormpy_ma)
-        stormvogel_ma = mapping.stormpy_to_stormvogel(stormpy_ma)
-        # print(stormvogel_ma)
-        assert stormvogel_ma is not None
-        new_stormpy_ma = mapping.stormvogel_to_stormpy(stormvogel_ma)
-        # print(new_stormpy_ma)
+    assert stormpy is not None
+    # we create a stormpy representation of an example ma
+    stormpy_ma = (
+        stormvogel.examples.stormpy_examples.stormpy_ma.example_building_mas_01()
+    )
+    # print(stormpy_ma)
+    stormvogel_ma = mapping.stormpy_to_stormvogel(stormpy_ma)
+    # print(stormvogel_ma)
+    assert stormvogel_ma is not None
+    new_stormpy_ma = mapping.stormvogel_to_stormpy(stormvogel_ma)
+    # print(new_stormpy_ma)
 
-        assert sparse_equal(stormpy_ma, new_stormpy_ma)
+    assert sparse_equal(stormpy_ma, new_stormpy_ma)
 
 
 # Tests for modified models (to test if removing states does not cause problems)
 
 
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_modified_stormpy_to_stormvogel_and_back():
-    if stormpy is not None:
-        # we build a simple stormpy dtmc
-        builder = stormpy.SparseMatrixBuilder(
-            rows=0,
-            columns=0,
-            entries=0,
-            force_dimensions=False,
-            has_custom_row_grouping=False,
-        )
+    assert stormpy is not None
+    # we build a simple stormpy dtmc
+    builder = stormpy.SparseMatrixBuilder(
+        rows=0,
+        columns=0,
+        entries=0,
+        force_dimensions=False,
+        has_custom_row_grouping=False,
+    )
 
-        builder.add_next_value(row=0, column=1, value=0.5)
-        builder.add_next_value(0, 2, 0.5)
-        builder.add_next_value(1, 1, 1)
-        builder.add_next_value(2, 2, 1)
+    builder.add_next_value(row=0, column=1, value=0.5)
+    builder.add_next_value(0, 2, 0.5)
+    builder.add_next_value(1, 1, 1)
+    builder.add_next_value(2, 2, 1)
 
-        transition_matrix = builder.build()
-        state_labeling = stormpy.storage.StateLabeling(3)
+    transition_matrix = builder.build()
+    state_labeling = stormpy.storage.StateLabeling(3)
 
-        labels = {"init", "one", "two"}
-        for label in labels:
-            state_labeling.add_label(label)
+    labels = {"init", "one", "two"}
+    for label in labels:
+        state_labeling.add_label(label)
 
-        state_labeling.add_label_to_state("init", 0)
-        state_labeling.add_label_to_state("one", 1)
-        state_labeling.add_label_to_state("two", 2)
+    state_labeling.add_label_to_state("init", 0)
+    state_labeling.add_label_to_state("one", 1)
+    state_labeling.add_label_to_state("two", 2)
 
-        components = stormpy.SparseModelComponents(
-            transition_matrix=transition_matrix,
-            state_labeling=state_labeling,
-        )
+    components = stormpy.SparseModelComponents(
+        transition_matrix=transition_matrix,
+        state_labeling=state_labeling,
+    )
 
-        stormpy_dtmc = stormpy.storage.SparseDtmc(components)
+    stormpy_dtmc = stormpy.storage.SparseDtmc(components)
 
-        # we map it to stormvogel
-        stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
+    # we map it to stormvogel
+    stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
 
-        # we modify the model
-        assert stormvogel_dtmc is not None
-        stormvogel_dtmc.remove_state(stormvogel_dtmc.get_initial_state())
-        stormvogel_dtmc.new_state(name="three", labels=["three"])
-        stormvogel_dtmc.add_self_loops()
+    # we modify the model
+    assert stormvogel_dtmc is not None
+    stormvogel_dtmc.remove_state(stormvogel_dtmc.initial_state, suppress_warning=True)
+    stormvogel_dtmc.new_state(labels=["three"])
+    stormvogel_dtmc.add_self_loops()
 
-        # we map it back to stormpy
-        new_stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
+    # we map it back to stormpy
+    new_stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
 
-        # we create the already modified stormpy model
-        builder = stormpy.SparseMatrixBuilder(
-            rows=0,
-            columns=0,
-            entries=0,
-            force_dimensions=False,
-            has_custom_row_grouping=False,
-        )
+    # we create the already modified stormpy model
+    builder = stormpy.SparseMatrixBuilder(
+        rows=0,
+        columns=0,
+        entries=0,
+        force_dimensions=False,
+        has_custom_row_grouping=False,
+    )
 
-        builder.add_next_value(0, 0, 1)
-        builder.add_next_value(1, 1, 1)
-        builder.add_next_value(2, 2, 1)
+    builder.add_next_value(0, 0, 1)
+    builder.add_next_value(1, 1, 1)
+    builder.add_next_value(2, 2, 1)
 
-        transition_matrix = builder.build()
-        state_labeling = stormpy.storage.StateLabeling(3)
+    transition_matrix = builder.build()
+    state_labeling = stormpy.storage.StateLabeling(3)
 
-        labels = {"one", "two", "three"}
-        for label in labels:
-            state_labeling.add_label(label)
+    labels = {"one", "two", "three"}
+    for label in labels:
+        state_labeling.add_label(label)
 
-        state_labeling.add_label_to_state("one", 0)
-        state_labeling.add_label_to_state("two", 1)
-        state_labeling.add_label_to_state("three", 2)
+    state_labeling.add_label_to_state("one", 0)
+    state_labeling.add_label_to_state("two", 1)
+    state_labeling.add_label_to_state("three", 2)
 
-        components = stormpy.SparseModelComponents(
-            transition_matrix=transition_matrix,
-            state_labeling=state_labeling,
-        )
+    components = stormpy.SparseModelComponents(
+        transition_matrix=transition_matrix,
+        state_labeling=state_labeling,
+    )
 
-        other_new_stormpy_dtmc = stormpy.storage.SparseDtmc(components)
+    other_new_stormpy_dtmc = stormpy.storage.SparseDtmc(components)
 
-        assert sparse_equal(new_stormpy_dtmc, other_new_stormpy_dtmc)
+    assert sparse_equal(new_stormpy_dtmc, other_new_stormpy_dtmc)
 
 
 # TODO other way around
 
 
 # Test id mappings in case they are out of order
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_id_mapping():
-    if stormpy is not None:
-        # make stormvogel model of dtmc
-        stormvogel_dtmc = stormvogel.examples.die.create_die_dtmc()
-        # remove states without reassigning ids
-        stormvogel_dtmc.remove_state(stormvogel_dtmc.get_initial_state())
-        stormvogel_dtmc.remove_state(stormvogel_dtmc.get_state_by_id(2))
-        # map to stormpy and back
-        stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
-        new_stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
+    # make stormvogel model of dtmc
+    stormvogel_dtmc = stormvogel.examples.die.create_die_dtmc()
+    # remove states without reassigning ids
+    stormvogel_dtmc.remove_state(stormvogel_dtmc.initial_state, suppress_warning=True)
+    stormvogel_dtmc.remove_state(stormvogel_dtmc.states[2], suppress_warning=True)
+    # map to stormpy and back
+    stormpy_dtmc = mapping.stormvogel_to_stormpy(stormvogel_dtmc)
+    new_stormvogel_dtmc = mapping.stormpy_to_stormvogel(stormpy_dtmc)
 
-        # we compare (should be unequal)
-        assert new_stormvogel_dtmc != stormvogel_dtmc
+    # we compare (should be equal since we compare structure, not UUIDs)
+    assert_models_equal(new_stormvogel_dtmc, stormvogel_dtmc)
 
-        # we reassign ids of original model and compare again (should be equal now)
-        stormvogel_dtmc.reassign_ids()
-        assert new_stormvogel_dtmc == stormvogel_dtmc
+    # we reassign ids of original model and compare again (should be equal now)
+    assert_models_equal(new_stormvogel_dtmc, stormvogel_dtmc)
 
 
 # we test if a model with multiple states without incoming transitions (>2) gives an error
+@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_labels():
-    if stormpy is not None:
-        model = stormvogel.model.new_dtmc(create_initial_state=False)
-        model.new_state()
-        model.new_state()
-        model.get_state_by_id(1).add_choice([(1, model.get_state_by_id(0))])
-        model.add_self_loops()
+    model = stormvogel.model.new_dtmc(create_initial_state=False)
+    model.new_state()
+    model.new_state()
+    model.states[1].add_choices([(1, model.states[0])])
+    model.add_self_loops()
 
-        with pytest.raises(
-            RuntimeError,
-            match=re.escape(
-                "There is more than one state in this model without incoming transitions."
-            ),
-        ):
-            mapping.stormvogel_to_stormpy(model)
+    with pytest.raises(
+        RuntimeError,
+        match=re.escape(
+            "There is more than one state in this model without incoming transitions."
+        ),
+    ):
+        mapping.stormvogel_to_stormpy(model)
