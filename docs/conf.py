@@ -6,6 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+import os
 from pathlib import Path
 import tomllib
 
@@ -34,6 +35,18 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 html_theme = "furo"
 html_static_path = ["_static"]
 html_css_files = ["css/custom.css"]
+
+# When building the "latest" (development) docs, show a banner linking to the
+# last stable release.  RELEASE_DOCS_URL and RELEASE_TAG are injected by CI.
+_release_url = os.environ.get("RELEASE_DOCS_URL", "")
+_release_tag = os.environ.get("RELEASE_TAG", "")
+if _release_url and _release_tag:
+    html_theme_options = {
+        "announcement": (
+            f"You are viewing the <strong>development</strong> version of the docs. "
+            f'<a href="{_release_url}">View the latest stable release ({_release_tag}) →</a>'
+        )
+    }
 
 # Load current version
 
