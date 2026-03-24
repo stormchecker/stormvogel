@@ -118,7 +118,7 @@ jobs:
         env:
           RELEASE_DOCS_URL: ${{ matrix.release_url }}
           RELEASE_TAG: ${{ matrix.release_tag }}
-        run: make html
+        run: poetry run make html
 
       - name: Copy gifs
         run: cp -r docs/4-Reinforcement-Learning/gifs docs/_build/html/4-Reinforcement-Learning/ || true
