@@ -29,7 +29,7 @@
 import stormvogel
 import stormpy
 
-from examples.orchard_builder import build_prism
+from orchard.orchard_builder import build_prism
 
 # %%
 # We use the prism encoding in this part of the tutorial.

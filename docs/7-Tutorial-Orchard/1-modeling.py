@@ -446,11 +446,11 @@ print(orchard_storm)
 # ## Defining the MDP in the Prism language
 # We showed how to create an MDP model via Stormvogel.
 # Storm also supports creating models from other input formats such as the [Prism language](https://www.prismmodelchecker.org/manual/ThePRISMLanguage/Introduction) or the [JANI interchange format](https://jani-spec.org/).
-# Here, we also provide a Prism model for our Orchard game. The specification is given in `examples/orchard_stormvogel.pm` and we print it here.
+# Here, we also provide a Prism model for our Orchard game. The specification is given in `orchard/orchard_stormvogel.pm` and we print it here.
 
 # %%
 # Print the Prism model
-# !cat examples/orchard_stormvogel.pm
+# !cat orchard/orchard_stormvogel.pm
 
 # %% [markdown]
 # The Prism specification follows the same structure as the Stormvogel model.
@@ -461,7 +461,7 @@ print(orchard_storm)
 
 # %%
 # Build the prism model
-prism_program = stormpy.parse_prism_program("examples/orchard_stormvogel.pm")
+prism_program = stormpy.parse_prism_program("orchard/orchard_stormvogel.pm")
 constants = "NUM_FRUIT=4, DISTANCE_RAVEN=5"
 prism_program = stormpy.preprocess_symbolic_input(prism_program, [], constants)[
     0

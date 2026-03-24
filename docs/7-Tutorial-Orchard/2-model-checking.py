@@ -20,16 +20,16 @@
 # %% [markdown]
 # ## Preparation
 # We start be loading the models from the previous notebook.
-# The complete Stormvogel model for the Orchard game is given in `examples/orchard_game_stormvogel.py`.
-# The Prism specification is given in `examples/orchard_stormvogel.pm`.
-# These models are built using functions in `examples/orchard_builder.py`.
+# The complete Stormvogel model for the Orchard game is given in `orchard/orchard_game_stormvogel.py`.
+# The Prism specification is given in `orchard/orchard_stormvogel.pm`.
+# These models are built using functions in `orchard/orchard_builder.py`.
 
 # %%
 # Import stormvogel and prism models from the previous step
 import stormvogel
 import stormpy
 
-from examples.orchard_builder import build_simple, build_full, build_prism
+from orchard.orchard_builder import build_simple, build_full, build_prism
 
 # %%
 orchard_simple = build_simple()

@@ -27,7 +27,7 @@ import stormvogel
 import stormpy
 
 from copy import deepcopy
-from examples.orchard_game_stormvogel import (
+from orchard.orchard_game_stormvogel import (
     Orchard,
     available_actions,
     delta,
@@ -37,7 +37,7 @@ from examples.orchard_game_stormvogel import (
     GameState,
     DiceOutcome,
 )
-from examples.orchard_builder import build_simple
+from orchard.orchard_builder import build_simple
 
 
 # %% [markdown]
@@ -349,7 +349,7 @@ print(solution_function)
 
 # %% [markdown]
 # We adapted the Prism specification of the Orchard game and introduced observations.
-# The resulting specification can be found in `examples/orchard_pomdp.pm`.
+# The resulting specification can be found in `orchard/orchard_pomdp.pm`.
 #
 # In the following, we load the POMDP.
 
@@ -357,7 +357,7 @@ print(solution_function)
 import stormpy
 import stormpy.pomdp
 
-prism_program = stormpy.parse_prism_program("examples/orchard_pomdp.pm")
+prism_program = stormpy.parse_prism_program("orchard/orchard_pomdp.pm")
 formula_str = 'Pmax=? [!"RavenWon" U "PlayersWon"]'
 properties = stormpy.parse_properties_for_prism_program(formula_str, prism_program)
 prism_program, properties = stormpy.preprocess_symbolic_input(
@@ -395,11 +395,11 @@ print(f"Result in: [{result.lower_bound}, {result.upper_bound}]")
 
 # %% [markdown]
 # We can consider a modified Orchard game, where another player randomly steals fruit before the game starts.
-# This is modeled in `examples/orchard_pomdp_steal.pm`.
+# This is modeled in `orchard/orchard_pomdp_steal.pm`.
 
 # %%
 # Load model with stealing
-prism_program = stormpy.parse_prism_program("examples/orchard_pomdp_steal.pm")
+prism_program = stormpy.parse_prism_program("orchard/orchard_pomdp_steal.pm")
 formula_str = 'Pmax=? [!"RavenWon" U "PlayersWon"]'
 properties = stormpy.parse_properties_for_prism_program(formula_str, prism_program)
 prism_program, properties = stormpy.preprocess_symbolic_input(
