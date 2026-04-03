@@ -49,12 +49,12 @@ jobs:
         run: poetry run pip install stormpy
 
       - name: Run tests
-        run: poetry run pytest -vv --cov=stormvogel --cov=report=xml test/
+        run: poetry run pytest -vv --cov=stormvogel --cov-report=xml tests/
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         with:
-          token: ${{ secrets.CODECOV_TOKEN }} 
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: List kernels
         run: poetry run jupyter kernelspec list
