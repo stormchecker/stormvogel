@@ -34,6 +34,7 @@ networkx = "^3.4.2"
 deprecated = "^1.2.18"
 pillow = "^12.1.1"
 sympy = "^1.14.0"
+pydot = "^4.0.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.2.2"
