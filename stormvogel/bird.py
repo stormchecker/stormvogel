@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from typing import cast, Any, Callable, Sequence
 import inspect
 from collections import deque
+from collections.abc import Iterable
 from stormvogel.model import Variable
-
 
 @dataclass
 class State:
@@ -521,24 +521,22 @@ def build_bird[ValueType: stormvogel.model.Value](
             if labellist is None:
                 continue
 
-            # we check for the labels when the function does not return a list object, or when
-            # the list does not consist of strings
-            if not isinstance(labellist, list):
-                if not isinstance(labellist, str):
-                    raise ValueError(
-                        f"On input {state}, the labels function does not return a string or a list of strings"
-                    )
-                # if we don't get a list, we assume there is just one label
+            if isinstance(labellist, str):
                 if labellist not in s.labels:
                     s.add_label(labellist)
-            else:
+            elif isinstance(labellist, Iterable):
                 for label in labellist:
                     if not isinstance(label, str):
                         raise ValueError(
-                            f"On input {state}, the labels function does not return a string or a list of strings"
+                            f"On input {state}, the labels function does not return a string or an iterable over strings"
                         )
                     if label not in s.labels:
                         s.add_label(label)
+            else:
+                raise ValueError(
+                    f"On input {state}, the labels function does not return a string or an iterable over strings"
+                )
+
 
     # friendly names
     if friendly_names is not None:
