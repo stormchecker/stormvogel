@@ -127,7 +127,7 @@ jobs:
 
       - name: Coverage badge library installment
         run : |
-          poetry run pip install coverage-badge
+          poetry run pip install setuptools coverage-badge
           poetry run pytest --cov=stormvogel tests/
           poetry run coverage-badge -f -o docs/_build/html/coverage.svg
 
