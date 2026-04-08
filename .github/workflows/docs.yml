@@ -125,6 +125,12 @@ jobs:
       - name: Copy gifs
         run: cp -r docs/4-Reinforcement-Learning/gifs docs/_build/html/4-Reinforcement-Learning/ || true
 
+      - name: Coverage badge library installment
+        run : |
+          poetry run pip install coverage badge
+          poetry run pytest --cov=stormvogel tests/
+          poetry run coverage-badge -f -o docs/_build/html/coverage.svg
+
       - name: Upload docs artifact
         uses: actions/upload-artifact@v4
         with:
