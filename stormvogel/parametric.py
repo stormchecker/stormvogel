@@ -70,7 +70,7 @@ class Polynomial:
         :returns: The degree of the polynomial.
         :raises RuntimeError: If the polynomial has no terms.
         """
-        if self.terms is not {}:
+        if self.terms != {}:
             largest = 0
             for term in self.terms.keys():
                 current = sum(exp for _, exp in term)

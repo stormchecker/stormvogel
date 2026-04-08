@@ -31,8 +31,6 @@ from orchard.orchard_game_stormvogel import (
     Orchard,
     available_actions,
     delta,
-    labels,
-    rewards,
     Fruit,
     GameState,
     DiceOutcome,
