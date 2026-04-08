@@ -26,7 +26,7 @@ def model_to_dot(
         lines.append(f'"{state_id(state)}"{format_attrs(attrs)};')
 
     # --- Actions + Transitions ---
-    for state, choice in model.choices.items():
+    for state, choice in model.transitions.items():
         for action, branch in choice:
             if action != EmptyAction:
                 action_node = f"{state.state_id}_{action.label}"

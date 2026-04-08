@@ -14,7 +14,7 @@ def test_aut1():
     aut.add_transition("s0", lambda s: "p" not in s, "s0", label="¬p")
     aut.add_transition("s1", lambda s: True, "s1", label="true")
 
-    dfa.visualize_dfa(aut)
+    dfa.plot_symbolic_dfa_pydot(aut, "test.svg")
 
 
 def test_libsup():
