@@ -1,5 +1,6 @@
 import stormvogel
 
+
 def create_minitown_mdp():
     mdp = stormvogel.model.new_mdp()
     init = mdp.initial_state
@@ -14,26 +15,12 @@ def create_minitown_mdp():
     square.set_friendly_name("square")
 
     init.set_choices(
-        {
-            left: [(0.9, supermarket), (0.1, init)],
-            right: [(0.9, square), (0.1, init)]
-        }
+        {left: [(0.9, supermarket), (0.1, init)], right: [(0.9, square), (0.1, init)]}
     )
-    supermarket.set_choices(
-        {
-            right: [(0.9, init), (0.1, square)]
-        }
-    )
+    supermarket.set_choices({right: [(0.9, init), (0.1, square)]})
     square.set_choices(
-        {
-            left: [(0.9, init), (0.1, square)],
-            right: [(0.9, lib), (0.1, square)]
-        }
+        {left: [(0.9, init), (0.1, square)], right: [(0.9, lib), (0.1, square)]}
     )
-    lib.set_choices(
-        {
-            left: [(0.9, square), (0.1, lib)]
-        }
-    )
+    lib.set_choices({left: [(0.9, square), (0.1, lib)]})
 
     return mdp

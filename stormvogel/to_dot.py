@@ -1,5 +1,5 @@
+from stormvogel.model import EmptyAction
 
-from stormvogel.model import Action, EmptyAction, Model, State, Value
 
 def state_id(state):
     return state.state_id
@@ -28,19 +28,15 @@ def model_to_dot(
     # --- Actions + Transitions ---
     for state, choice in model.choices.items():
         for action, branch in choice:
-
             if action != EmptyAction:
                 action_node = f"{state.state_id}_{action.label}"
                 action_props = (
-                    action_properties(state, action)
-                    if action_properties else {}
+                    action_properties(state, action) if action_properties else {}
                 )
                 attrs = {"shape": "box", **action_props}
 
                 lines.append(f'"{action_node}"{format_attrs(attrs)};')
-                lines.append(
-                    f'"{state_id(state)}" -> "{action_node}";'
-                )
+                lines.append(f'"{state_id(state)}" -> "{action_node}";')
 
                 src = action_node
             else:
@@ -49,7 +45,8 @@ def model_to_dot(
             for probability, target in branch:
                 trans_props = (
                     transition_properties(state, action, target)
-                    if transition_properties else {}
+                    if transition_properties
+                    else {}
                 )
 
                 attrs = {"label": probability, **trans_props}

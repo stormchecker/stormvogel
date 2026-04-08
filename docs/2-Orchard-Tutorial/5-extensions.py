@@ -24,7 +24,6 @@
 
 # %%
 # Import prism models from the previous step
-import stormvogel
 import stormpy
 from orchard.orchard_builder import build_prism
 

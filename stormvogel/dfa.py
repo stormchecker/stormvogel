@@ -1,19 +1,16 @@
-from typing import TypeVar, Callable, Iterable, Dict, List, Tuple, Optional
+from typing import TypeVar, Callable, Iterable, Dict, List, Tuple, Optional, Generic
 
 import stormvogel.bird
 import stormvogel.model
 import pydot
-from lxml import etree
 from IPython.display import SVG, display
 
-from stormvogel import Distribution
-
 State = TypeVar("State")
-Symbol = frozenset[str]
+Symbol = frozenset[str] | list[str]
 Predicate = Callable[[Symbol], bool]
 
 
-class SymbolicDFA:
+class SymbolicDFA(Generic[State]):
     def __init__(
         self,
         states: Iterable[State],
@@ -30,7 +27,7 @@ class SymbolicDFA:
             raise ValueError("Accepting states must be subset of states")
 
         # (predicate, target, label)
-        self._transitions: Dict[State, List[Tuple[Predicate, State, str]]] = {
+        self._transitions: Dict[State, List[Tuple[Predicate, State, str | None]]] = {
             s: [] for s in self.states
         }
 
@@ -51,9 +48,7 @@ class SymbolicDFA:
 
     def step(self, state: State, symbol: Symbol) -> State:
         matches = [
-            target
-            for pred, target, _ in self._transitions[state]
-            if pred(symbol)
+            target for pred, target, _ in self._transitions[state] if pred(symbol)
         ]
 
         if len(matches) == 0:
@@ -87,7 +82,7 @@ class SymbolicDFA:
 
 class ProductState(stormvogel.bird.State):
     def __init__(self, mdp, dfa, mdp_state, dfa_state):
-        super().__init__(_mdp = mdp, _dfa = dfa, _mdp_state=mdp_state, _dfa_state=dfa_state)
+        super().__init__(_mdp=mdp, _dfa=dfa, _mdp_state=mdp_state, _dfa_state=dfa_state)
 
     @property
     def mdp_state(self) -> stormvogel.model.State:
@@ -106,16 +101,19 @@ class ProductState(stormvogel.bird.State):
         return self._mdp
 
 
-def product(mdp : stormvogel.model.Model, dfa : SymbolicDFA):
-    _init = ProductState(mdp, dfa, mdp.initial_state, dfa.step(dfa.initial_state, list(mdp.initial_state.labels)))
+def product(mdp: stormvogel.model.Model, dfa: SymbolicDFA):
+    _init = ProductState(
+        mdp,
+        dfa,
+        mdp.initial_state,
+        dfa.step(dfa.initial_state, list(mdp.initial_state.labels)),
+    )
 
-    def _friendly_name(sq: ProductState):
-        if sq.mdp_state.friendly_name is not None:
-            return "(" + sq.mdp_state.friendly_name + "," + sq.dfa_state + ")"
-        else:
-            return None
+    def _friendly_name(sq: ProductState) -> str:
+        assert sq.mdp_state.friendly_name is not None
+        return "(" + sq.mdp_state.friendly_name + "," + sq.dfa_state + ")"
 
-    def _delta(sq : ProductState, a : str):
+    def _delta(sq: ProductState, a: str):
         result = []
         next_distr = sq.mdp_state.get_outgoing_transitions(mdp.action(a))
         if next_distr is None:
@@ -125,21 +123,28 @@ def product(mdp : stormvogel.model.Model, dfa : SymbolicDFA):
             result.append((prob, ProductState(mdp, dfa, next_state, next_q)))
         return result
 
-    def _labels(state: ProductState):
-        labels = [l for l in state.mdp_state.labels if l != "init"] + \
-                 ["init"] if state == _init else [] + \
-                 ["accept"] if state.dfa_state in dfa.accepting_states else []
-        print(labels)
+    def _labels(state: ProductState) -> list[str]:
+        labels = (
+            [label for label in state.mdp_state.labels if label != "init"] + ["init"]
+            if state == _init
+            else [] + ["accept"]
+            if state.dfa_state in dfa.accepting_states
+            else []
+        )
         return labels
 
-    def _available_actions(state: ProductState):
-        return [a.label for a in state.mdp_state.available_actions()]
+    def _available_actions(state: ProductState) -> list[str]:
+        return [
+            a.label for a in state.mdp_state.available_actions() if a.label is not None
+        ]
 
-    return stormvogel.bird.build_bird(delta = _delta,
-                                      init = _init,
-                                      labels = _labels,
-                                      friendly_names=_friendly_name,
-                                      available_actions = _available_actions)
+    return stormvogel.bird.build_bird(
+        delta=_delta,
+        init=_init,
+        labels=_labels,
+        friendly_names=_friendly_name,
+        available_actions=_available_actions,
+    )
 
 
 def plot_symbolic_dfa_pydot(dfa, output_file=None, rankdir="LR"):
@@ -166,7 +171,7 @@ def plot_symbolic_dfa_pydot(dfa, output_file=None, rankdir="LR"):
                 fillcolor=fillcolor,
                 fontcolor="black",
                 fontsize="12",
-                label=state
+                label=state,
             )
         )
 
@@ -184,7 +189,7 @@ def plot_symbolic_dfa_pydot(dfa, output_file=None, rankdir="LR"):
                     label=label,
                     fontcolor="black",
                     color="black",
-                    fontsize="10"
+                    fontsize="10",
                 )
             )
     if output_file:

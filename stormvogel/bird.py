@@ -8,6 +8,7 @@ from collections import deque
 from collections.abc import Iterable
 from stormvogel.model import Variable
 
+
 @dataclass
 class State:
     """Represent a bird state as a dynamic attribute container."""
@@ -35,7 +36,7 @@ def valid_input[ValueType: stormvogel.model.Value](
     delta: Callable[[Any, Action], Any] | Callable[[Any], Any],
     init: Any,
     rewards: Callable[[Any], dict[str, ValueType]] | None = None,
-    labels: Callable[[Any], list[str] | str | None] | None = None,
+    labels: Callable[[Any], Sequence[str] | str | None] | None = None,
     available_actions: Callable[[Any], list[Action]] | None = None,
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
     rates: Callable[[Any], float] | None = None,
@@ -171,7 +172,7 @@ def build_bird[ValueType: stormvogel.model.Value](
     ),
     init: Any,
     rewards: Callable[[Any], dict[str, ValueType]] | None = None,
-    labels: Callable[[Any], list[str] | str | None] | None = None,
+    labels: Callable[[Any], Sequence[str] | str | None] | None = None,
     friendly_names: Callable[[Any], str] | None = None,
     available_actions: Callable[[Any], list[Action]] | None = None,
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
@@ -536,7 +537,6 @@ def build_bird[ValueType: stormvogel.model.Value](
                 raise ValueError(
                     f"On input {state}, the labels function does not return a string or an iterable over strings"
                 )
-
 
     # friendly names
     if friendly_names is not None:

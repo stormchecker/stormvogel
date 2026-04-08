@@ -1,6 +1,6 @@
-import stormvogel
 import stormvogel.to_dot as to_dot
 from stormvogel.examples.minitown import create_minitown_mdp
+
 
 def test_todot_minitown():
     mdp = create_minitown_mdp()

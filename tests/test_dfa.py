@@ -2,6 +2,7 @@ import stormvogel
 import stormvogel.dfa as dfa
 from stormvogel.examples.minitown import create_minitown_mdp
 
+
 def test_aut1():
     aut = dfa.SymbolicDFA(
         states={"s0", "s1"},
@@ -15,6 +16,7 @@ def test_aut1():
 
     dfa.visualize_dfa(aut)
 
+
 def test_libsup():
     aut = dfa.SymbolicDFA(
         states={"q0", "q1", "q2", "q3"},
@@ -25,7 +27,9 @@ def test_libsup():
     aut.add_transition("q0", lambda s: "L" in s and "S" not in s, "q1", label="L & -S")
     aut.add_transition("q0", lambda s: "S" in s and "L" not in s, "q2", label="S & -L")
     aut.add_transition("q0", lambda s: "S" in s and "L" in s, "q3", label="S & L")
-    aut.add_transition("q0", lambda s: "S" not in s and "L" not in s, "q0", label="-S & -L")
+    aut.add_transition(
+        "q0", lambda s: "S" not in s and "L" not in s, "q0", label="-S & -L"
+    )
     aut.add_transition("q1", lambda s: "L" in s, "q3", label="L")
     aut.add_transition("q1", lambda s: "L" not in s, "q1", label="-L")
     aut.add_transition("q2", lambda s: "S" in s, "q3", label="S")
@@ -39,4 +43,3 @@ def test_libsup():
     mdp = create_minitown_mdp()
     dfa.product(mdp, aut)
     stormvogel.show(dfa.product(mdp, aut))
-
