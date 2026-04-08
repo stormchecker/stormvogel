@@ -129,6 +129,7 @@ jobs:
         run: |
           poetry run pip install "genbadge[coverage]"
           poetry run pytest --cov=stormvogel --cov-report=xml tests/
+          mkdir -p docs/_build/html/
           poetry run genbadge coverage -i coverage.xml -o docs/_build/html/coverage.svg
 
       - name: Upload docs artifact
