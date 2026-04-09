@@ -10,7 +10,7 @@ on:
 
 jobs:
   push_to_registry:
-    name: Push nightly Docker image to Docker Hub
+    name: ${{ github.event_name == 'push' && 'Push' || 'Build' }} nightly Docker image
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -46,7 +46,7 @@ jobs:
           push-to-registry: true
 
   push_experimental:
-    name: Push experimental Docker image to Docker Hub
+    name: ${{ github.event_name == 'push' && 'Push' || 'Build' }} experimental Docker image
     runs-on: ubuntu-latest
     permissions:
       packages: write
