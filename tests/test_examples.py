@@ -5,6 +5,9 @@ import inspect
 import pkgutil
 
 import stormvogel.examples
+import pytest
+
+stormpy = pytest.importorskip("stormpy")
 
 
 def _example_builders():
