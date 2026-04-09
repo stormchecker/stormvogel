@@ -3,13 +3,9 @@ import stormvogel.model
 import pytest
 from model_testing import assert_models_equal
 
-try:
-    import stormpy
-except ImportError:
-    stormpy = None
+stormpy = pytest.importorskip("stormpy")
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_convert_imc():
     imc = stormvogel.model.new_dtmc()
     init = imc.initial_state

@@ -6,10 +6,7 @@ import stormvogel.stormpy_utils.model_checking
 import stormvogel.model
 from model_testing import assert_models_equal
 
-try:
-    import stormpy
-except ImportError:
-    stormpy = None
+stormpy = pytest.importorskip("stormpy")
 
 MA_DRN = """
 // Markov Automaton test model
@@ -136,7 +133,6 @@ state 18 !0 s18
 
 @pytest.fixture
 def stormpy_ma():
-    assert stormpy is not None
     with tempfile.NamedTemporaryFile(mode="w", suffix=".drn", delete=False) as f:
         f.write(MA_DRN)
         tmp_path = f.name
@@ -151,19 +147,16 @@ def stormvogel_ma(stormpy_ma):
     return mapping.stormpy_to_stormvogel(stormpy_ma)
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_ma_model_type(stormvogel_ma):
     """The converted model should have type MA."""
     assert stormvogel_ma.model_type == stormvogel.model.ModelType.MA
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_ma_state_count(stormvogel_ma):
     """Converted MA should have 19 states."""
     assert len(stormvogel_ma.states) == 19
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_ma_state_labels(stormvogel_ma):
     """Key state labels should be preserved after conversion."""
     all_labels = set()
@@ -175,7 +168,6 @@ def test_ma_state_labels(stormvogel_ma):
     assert "s18" in all_labels
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_ma_markovian_states(stormvogel_ma, stormpy_ma):
     """Markovian states should be preserved through the conversion."""
     assert stormvogel_ma.markovian_states is not None
@@ -189,7 +181,6 @@ def test_ma_markovian_states(stormvogel_ma, stormpy_ma):
     assert actual_markovian_indices == expected_markovian_indices
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_ma_roundtrip_stormvogel(stormvogel_ma):
     """stormvogel -> stormpy -> stormvogel should give a structurally equal model."""
     stormpy_ma2 = mapping.stormvogel_to_stormpy(stormvogel_ma)
@@ -246,7 +237,6 @@ _EXPECTED_TIME = {
 }
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_ma_model_checking_reachability(stormvogel_ma):
     """Pmax=? [F target]: all states reach target with prob 1, except the deadlock (goal)."""
     prop = 'Pmax=? [F "target"]'
@@ -262,7 +252,6 @@ def test_ma_model_checking_reachability(stormvogel_ma):
         ), f"state {i} {sorted(state.labels)}: expected {_EXPECTED_REACH[i]}, got {value}"
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_ma_model_checking_expected_time(stormvogel_ma):
     """Tmin=? [F goal]: minimum expected time matches storm's result."""
     prop = 'Tmin=? [F "goal"]'
@@ -278,7 +267,6 @@ def test_ma_model_checking_expected_time(stormvogel_ma):
         ), f"state {i} {sorted(state.labels)}: expected {_EXPECTED_TIME[i]}, got {value}"
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_ma_double_roundtrip_model_checking(stormvogel_ma):
     """Model checking result should be identical after a double roundtrip."""
     stormpy_ma2 = mapping.stormvogel_to_stormpy(stormvogel_ma)
