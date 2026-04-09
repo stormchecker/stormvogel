@@ -9,7 +9,14 @@ COPY . /app
 WORKDIR /app
 
 # Install all dependencies directly into system Python
-RUN pip install --no-cache-dir . stormpy paynt pyscipopt
+# When STORMPY_WHEEL=1, install stormpy from a local wheel (nightly builds).
+ARG STORMPY_WHEEL=0
+RUN if [ "$STORMPY_WHEEL" = "1" ]; then \
+        pip install --no-cache-dir . paynt pyscipopt && \
+        pip install --no-cache-dir --no-deps stormpy_wheel/*cp312*.whl; \
+    else \
+        pip install --no-cache-dir . stormpy paynt pyscipopt; \
+    fi
 
 # create /root/.jupyter directory
 RUN mkdir -p /root/.jupyter
