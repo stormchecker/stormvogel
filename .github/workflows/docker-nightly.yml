@@ -80,7 +80,7 @@ jobs:
           file: ./Dockerfile
           push: ${{ github.event_name == 'push' }}
           pull: true
-          tags: stormvogel/stormvogel:stormvogel-experimental
+          tags: stormvogel/stormvogel:experimental
           build-args: STORMPY_WHEEL=1
 
       - name: Generate artifact attestation
