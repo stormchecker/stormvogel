@@ -16,7 +16,7 @@ def test_observation_str():
     obs = pomdp.new_observation("my_obs")
     s = str(obs)
     assert "my_obs" in s
-    assert "Obs:" in s
+    assert "Observation(" in s
 
 
 def test_observation_valuations_with_values():

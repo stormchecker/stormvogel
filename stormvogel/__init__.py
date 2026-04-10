@@ -45,3 +45,11 @@ def is_in_notebook():
 if is_in_notebook():
     # Import and init magic
     from stormvogel.stormpy_utils import magic as magic
+
+try:
+    # Running stormvogel in the playground imports the playground's overwrite for show
+    import playground
+
+    show = playground.show  # type: ignore[assignment]
+except ImportError:
+    pass

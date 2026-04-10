@@ -176,25 +176,17 @@ class VisualizationBase:
             or not self.layout.layout["state_properties"]["show_observations"]
         ):
             return ""
-        elif isinstance(s.observation, list):
-            string = ""
-            for prob, obs in s.observation:
-                string += (
-                    "\n"
-                    + self.layout.layout["state_properties"]["observation_symbol"]
-                    + " "
-                    + str(obs.display())
-                    + ": "
-                    + self._format_number(prob)
-                )
-            return string
-        else:
-            return (
-                "\n"
-                + self.layout.layout["state_properties"]["observation_symbol"]
-                + " "
-                + str(s.observation)
+        obs = s.observation
+        symbol = self.layout.layout["state_properties"]["observation_symbol"]
+        if isinstance(obs, stormvogel.model.Distribution):
+            return "".join(
+                "\n" + symbol + " " + o.display() + ": " + self._format_number(p)
+                for p, o in obs
             )
+        elif isinstance(obs, stormvogel.model.Observation):
+            return "\n" + symbol + " " + obs.display()
+        else:
+            return ""
 
     def _group_state(self, s: stormvogel.model.State, default: str) -> str:
         """Determine the group of a state.
@@ -282,12 +274,13 @@ class VisualizationBase:
                 color2 = self.layout.layout["results"]["min_result_color"]
                 factor = result / max_result if max_result != 0 else 0
                 color = self._blend_colors(color1, color2, float(factor))
+        name_part = (
+            state.friendly_name
+            if state.friendly_name is not None
+            else ",".join(state.labels)
+        )
         properties = {
-            "label": id_label_part
-            + ",".join(state.labels)
-            + rewards
-            + res
-            + observations,
+            "label": id_label_part + name_part + rewards + res + observations,
             "group": group,
             "color": color,
         }
@@ -512,17 +505,38 @@ class JSVisualization(VisualizationBase):
             edge_js += current
         return edge_js
 
+    # Top-level keys in the layout dict that are stormvogel-specific and must
+    # not be forwarded to vis.js as network options.
+    _STORMVOGEL_LAYOUT_KEYS = frozenset(
+        {
+            "__fake_macros",
+            "edit_groups",
+            "reload_button",
+            "numbers",
+            "results",
+            "state_properties",
+            "misc",
+            "saving",
+            "positions",
+        }
+    )
+
     def _get_options(self) -> str:
-        """Return the current layout configuration as a JSON-formatted string.
+        """Return the vis.js-compatible layout configuration as a JSON-formatted string.
 
-        Serialize the layout dictionary used for visualization into a readable
-        JSON format with indentation for clarity.
+        Strips stormvogel-specific keys so that only recognized vis.js options
+        are forwarded to the network.
 
-        :returns: A pretty-printed JSON string representing the current layout configuration.
+        :returns: A pretty-printed JSON string representing the vis.js options.
         """
         import json
 
-        return json.dumps(self.layout.layout, indent=2)
+        visjs_options = {
+            k: v
+            for k, v in self.layout.layout.items()
+            if k not in self._STORMVOGEL_LAYOUT_KEYS
+        }
+        return json.dumps(visjs_options, indent=2)
 
     def set_options(self, options: str) -> None:
         """Set the layout configuration from a JSON-formatted string.
@@ -538,14 +552,23 @@ class JSVisualization(VisualizationBase):
         options_dict = json.loads(options)
         self.layout = stormvogel.layout.Layout(layout_dict=options_dict)
 
-    def generate_html(self) -> str:
-        """Generate an HTML page representing the current state of the ``ModelGraph``."""
+    def generate_html(self, height: int | str | None = None) -> str:
+        """Generate an HTML page representing the current state of the ``ModelGraph``.
+
+        :param height: Override the layout height. Either an integer (pixels) or a CSS string like ``"100%"``.
+            If ``None``, the layout height is used.
+        """
+        resolved_height: int | str = (
+            self.layout.layout["misc"].get("height", 600) + self.EXTRA_PIXELS
+            if height is None
+            else height
+        )
         return stormvogel.html_generation.generate_html(
             self._generate_node_js(),
             self._generate_edge_js(),
             self._get_options(),
             self.name,
-            self.layout.layout["misc"].get("height", 600) + self.EXTRA_PIXELS,
+            resolved_height,
         )
 
     def generate_iframe(self) -> str:

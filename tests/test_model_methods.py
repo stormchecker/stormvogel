@@ -113,9 +113,8 @@ def test_state_str():
     s1 = str(state)
     s2 = str(state)
     assert s1 == s2
-    assert s1.startswith(f"id: {state.state_id}, labels: ")
+    assert s1.startswith(f"State(id={state.state_id}, labels=")
     assert "['" in s1 or '["' in s1 or "[]" in s1
-    assert ", valuations: " in s1
     # we test it for nontrivial action transitions
 
 
@@ -427,7 +426,7 @@ def test_add_choices():
         mdp5.add_choices(mdp5.initial_state, [(0.6, state5)])
     assert (
         str(excinfo.value)
-        == "Cannot add choices with overlapping actions. Action EmptyAction is in both choices."
+        == "Cannot add choices with overlapping actions. Action Action(None) is in both choices."
     )
 
     # Non-empty action case, add the actions to the list.
@@ -1101,7 +1100,6 @@ def test_state_str_with_observation():
     obs = pomdp.new_observation("my_obs")
     state = pomdp.new_state(observation=obs)
     s = str(state)
-    assert "observation" in s
     assert "my_obs" in s
 
 

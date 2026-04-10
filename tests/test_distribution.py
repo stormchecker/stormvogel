@@ -65,8 +65,13 @@ def test_distribution_add_type_error():
 
 
 def test_distribution_str():
-    d = Distribution([(0.5, "a"), (0.5, "b")])
-    assert str(d) == "0.5 -> a, 0.5 -> b"
+    d = Distribution({"a": 0.5, "b": 0.5})
+    assert str(d) == "Distribution({'a': 0.5, 'b': 0.5})"
+
+
+def test_distribution_repr():
+    d = Distribution({"a": 0.5, "b": 0.5})
+    assert repr(d) == "Distribution({'a': 0.5, 'b': 0.5})"
 
 
 def test_distribution_iter():

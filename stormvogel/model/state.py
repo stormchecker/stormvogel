@@ -245,8 +245,22 @@ class State[ValueType: Value]:
         """Check whether this state is the initial state."""
         return self.has_label("init")
 
-    def __str__(self):
-        res = f"id: {self.state_id}, labels: {list(self.labels)}, valuations: {self.valuations}"
-        if self.model.supports_observations() and self.observation is not None:
-            res += f", observation: {str(self.observation)}"
-        return res
+    def __repr__(self):
+        name = self.friendly_name
+        labels = list(self.labels)
+        obs = None
+        if (
+            self.model.supports_observations()
+            and self.model.state_observations is not None
+        ):
+            obs = self.model.state_observations.get(self)
+        base = (
+            f"State({name!r}, labels={labels!r})"
+            if name
+            else f"State(id={self.state_id}, labels={labels!r})"
+        )
+        if obs is not None:
+            return base[:-1] + f", observation={obs!r})"
+        return base
+
+    __str__ = __repr__
