@@ -30,8 +30,7 @@ class Action:
     def __repr__(self):
         return f"Action({self.label!r})"
 
-    def __str__(self):
-        return self.label or "EmptyAction"
+    __str__ = __repr__
 
 
 # The empty action. Used for DTMCs and empty action transitions in mdps.

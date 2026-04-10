@@ -15,5 +15,4 @@ class Variable:
     def __repr__(self):
         return f"Variable({self.label!r})"
 
-    def __str__(self):
-        return self.label
+    __str__ = __repr__
