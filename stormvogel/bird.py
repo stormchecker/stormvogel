@@ -31,7 +31,7 @@ class State:
 type Action = str
 
 
-def valid_input[ValueType: stormvogel.model.Value](
+def _valid_input[ValueType: stormvogel.model.Value](
     delta: Callable[[Any, Action], Any] | Callable[[Any], Any],
     init: Any,
     rewards: Callable[[Any], dict[str, ValueType]] | None = None,
@@ -198,6 +198,7 @@ def build_bird[ValueType: stormvogel.model.Value](
         model name to reward value.
     :param labels: Optional callback mapping a state to a list of label
         strings, a single label string, or ``None``.
+    :param friendly_names: Optional callback returning a friendly name for a state.
     :param available_actions: Optional callback returning the list of
         available action strings for a state. Required for MDP, POMDP,
         and MA model types.
@@ -265,7 +266,7 @@ def build_bird[ValueType: stormvogel.model.Value](
             branch.append((1, state_lookup[state]))
         return branch
 
-    valid_input(
+    _valid_input(
         delta,
         init,
         rewards,
