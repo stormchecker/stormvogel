@@ -69,6 +69,11 @@ def test_distribution_str():
     assert str(d) == "0.5 -> a, 0.5 -> b"
 
 
+def test_distribution_repr():
+    d = Distribution({"a": 0.5, "b": 0.5})
+    assert repr(d) == "Distribution({'a': 0.5, 'b': 0.5})"
+
+
 def test_distribution_iter():
     d = Distribution([(0.5, "a"), (0.5, "b")])
     items = list(d)

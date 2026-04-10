@@ -26,11 +26,11 @@ def test_str_nonempty_action():
 
 def test_repr():
     a = Action("hunt")
-    assert repr(a) == "Action with label hunt"
+    assert repr(a) == "Action('hunt')"
 
 
 def test_repr_empty():
-    assert repr(EmptyAction) == "Action with label None"
+    assert repr(EmptyAction) == "Action(None)"
 
 
 def test_lt_none_label_is_less_than_real_label():
