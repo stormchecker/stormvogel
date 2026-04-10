@@ -505,17 +505,38 @@ class JSVisualization(VisualizationBase):
             edge_js += current
         return edge_js
 
+    # Top-level keys in the layout dict that are stormvogel-specific and must
+    # not be forwarded to vis.js as network options.
+    _STORMVOGEL_LAYOUT_KEYS = frozenset(
+        {
+            "__fake_macros",
+            "edit_groups",
+            "reload_button",
+            "numbers",
+            "results",
+            "state_properties",
+            "misc",
+            "saving",
+            "positions",
+        }
+    )
+
     def _get_options(self) -> str:
-        """Return the current layout configuration as a JSON-formatted string.
+        """Return the vis.js-compatible layout configuration as a JSON-formatted string.
 
-        Serialize the layout dictionary used for visualization into a readable
-        JSON format with indentation for clarity.
+        Strips stormvogel-specific keys so that only recognized vis.js options
+        are forwarded to the network.
 
-        :returns: A pretty-printed JSON string representing the current layout configuration.
+        :returns: A pretty-printed JSON string representing the vis.js options.
         """
         import json
 
-        return json.dumps(self.layout.layout, indent=2)
+        visjs_options = {
+            k: v
+            for k, v in self.layout.layout.items()
+            if k not in self._STORMVOGEL_LAYOUT_KEYS
+        }
+        return json.dumps(visjs_options, indent=2)
 
     def set_options(self, options: str) -> None:
         """Set the layout configuration from a JSON-formatted string.
