@@ -176,25 +176,17 @@ class VisualizationBase:
             or not self.layout.layout["state_properties"]["show_observations"]
         ):
             return ""
-        elif isinstance(s.observation, list):
-            string = ""
-            for prob, obs in s.observation:
-                string += (
-                    "\n"
-                    + self.layout.layout["state_properties"]["observation_symbol"]
-                    + " "
-                    + str(obs.display())
-                    + ": "
-                    + self._format_number(prob)
-                )
-            return string
-        else:
-            return (
-                "\n"
-                + self.layout.layout["state_properties"]["observation_symbol"]
-                + " "
-                + str(s.observation)
+        obs = s.observation
+        symbol = self.layout.layout["state_properties"]["observation_symbol"]
+        if isinstance(obs, stormvogel.model.Distribution):
+            return "".join(
+                "\n" + symbol + " " + o.display() + ": " + self._format_number(p)
+                for p, o in obs
             )
+        elif isinstance(obs, stormvogel.model.Observation):
+            return "\n" + symbol + " " + obs.display()
+        else:
+            return ""
 
     def _group_state(self, s: stormvogel.model.State, default: str) -> str:
         """Determine the group of a state.
@@ -282,12 +274,13 @@ class VisualizationBase:
                 color2 = self.layout.layout["results"]["min_result_color"]
                 factor = result / max_result if max_result != 0 else 0
                 color = self._blend_colors(color1, color2, float(factor))
+        name_part = (
+            state.friendly_name
+            if state.friendly_name is not None
+            else ",".join(state.labels)
+        )
         properties = {
-            "label": id_label_part
-            + ",".join(state.labels)
-            + rewards
-            + res
-            + observations,
+            "label": id_label_part + name_part + rewards + res + observations,
             "group": group,
             "color": color,
         }
