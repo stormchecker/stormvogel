@@ -73,3 +73,56 @@ def test_distribution_iter():
     d = Distribution([(0.5, "a"), (0.5, "b")])
     items = list(d)
     assert items == [(0.5, "a"), (0.5, "b")]
+
+
+def test_distribution_from_distribution():
+    """Distribution can be constructed from another Distribution."""
+    d1 = Distribution([(0.3, "a"), (0.7, "b")])
+    d2 = Distribution(d1)
+    assert list(d2) == list(d1)
+    # Must be a copy, not the same object
+    d2["c"] = 0.1
+    assert "c" not in d1
+
+
+def test_distribution_invalid_type():
+    """Distribution raises RuntimeError for unsupported input."""
+    with pytest.raises(RuntimeError, match="Distribution expects"):
+        Distribution(42)  # type: ignore
+
+
+def test_distribution_eq_non_distribution():
+    """Distribution.__eq__ returns NotImplemented when compared to a non-Distribution."""
+    d = Distribution([(1.0, "a")])
+    result = d.__eq__("not a distribution")
+    assert result is NotImplemented
+
+
+def test_distribution_add_merges_keys():
+    """Distribution.__add__ when other is not a Distribution raises TypeError."""
+    d1 = Distribution({"a": 0.5})
+    d2 = Distribution({"b": 0.5})
+    d3 = d1 + d2
+    assert d3["a"] == 0.5
+    assert d3["b"] == 0.5
+
+
+def test_distribution_getitem():
+    """Distribution.__getitem__ returns the value for a key."""
+    d = Distribution([(0.4, "x"), (0.6, "y")])
+    assert d["x"] == 0.4
+    assert d["y"] == 0.6
+
+
+def test_distribution_eq_equal_distributions():
+    """Distribution.__eq__ returns True for two equal distributions."""
+    d1 = Distribution([(0.5, "a"), (0.5, "b")])
+    d2 = Distribution([(0.5, "a"), (0.5, "b")])
+    assert d1 == d2
+
+
+def test_distribution_eq_unequal_distributions():
+    """Distribution.__eq__ returns False for different distributions."""
+    d1 = Distribution([(0.5, "a")])
+    d2 = Distribution([(0.5, "b")])
+    assert d1 != d2
