@@ -40,6 +40,15 @@ def generate_html(
     <script>{visjs_library}</script>
     <script>{svg_canvas_library}</script>
     <style type="text/css">
+      @media (prefers-color-scheme: dark) {{
+        :root {{
+          --vis-edge-color: #aaaaaa;
+          --vis-label-color: #eeeeee;
+          --vis-stroke-color: #1e1e2e;
+        }}
+        body {{ background-color: #1e1e2e; }}
+        #{name} {{ border-color: #444; }}
+      }}
       {fill_css}
       #{name} {{
         border: 1px solid lightgray;
@@ -55,9 +64,43 @@ def generate_html(
     <script type="text/javascript">
         {generate_init_js(nodes_js, edges_js, options_js, name)}
     </script>
+    <script type="text/javascript">
+        {generate_dark_mode_js(name)}
+    </script>
   </body>
 </html>
 """
+
+
+def generate_dark_mode_js(name: str) -> str:
+    """Generate JS code that reads CSS custom properties and applies them to the vis.js network.
+
+    vis.js renders on a canvas so colors cannot be set via CSS alone; this reads
+    the CSS custom properties (which handle light/dark via media queries) and
+    forwards them to vis.js via ``network.setOptions()``.
+
+    :param name: The name of the NetworkWrapper variable (``nw_{name}``).
+    :returns: A JS code string that syncs vis.js colors with the CSS custom properties.
+    """
+    return f"""//js
+    function _applyColorScheme() {{
+        var nw = nw_{name};
+        if (!nw || !nw.network) return;
+        var s = getComputedStyle(document.documentElement);
+        var edgeColor = s.getPropertyValue('--vis-edge-color').trim();
+        var labelColor = s.getPropertyValue('--vis-label-color').trim();
+        var strokeColor = s.getPropertyValue('--vis-stroke-color').trim();
+        // Only override if CSS vars are set (dark mode); otherwise let vis.js use its defaults.
+        if (edgeColor) {{
+            nw.network.setOptions({{
+                edges: {{ color: {{ color: edgeColor, inherit: false }}, font: {{ color: labelColor, strokeColor: strokeColor }} }},
+                nodes: {{ font: {{ color: labelColor, strokeColor: strokeColor }} }}
+            }});
+        }}
+    }}
+    _applyColorScheme();
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', _applyColorScheme);
+    """
 
 
 def generate_init_js(nodes_js: str, edges_js: str, options_js: str, name: str) -> str:
