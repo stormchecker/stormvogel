@@ -16,21 +16,21 @@ def test_action_empty_string_becomes_none():
 
 
 def test_str_empty_action():
-    assert str(EmptyAction) == "EmptyAction"
+    assert str(EmptyAction) == "Action(None)"
 
 
 def test_str_nonempty_action():
     a = Action("go")
-    assert str(a) == "go"
+    assert str(a) == "Action('go')"
 
 
 def test_repr():
     a = Action("hunt")
-    assert repr(a) == "Action with label hunt"
+    assert repr(a) == "Action('hunt')"
 
 
 def test_repr_empty():
-    assert repr(EmptyAction) == "Action with label None"
+    assert repr(EmptyAction) == "Action(None)"
 
 
 def test_lt_none_label_is_less_than_real_label():
@@ -66,9 +66,9 @@ def test_action_str_roundtrip(label):
     """For non-empty labels, str(Action(label)) == label."""
     a = Action(label)
     if label == "":
-        assert str(a) == "EmptyAction"
+        assert str(a) == "Action(None)"
     else:
-        assert str(a) == label
+        assert str(a) == f"Action({label!r})"
 
 
 @given(st.text(min_size=1), st.text(min_size=1))

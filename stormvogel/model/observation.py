@@ -44,5 +44,7 @@ class Observation:
             return self.alias
         return f"{self.alias} {self.valuations}"
 
-    def __str__(self):
-        return f"Obs: {self.alias} ({self.observation_id})"
+    def __repr__(self):
+        return f"Observation({self.alias!r})"
+
+    __str__ = __repr__

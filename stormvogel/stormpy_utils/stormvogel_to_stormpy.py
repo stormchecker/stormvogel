@@ -274,7 +274,7 @@ def build_state_valuations(model: Model) -> "stormpy.storage.StateValuation":
     created_vars = set()
     for state in model.states:
         for var in sorted(state.valuations.items()):
-            name = str(var[0])
+            name = var[0].label
             if name not in created_vars:
                 storm_var = manager.create_integer_variable(name)
                 valuations.add_variable(storm_var)

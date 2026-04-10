@@ -5,7 +5,7 @@ from stormvogel.layout import PACKAGE_ROOT_DIR
 
 # An html template on which a Network is based.
 def generate_html(
-    nodes_js: str, edges_js: str, options_js: str, name: str, height: int
+    nodes_js: str, edges_js: str, options_js: str, name: str, height: int | str
 ) -> str:
     """Generate HTML that renders the network.
 
@@ -19,8 +19,7 @@ def generate_html(
     :param edges_js: JS code that generates the edges DataSet.
     :param options_js: JS code that generates the options object.
     :param name: The name of the network. Used to create a unique variable name.
-    :param width: Width of the network div in pixels.
-    :param height: Height of the network div in pixels.
+    :param height: Height of the network div. Either an integer (pixels) or a CSS string like ``"100%"``.
     :returns: An HTML string that renders the network.
     """
 
@@ -28,6 +27,10 @@ def generate_html(
         visjs_library = f.read()
     with open(PACKAGE_ROOT_DIR + "/svgcanvas.js") as f:
         svg_canvas_library = f.read()
+
+    height_css = f"{height}px" if isinstance(height, int) else height
+    fill_css = "html, body { margin: 0; height: 100%; }" if height_css == "100%" else ""
+
     # Note that double brackets {{ }} are used to escape characters '{' and '}'
     return f"""
 <!DOCTYPE html>
@@ -37,9 +40,10 @@ def generate_html(
     <script>{visjs_library}</script>
     <script>{svg_canvas_library}</script>
     <style type="text/css">
+      {fill_css}
       #{name} {{
         border: 1px solid lightgray;
-        height: {height}px;
+        height: {height_css};
       }}
     </style>
   </head>
