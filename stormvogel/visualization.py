@@ -531,14 +531,23 @@ class JSVisualization(VisualizationBase):
         options_dict = json.loads(options)
         self.layout = stormvogel.layout.Layout(layout_dict=options_dict)
 
-    def generate_html(self) -> str:
-        """Generate an HTML page representing the current state of the ``ModelGraph``."""
+    def generate_html(self, height: int | str | None = None) -> str:
+        """Generate an HTML page representing the current state of the ``ModelGraph``.
+
+        :param height: Override the layout height. Either an integer (pixels) or a CSS string like ``"100%"``.
+            If ``None``, the layout height is used.
+        """
+        resolved_height: int | str = (
+            self.layout.layout["misc"].get("height", 600) + self.EXTRA_PIXELS
+            if height is None
+            else height
+        )
         return stormvogel.html_generation.generate_html(
             self._generate_node_js(),
             self._generate_edge_js(),
             self._get_options(),
             self.name,
-            self.layout.layout["misc"].get("height", 600) + self.EXTRA_PIXELS,
+            resolved_height,
         )
 
     def generate_iframe(self) -> str:
