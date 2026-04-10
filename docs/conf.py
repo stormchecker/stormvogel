@@ -54,8 +54,7 @@ pyproject_path = Path(__file__).parents[1] / "pyproject.toml"
 with pyproject_path.open("rb") as f:
     pyproject = tomllib.load(f)
 
-version = pyproject["tool"]["poetry"]["version"]
 if _release_url and _release_tag:
     html_title = "stormvogel"
 else:
-    html_title = f"stormvogel v{version}"
+    html_title = f"stormvogel v{_release_tag}"
