@@ -9,9 +9,9 @@ COPY . /app
 WORKDIR /app
 
 # Install all dependencies directly into system Python
-# When NIGHTLY=1, install stormpy and paynt from local wheels (nightly builds).
-ARG NIGHTLY=0
-RUN if [ "$NIGHTLY" = "1" ]; then \
+# When EXPERIMENTAL=1, install stormpy and paynt from local wheels (experimental builds).
+ARG EXPERIMENTAL=0
+RUN if [ "$EXPERIMENTAL" = "1" ]; then \
         pip install --no-cache-dir . stormpy paynt pyscipopt && \
         pip install --no-cache-dir --no-deps --force-reinstall stormpy_wheel/*cp312*.whl && \
         pip install --no-cache-dir --no-deps --force-reinstall paynt_wheel/*cp312*.whl; \

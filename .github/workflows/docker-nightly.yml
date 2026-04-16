@@ -90,7 +90,7 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           pull: true
           tags: stormvogel/stormvogel:experimental
-          build-args: NIGHTLY=1
+          build-args: EXPERIMENTAL=1
 
       - name: Generate artifact attestation
         if: github.event_name == 'push'
