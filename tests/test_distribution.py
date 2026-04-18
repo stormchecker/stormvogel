@@ -25,11 +25,13 @@ def test_is_stochastic_interval():
 
 
 def test_is_stochastic_parametric():
-    from stormvogel.parametric import Polynomial
+    import sympy as sp
 
-    p1 = Polynomial(["p"])
-    p2 = Polynomial(["q"])
-    d = Distribution([(p1, "a"), (p2, "b")])
+    p = sp.Symbol("p")
+    q = sp.Symbol("q")
+    d = Distribution([(p, "a"), (q, "b")])
+    # For parametric distributions, is_stochastic is trivially True — the
+    # probabilities do not even sum to a constant.
     assert d.is_stochastic()
 
 

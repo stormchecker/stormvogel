@@ -211,20 +211,11 @@ print(stormpy_result.at(orchard_storm.initial_states[0]))
 #
 
 # %%
-# Create the correct polynomials (a parser is planned)
-one = stormvogel.parametric.Polynomial([])
-one.add_term((0,), 1)
+# Create the dice probabilities as sympy expressions.
+import sympy as sp
 
-params = [f"p{i}" for i in range(2)]
-
-parameters = [stormvogel.parametric.Polynomial([p]) for p in params]
-for i in range(2):
-    parameters[i].add_term((1,), 1)
-
-parameters.append(stormvogel.parametric.Polynomial(params))
-parameters[-1].add_term((0, 1), -1)
-parameters[-1].add_term((1, 0), -2)
-parameters[-1].add_term((0, 0), 1)
+p0, p1 = sp.symbols("p0 p1")
+parameters = [p0, p1, 1 - 2 * p0 - p1]
 
 
 # %%
@@ -270,7 +261,7 @@ def delta_pmc(state, action):
         next_state = deepcopy(state)
         next_state.pick_fruit(fruit)
         next_state.next_round()
-        return [(one, next_state)]
+        return [(1, next_state)]
 
     elif state.dice[0] == DiceOutcome.BASKET:
         assert action.startswith("choose")
@@ -279,13 +270,13 @@ def delta_pmc(state, action):
         next_state = deepcopy(state)
         next_state.pick_fruit(fruit)
         next_state.next_round()
-        return [(one, next_state)]
+        return [(1, next_state)]
 
     elif state.dice[0] == DiceOutcome.RAVEN:
         next_state = deepcopy(state)
         next_state.move_raven()
         next_state.next_round()
-        return [(one, next_state)]
+        return [(1, next_state)]
 
     assert False
 

@@ -6,6 +6,7 @@ from typing import cast, Any, Callable, Sequence
 import inspect
 from collections import deque
 from stormvogel.model import Variable
+from stormvogel import parametric
 
 
 @dataclass
@@ -241,6 +242,11 @@ def build_bird[ValueType: stormvogel.model.Value](
                     raise ValueError(
                         f"Invalid transition tuple {tup}. Expected (probability, state) or (state)."
                     )
+
+                # Register any parametric symbols before they reach the model.
+                if parametric.is_parametric(val):
+                    for name in parametric.free_symbol_names(val):
+                        model.declare_parameter(name)
 
                 if s not in state_lookup:
                     obs_kwarg = {}
