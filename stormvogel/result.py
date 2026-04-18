@@ -2,6 +2,8 @@ import stormvogel.model
 import random
 from typing import Callable
 
+from stormvogel import parametric
+
 
 class Scheduler:
     """Specify what action to take in each state.
@@ -41,41 +43,29 @@ class Scheduler:
     def generate_induced_dtmc(self) -> stormvogel.model.Model | None:
         """Resolve the nondeterminacy of the MDP and return the scheduler-induced DTMC.
 
+        Copies the MDP (preserving state UUIDs), changes the model type to DTMC,
+        and replaces each state's choices with only the scheduled action's branch.
+
         :returns: The induced DTMC, or ``None`` if the model is not an MDP.
         """
         if self.model.model_type == stormvogel.model.ModelType.MDP:
-            induced_dtmc = stormvogel.model.new_dtmc(create_initial_state=False)
+            induced = self.model.copy()
+            induced.model_type = stormvogel.model.ModelType.DTMC
 
-            # we initialize the reward models
-            for reward_model in self.model.rewards:
-                induced_dtmc.new_reward_model(reward_model.name)
-
-            # build a mapping from old states to new states
-            state_map: dict[stormvogel.model.State, stormvogel.model.State] = {}
-            for state in self.model:
-                new_state = induced_dtmc.new_state(
-                    labels=list(state.labels), valuations=state.valuations
-                )
-                state_map[state] = new_state
-
-            # add transitions with remapped state references
-            for state in self.model:
-                new_state = state_map[state]
-                action = self.get_action_at_state(state)
-                transitions = state.get_outgoing_transitions(action)
+            for orig_state in self.model:
+                new_state = induced.get_state_by_id(orig_state.state_id)
+                action = self.get_action_at_state(orig_state)
+                transitions = orig_state.get_outgoing_transitions(action)
                 assert transitions is not None
-                # remap branch targets from MDP states to induced DTMC states
-                remapped = [(prob, state_map[target]) for prob, target in transitions]
-                induced_dtmc.set_choices(new_state, remapped)
+                # Replace the full Choices with just the scheduled branch.
+                # Targets are already the copied states (same UUIDs).
+                remapped = [
+                    (prob, induced.get_state_by_id(target.state_id))
+                    for prob, target in transitions
+                ]
+                induced.set_choices(new_state, remapped)
 
-                # we also add the rewards
-                for reward_model in self.model.rewards:
-                    induced_reward_model = induced_dtmc.get_rewards(reward_model.name)
-                    reward = reward_model.get_state_reward(state)
-                    if reward is not None:
-                        induced_reward_model.set_state_reward(new_state, reward)
-
-            return induced_dtmc
+            return induced
 
     def __str__(self) -> str:
         return "taken actions: " + str(self.taken_actions)
@@ -175,9 +165,7 @@ class Result:
         values = list(self.values.values())
         max_val = values[0]
         for v in values:
-            if isinstance(v, stormvogel.model.Interval) or isinstance(
-                v, stormvogel.parametric.Parametric
-            ):
+            if isinstance(v, stormvogel.model.Interval) or parametric.is_parametric(v):
                 raise RuntimeError(
                     "maximum result function does not work for interval/parametric models"
                 )

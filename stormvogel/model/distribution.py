@@ -1,8 +1,10 @@
 """A distribution object."""
 
 import math
+from fractions import Fraction
 
-from stormvogel.model.value import Value, is_zero
+from stormvogel.model.value import Interval, Value, is_zero
+from stormvogel import parametric
 
 
 class Distribution[ValueType: Value, SupportType]:
@@ -43,16 +45,16 @@ class Distribution[ValueType: Value, SupportType]:
         return list(self._distribution.values())
 
     def is_stochastic(self, epsilon: float = 1e-6) -> bool:
-        """Returns whether this distribution sums to 1."""
-        from stormvogel.model.value import Interval
-        from stormvogel.parametric import Parametric
+        """Returns whether this distribution sums to 1.
+
+        For interval and parametric distributions we always return True.
+        """
 
         if any(
-            isinstance(v, (Interval, Parametric)) for v in self._distribution.values()
+            isinstance(v, Interval) or parametric.is_parametric(v)
+            for v in self._distribution.values()
         ):
             return True
-
-        from fractions import Fraction
 
         total = sum(
             float(v)
