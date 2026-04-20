@@ -5,7 +5,7 @@ Each step induces a DTMC from the current scheduler, evaluates it exactly via
 greedily. Results are exact sympy rationals throughout.
 """
 
-from typing import Iterable
+from typing import Iterable, Mapping
 
 import sympy as sp
 
@@ -59,7 +59,7 @@ def initial_scheduler(
 
 def policy_improvement(
     mdp: model.Model,
-    values: dict[model.State, sp.Expr],
+    values: Mapping[model.State, sp.Expr],
     one_states: Iterable[model.State],
     minimize: bool,
     current_scheduler: result.Scheduler,

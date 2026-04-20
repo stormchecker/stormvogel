@@ -305,7 +305,7 @@ def visualise_iterations(
     data = {
         f"iter {i}": [s in snap for s in states] for i, snap in enumerate(snapshots)
     }
-    df = pd.DataFrame(data, index=[s.friendly_name for s in states])
+    df = pd.DataFrame(data, index=[s.friendly_name or str(s.state_id) for s in states])
     df.index.name = "state"
 
     if highlight:

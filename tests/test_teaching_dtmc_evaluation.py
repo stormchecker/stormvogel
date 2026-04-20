@@ -27,7 +27,7 @@ def test_equations_reachability_structure():
     dtmc, s0, s_a, s_b = _simple_dtmc()
     eqs = equations_reachability(dtmc, one_states=[s_a])
     assert len(eqs) == 3
-    assert all(isinstance(eq, sp.Eq) for eq in eqs)
+    assert all(isinstance(eq, sp.Expr) for eq in eqs)
 
 
 def test_solve_reachability_simple():

@@ -4,7 +4,7 @@ Intended for teaching: results are exact rationals, and the intermediate
 linear system can be displayed in a notebook.
 """
 
-from typing import Iterable
+from typing import Iterable, cast
 
 import sympy as sp
 
@@ -104,19 +104,19 @@ def equations_reachability(
     dtmc: model.Model,
     one_states: Iterable[model.State],
     zero_states: Iterable[model.State] | None = None,
-) -> list[sp.Eq]:
-    """Return the sympy linear system for reachability probabilities in a DTMC.
+) -> list[sp.Expr]:
+    """Return the sympy residuals for the reachability linear system in a DTMC.
 
-    States in *one_states* are fixed to 1.  States in *zero_states* are fixed
-    to 0; if *zero_states* is ``None`` (the default), they are detected
-    automatically via :func:`compute_zero_states`.  All other states get the
-    equation  x_s = sum_{s'} P(s,s') * x_{s'}.
+    Each residual equals zero when the system is satisfied.  States in
+    *one_states* contribute ``x_s - 1``; states in *zero_states* contribute
+    ``x_s``; all other states contribute ``x_s - Σ P(s,s') x_{s'}``.
 
     :param dtmc: A stormvogel DTMC.
     :param one_states: States with reachability probability 1.
     :param zero_states: States with reachability probability 0, or ``None``
         to auto-detect from the graph structure.
-    :returns: List of sympy equations, one per state in ``dtmc.sorted_states``.
+    :returns: List of sympy expressions (residuals), one per state in
+        ``dtmc.sorted_states``.
     """
     _check_dtmc(dtmc)
     one_ids = {s.state_id for s in one_states}
@@ -129,17 +129,19 @@ def equations_reachability(
 
     x = _state_variables(dtmc)
 
-    equations = []
+    residuals: list[sp.Expr] = []
     for s in dtmc.sorted_states:
         if s.state_id in one_ids:
-            equations.append(sp.Eq(x[s], sp.Integer(1)))
+            residuals.append(x[s] - sp.Integer(1))
         elif s.state_id in zero_ids:
-            equations.append(sp.Eq(x[s], sp.Integer(0)))
+            residuals.append(x[s])
         else:
             _, branch = next(iter(s.choices))
-            rhs = sum(sp.nsimplify(prob) * x[s_next] for prob, s_next in branch)
-            equations.append(sp.Eq(x[s], rhs))
-    return equations
+            rhs: sp.Expr = sum(  # type: ignore[assignment]
+                sp.nsimplify(prob) * x[s_next] for prob, s_next in branch
+            )
+            residuals.append(x[s] - rhs)
+    return residuals
 
 
 def equations_expected_reward(
@@ -147,11 +149,12 @@ def equations_expected_reward(
     reward_model: model.RewardModel,
     terminal_states: Iterable[model.State],
     discount: sp.Expr = sp.Integer(1),
-) -> list[sp.Eq]:
-    """Return the sympy linear system for expected rewards in a DTMC.
+) -> list[sp.Expr]:
+    """Return the sympy residuals for the expected-reward linear system in a DTMC.
 
-    Terminal states are fixed to 0.  For every non-terminal state the equation
-    is :math:`x_s = r_s + \\gamma \\sum_{s'} P(s,s')\\,x_{s'}`.
+    Each residual equals zero when the system is satisfied.  Terminal states
+    contribute ``x_s``; non-terminal states contribute
+    ``x_s - r_s - γ Σ P(s,s') x_{s'}``.
 
     For *undiscounted* problems (*discount* = 1) the system is ill-defined when
     a non-terminal state cannot reach any terminal state, because the expected
@@ -191,18 +194,18 @@ def equations_expected_reward(
             )
 
     x = _state_variables(dtmc)
-    equations = []
+    residuals: list[sp.Expr] = []
     for s in dtmc.sorted_states:
         if s.state_id in terminal_ids:
-            equations.append(sp.Eq(x[s], sp.Integer(0)))
+            residuals.append(x[s])
         else:
             _, branch = next(iter(s.choices))
             reward = sp.nsimplify(reward_model.get_state_reward(s) or 0)
-            successor_sum = sum(
+            successor_sum: sp.Expr = sum(  # type: ignore[assignment]
                 sp.nsimplify(prob) * x[s_next] for prob, s_next in branch
             )
-            equations.append(sp.Eq(x[s], reward + discount_sym * successor_sum))
-    return equations
+            residuals.append(x[s] - reward - discount_sym * successor_sum)
+    return residuals
 
 
 def solve_expected_reward(
@@ -224,11 +227,11 @@ def solve_expected_reward(
     x = _state_variables(dtmc)
     symbols = [x[s] for s in dtmc.sorted_states]
 
-    eqs = equations_expected_reward(dtmc, reward_model, terminal_states, discount)
-    solution = sp.linsolve([eq.lhs - eq.rhs for eq in eqs], symbols)
+    residuals = equations_expected_reward(dtmc, reward_model, terminal_states, discount)
+    solution = sp.linsolve(residuals, symbols)
     if not solution or solution == sp.EmptySet:
         raise ValueError("Expected reward system has no unique solution.")
-    values_tuple = next(iter(solution))
+    values_tuple = cast(tuple[sp.Expr, ...], next(iter(solution)))
     return {s: v for s, v in zip(dtmc.sorted_states, values_tuple)}
 
 
@@ -250,9 +253,9 @@ def solve_reachability(
     x = _state_variables(dtmc)
     symbols = [x[s] for s in dtmc.sorted_states]
 
-    eqs = equations_reachability(dtmc, one_states, zero_states)
-    solution = sp.linsolve([eq.lhs - eq.rhs for eq in eqs], symbols)
+    residuals = equations_reachability(dtmc, one_states, zero_states)
+    solution = sp.linsolve(residuals, symbols)
     if not solution or solution == sp.EmptySet:
         raise ValueError("Reachability system has no unique solution.")
-    values_tuple = next(iter(solution))
+    values_tuple = cast(tuple[sp.Expr, ...], next(iter(solution)))
     return {s: v for s, v in zip(dtmc.sorted_states, values_tuple)}
