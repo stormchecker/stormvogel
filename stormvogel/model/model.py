@@ -836,72 +836,19 @@ class Model[ValueType: Value]:
             self.add_self_loops()
 
     def copy(self) -> "Model":
-        """Return a structural copy of this model with the same state UUIDs.
+        """Return a deep copy of this model, preserving all state UUIDs.
 
         Each state in the copy shares the same ``state_id`` as its original,
-        so callers can build an ``old_state → new_state`` map via
-        ``{s: new_model.get_state_by_id(s.state_id) for s in self.states}``.
-        Transitions, labels, valuations, friendly names, reward models, and
-        declared parameters are all copied; the ``initial_state`` is set to
-        the copy of the original.
+        so callers can cross-reference states via
+        ``new_model.get_state_by_id(s.state_id)``.
+
+        Implemented via :func:`copy.deepcopy`, so all current and future
+        fields are included automatically.  Sympy expressions (parametric
+        transition probabilities) are immutable and shared by reference.
 
         :returns: A new :class:`Model` with identical structure.
         """
-        m = Model(self.model_type, create_initial_state=False)
-
-        # Parameters
-        m._parameters = dict(self._parameters)
-
-        # Observations (must be created before states that reference them)
-        obs_map: dict[Observation, Observation] = {}
-        if self.supports_observations():
-            for obs, alias in self.observation_aliases.items():
-                new_obs = Observation(m, observation_id=obs.observation_id)
-                m.observation_aliases[new_obs] = alias
-                m.observation_valuations[new_obs] = dict(
-                    self.observation_valuations[obs]
-                )
-                obs_map[obs] = new_obs
-
-        # States (preserve UUIDs)
-        state_map: dict[State, State] = {}
-        for s in self.states:
-            obs = None
-            if self.supports_observations() and self.state_observations:
-                raw_obs = self.state_observations.get(s)
-                if isinstance(raw_obs, Observation):
-                    obs = obs_map.get(raw_obs, raw_obs)
-                else:
-                    obs = raw_obs
-            new_s = m.new_state(
-                labels=list(s.labels),
-                valuations=dict(s.valuations),
-                observation=obs,
-                state_id=s.state_id,
-            )
-            fn = self.friendly_names.get(s)
-            if fn is not None:
-                new_s.set_friendly_name(fn)
-            state_map[s] = new_s
-
-        # Transitions
-        for s, choices in self.transitions.items():
-            new_s = state_map[s]
-            new_choices: dict[Action, Distribution] = {}
-            for action, branch in choices:
-                new_choices[action] = Distribution({state_map[t]: v for v, t in branch})
-            m.transitions[new_s] = Choices(new_choices)
-
-        # Reward models
-        for rm in self.rewards:
-            new_rm = m.new_reward_model(rm.name)
-            for s, v in rm.rewards.items():
-                new_rm.rewards[state_map[s]] = v
-
-        # Markovian states (MA)
-        m.markovian_states = {state_map[s] for s in self.markovian_states}
-
-        return m
+        return deepcopy(self)
 
     def get_sub_model(self, states: Iterable[State], normalize: bool = True) -> "Model":
         """Return a submodel containing only the given states.
