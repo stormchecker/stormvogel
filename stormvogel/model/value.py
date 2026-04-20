@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 
 from stormvogel import parametric
+from stormvogel.parametric import Parametric
 
 import math
 
@@ -28,19 +29,18 @@ class Interval:
         return f"[{self.lower},{self.upper}]"
 
 
-Value = Number | parametric.Parametric | Interval
+Value = Number | Parametric | Interval
 
 
 def is_zero(value: Value) -> bool:
     """Returns whether a value is zero."""
     if isinstance(value, (int, float, Fraction)):
         return value == 0
-    elif isinstance(value, Interval):
+    if isinstance(value, Interval):
         return value.lower == 0 and value.upper == 0
-    elif isinstance(value, parametric.Parametric):
-        return value.is_zero()
-    else:
-        raise TypeError("Unsupported type for is_zero")
+    if parametric.is_parametric(value):
+        return parametric.is_zero(value)
+    raise TypeError(f"Unsupported type for is_zero: {type(value).__name__}")
 
 
 def value_to_string(
@@ -61,16 +61,18 @@ def value_to_string(
             return str(Fraction(n).limit_denominator(denom_limit))
         else:
             return str(round(float(n), round_digits))
-    elif isinstance(
+    if isinstance(
         n, Fraction
     ):  # In the case of Fraction, a denominator of zero would have caused an error before.
         if use_fractions:
             return str(n.limit_denominator(denom_limit))
         else:
             return str(round(float(n), round_digits))
-    elif isinstance(n, parametric.Parametric):
-        return str(n)
-    elif isinstance(n, Interval):
-        return f"[{value_to_string(n.lower, use_fractions, round_digits, denom_limit)},{value_to_string(n.upper, use_fractions, round_digits, denom_limit)}]"
-    else:
-        return str(n)
+    if isinstance(n, Interval):
+        return (
+            f"[{value_to_string(n.lower, use_fractions, round_digits, denom_limit)},"
+            f"{value_to_string(n.upper, use_fractions, round_digits, denom_limit)}]"
+        )
+    if parametric.is_parametric(n):
+        return parametric.to_str(n)
+    return str(n)

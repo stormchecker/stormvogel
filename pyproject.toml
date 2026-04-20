@@ -45,7 +45,7 @@ hypothesis = "^6.151.12"
 [tool.poetry.group.lint.dependencies]
 pre-commit = "^3.7.1"
 ruff = "^0.4.6"
-pyright = "^1.1.368"
+pyright = "^1.1.408"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.4"
