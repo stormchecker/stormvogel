@@ -43,9 +43,61 @@ def create_knuth_yao_pmc():
         if s.s == 7:
             return f"rolled{str(s.d)}"
 
+    def friendly_names(s: bird.State) -> str:
+        return "s" + str(s.s) if s.s != 7 else "=" + str(s.d)
+
     return bird.build_bird(
         delta=delta,
         labels=labels,
+        friendly_names=friendly_names,
+        init=initial_state,
+        modeltype=model.ModelType.DTMC,
+    )
+
+
+def create_knuth_yao_pmc_twocoins():
+    """Build the Knuth--Yao dice as a parametric DTMC."""
+    x = sp.Symbol("x")
+    y = sp.Symbol("y")
+
+    initial_state = bird.State(s=0)
+
+    def delta(s: bird.State):
+        match s.s:
+            case 0:
+                return [(x, bird.State(s=1)), (1 - x, bird.State(s=2))]
+            case 1:
+                return [(y, bird.State(s=3)), (1 - y, bird.State(s=4))]
+            case 2:
+                return [(y, bird.State(s=5)), (1 - y, bird.State(s=6))]
+            case 3:
+                return [(x, bird.State(s=1)), (1 - x, bird.State(s=7, d=1))]
+            case 4:
+                return [
+                    (x, bird.State(s=7, d=2)),
+                    (1 - x, bird.State(s=7, d=3)),
+                ]
+            case 5:
+                return [
+                    (x, bird.State(s=7, d=4)),
+                    (1 - x, bird.State(s=7, d=5)),
+                ]
+            case 6:
+                return [(x, bird.State(s=2)), (1 - x, bird.State(s=7, d=6))]
+            case 7:
+                return [(1, s)]
+
+    def labels(s: bird.State) -> str | None:
+        if s.s == 7:
+            return f"rolled{str(s.d)}"
+
+    def friendly_names(s: bird.State) -> str:
+        return "s" + str(s.s) if s.s != 7 else "=" + str(s.d)
+
+    return bird.build_bird(
+        delta=delta,
+        labels=labels,
+        friendly_names=friendly_names,
         init=initial_state,
         modeltype=model.ModelType.DTMC,
     )

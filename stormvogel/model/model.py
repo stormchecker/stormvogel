@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 
 from copy import deepcopy
 
-from deprecated import deprecated
+from deprecated import deprecated  # type: ignore[import]
 
 from stormvogel.model.choices import Choices, ChoicesShorthand, choices_from_shorthand
 from stormvogel.model.action import Action, EmptyAction
@@ -490,6 +490,10 @@ class Model[ValueType: Value]:
             if state.state_id == state_id:
                 return state
         raise RuntimeError(f"State with id {state_id} not found.")
+
+    def predecessors(self, s: State) -> list[State]:
+        """Return all states with a non-zero transition to *s*. Note that this operation is slow."""
+        return [c for c in self.states if s in self.get_successor_states(c)]
 
     # Observation management
 

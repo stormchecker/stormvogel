@@ -1294,3 +1294,95 @@ def test_observation_valuations_missing_raises_runtimeerror():
     del pomdp.observation_valuations[obs]
     with pytest.raises(RuntimeError, match="does not have valuations"):
         _ = obs.valuations
+
+
+# ---------------------------------------------------------------------------
+# copy() — back-reference integrity and remove_state safety
+# ---------------------------------------------------------------------------
+
+
+def _make_copy_test_dtmc():
+    m = stormvogel.model.new_dtmc(create_initial_state=False)
+    s0 = m.new_state(labels=["init"])
+    sa = m.new_state(labels=["A"])
+    sb = m.new_state(labels=["B"])
+    m.set_choices(s0, [(0.5, sa), (0.5, sb)])
+    m.set_choices(sa, [(1, sb)])
+    m.set_choices(sb, [(1, sb)])
+    return m
+
+
+def _make_copy_test_pomdp():
+    m = stormvogel.model.new_pomdp(create_initial_state=False)
+    obs_i = m.new_observation("obs_init")
+    obs_a = m.new_observation("obs_A")
+    obs_b = m.new_observation("obs_B")
+    s0 = m.new_state(labels=["init"], observation=obs_i)
+    sa = m.new_state(labels=["A"], observation=obs_a)
+    sb = m.new_state(labels=["B"], observation=obs_b)
+    m.set_choices(s0, [(0.5, sa), (0.5, sb)])
+    m.set_choices(sa, [(1, sb)])
+    m.set_choices(sb, [(1, sb)])
+    return m
+
+
+def test_copy_state_model_points_to_copy():
+    """Every state in the copy must reference the copy, not the original."""
+    m = _make_copy_test_dtmc()
+    c = m.copy()
+    for s in c.states:
+        assert s.model is c
+        assert s.model is not m
+
+
+def test_copy_observation_model_points_to_copy():
+    """Every observation in the copy must reference the copy, not the original."""
+    m = _make_copy_test_pomdp()
+    c = m.copy()
+    for obs in c.observation_aliases:
+        assert obs.model is c
+        assert obs.model is not m
+
+
+def test_copy_state_label_mutation_does_not_affect_original():
+    """Mutating a copy state's labels must not touch the original model."""
+    m = _make_copy_test_dtmc()
+    c = m.copy()
+    copy_sa = next(iter(c.get_states_with_label("A")))
+    copy_sa.set_labels({"A", "extra"})
+    assert not any("extra" in list(s.labels) for s in m.states)
+
+
+def test_copy_observation_alias_resolves_via_copy_model():
+    """obs.alias goes through obs.model.observation_aliases — must use copy's table."""
+    m = _make_copy_test_pomdp()
+    c = m.copy()
+    copy_s0 = next(iter(c.get_states_with_label("init")))
+    assert copy_s0.observation is not None
+    assert copy_s0.observation.alias == "obs_init"
+
+
+def test_remove_state_from_copy_does_not_affect_original():
+    m = _make_copy_test_dtmc()
+    c = m.copy()
+    c.remove_state(next(iter(c.get_states_with_label("A"))), suppress_warning=True)
+
+    assert len(m.states) == 3
+    assert len(c.states) == 2
+    assert len(list(m.get_states_with_label("A"))) == 1
+    assert len(list(c.get_states_with_label("A"))) == 0
+
+
+def test_remove_state_from_pomdp_copy_does_not_affect_original():
+    m = _make_copy_test_pomdp()
+    c = m.copy()
+    c.remove_state(next(iter(c.get_states_with_label("A"))), suppress_warning=True)
+
+    assert len(m.states) == 3
+    m_init_obs = next(iter(m.get_states_with_label("init"))).observation
+    assert m_init_obs is not None
+    assert m_init_obs.alias == "obs_init"
+    # remaining copy states still resolve their observations through the copy
+    c_B_obs = next(iter(c.get_states_with_label("B"))).observation
+    assert c_B_obs is not None
+    assert c_B_obs.alias == "obs_B"
