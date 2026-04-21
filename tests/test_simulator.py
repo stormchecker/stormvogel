@@ -1,9 +1,12 @@
+import pytest
+
 import stormvogel.examples.die
 import stormvogel.examples.monty_hall
 import stormvogel.examples.nuclear_fusion_ctmc
 import stormvogel.examples.monty_hall_pomdp
 from stormvogel.examples.lion import create_lion_mdp
 import stormvogel.model
+import stormvogel.result
 from stormvogel.model.variable import Variable
 import stormvogel.simulator as simulator
 from model_testing import assert_models_equal, assert_paths_equal
@@ -66,10 +69,10 @@ def test_simulate():
     taken_actions = {}
     for state in mdp:
         taken_actions[state] = state.available_actions()[0]
-    scheduler = stormvogel.result.Scheduler(mdp, taken_actions)
+    sched_obj = stormvogel.result.Scheduler(mdp, taken_actions)
 
     partial_model = simulator.simulate(
-        mdp, runs=1, steps=3, seed=1, scheduler=scheduler
+        mdp, runs=1, steps=3, seed=1, scheduler=sched_obj
     )
 
     # Verify structural properties of the partial model
@@ -203,8 +206,8 @@ def test_simulate_path():
         taken_actions[state] = state.available_actions()[
             len(state.available_actions()) - 1
         ]
-    scheduler = stormvogel.result.Scheduler(pomdp, taken_actions)
-    path = simulator.simulate_path(pomdp, steps=4, seed=1, scheduler=scheduler)
+    sched_obj = stormvogel.result.Scheduler(pomdp, taken_actions)
+    path = simulator.simulate_path(pomdp, steps=4, seed=1, scheduler=sched_obj)
 
     # Verify the path is valid (each transition exists in the model)
     assert len(path.path) == 4  # steps=4
@@ -453,3 +456,98 @@ def test_simulate_mdp_revisited_state_has_reward():
         assert r is not None, f"State {list(state.labels)} has no reward"
         if state.has_label("s1"):
             assert r == 99
+
+
+def _simple_dtmc():
+    dtmc = stormvogel.model.new_dtmc()
+    s1 = dtmc.new_state("s1")
+    dtmc.initial_state.set_choices([(1.0, s1)])
+    dtmc.add_self_loops()
+    return dtmc
+
+
+def _simple_mdp():
+    mdp = stormvogel.model.new_mdp()
+    act = mdp.new_action("go")
+    s1 = mdp.new_state("s1")
+    mdp.initial_state.set_choices([(act, s1)])
+    mdp.add_self_loops()
+    return mdp, act, s1
+
+
+def test_path_init_ma_raises():
+    """Path.__init__ raises NotImplementedError for MA models."""
+    ma = stormvogel.model.new_ma()
+    with pytest.raises(NotImplementedError):
+        simulator.Path([], ma)
+
+
+def test_path_get_state_in_step_dtmc():
+    """Path.get_state_in_step for a DTMC path."""
+    dtmc = _simple_dtmc()
+    s1 = dtmc.states[1]
+    path = simulator.Path([s1], dtmc)
+    assert path.get_state_in_step(0) == s1
+
+
+def test_path_get_state_in_step_mdp():
+    """Path.get_state_in_step for an MDP path."""
+    mdp, act, s1 = _simple_mdp()
+    path = simulator.Path([(act, s1)], mdp)
+    assert path.get_state_in_step(0) == s1
+
+
+def test_path_get_action_in_step():
+    """Path.get_action_in_step for an MDP path."""
+    mdp, act, s1 = _simple_mdp()
+    path = simulator.Path([(act, s1)], mdp)
+    assert path.get_action_in_step(0) == act
+
+
+def test_path_get_step():
+    """Path.get_step returns the raw entry."""
+    mdp, act, s1 = _simple_mdp()
+    path = simulator.Path([(act, s1)], mdp)
+    assert path.get_step(0) == (act, s1)
+
+
+def test_path_to_state_action_sequence_mdp():
+    """Path.to_state_action_sequence for an MDP path."""
+    mdp, act, s1 = _simple_mdp()
+    path = simulator.Path([(act, s1)], mdp)
+    seq = path.to_state_action_sequence()
+    assert mdp.initial_state in seq
+    assert act in seq
+    assert s1 in seq
+
+
+def test_path_str_mdp():
+    """Path.__str__ for an MDP path."""
+    mdp, act, s1 = _simple_mdp()
+    path = simulator.Path([(act, s1)], mdp)
+    s = str(path)
+    assert "action" in s
+
+
+def test_path_str_dtmc():
+    """Path.__str__ for a DTMC path."""
+    dtmc = _simple_dtmc()
+    s1 = dtmc.states[1]
+    path = simulator.Path([s1], dtmc)
+    s = str(path)
+    assert "state" in s
+
+
+def test_path_len():
+    """Path.__len__."""
+    dtmc = _simple_dtmc()
+    s1 = dtmc.states[1]
+    path = simulator.Path([s1, s1], dtmc)
+    assert len(path) == 2
+
+
+def test_get_action_at_state_type_error():
+    """get_action_at_state raises TypeError for invalid scheduler."""
+    dtmc = _simple_dtmc()
+    with pytest.raises(TypeError):
+        simulator.get_action_at_state(dtmc.initial_state, 42)  # type: ignore

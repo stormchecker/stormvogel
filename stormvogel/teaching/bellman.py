@@ -84,12 +84,12 @@ def minreachprob(model: model.Model[float], target_label: str, operator=False):
     )
 
 
-def zero_value(model: model.Model):
-    return OrderedDict([(s, 0) for s in model.sorted_states])
+def zero_value(model: model.Model) -> dict[model.State, model.Value]:
+    return OrderedDict([(s, 0.0) for s in model.sorted_states])
 
 
-def one_value(model: model.Model):
-    return OrderedDict([(s, 1) for s in model.sorted_states])
+def one_value(model: model.Model) -> dict[model.State, model.Value]:
+    return OrderedDict([(s, 1.0) for s in model.sorted_states])
 
 
 def value_to_latex(values: dict[model.State, model.Value], name="V"):

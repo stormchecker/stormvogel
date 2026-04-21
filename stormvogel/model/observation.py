@@ -25,7 +25,7 @@ class Observation:
         """Return the variable-value pairs observed in this observation."""
         if self not in self.model.observation_valuations:
             raise RuntimeError(
-                f"Observation {self} does not have valuations in the model."
+                f"Observation {self.observation_id} does not have valuations in the model."
             )
         return self.model.observation_valuations[self]
 
@@ -34,15 +34,17 @@ class Observation:
         """Return the alias of this observation."""
         if self not in self.model.observation_aliases:
             raise RuntimeError(
-                f"Observation {self} does not have an alias in the model."
+                f"Observation {self.observation_id} does not have an alias in the model."
             )
         return self.model.observation_aliases[self]
 
     def display(self):
         """Format the observation for visualizations."""
-        if self.valuations is None:
+        if not self.valuations:
             return self.alias
         return f"{self.alias} {self.valuations}"
 
-    def __str__(self):
-        return f"Obs: {self.alias} ({self.observation_id})"
+    def __repr__(self):
+        return f"Observation({self.alias!r})"
+
+    __str__ = __repr__

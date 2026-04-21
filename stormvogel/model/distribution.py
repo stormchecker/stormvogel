@@ -66,9 +66,10 @@ class Distribution[ValueType: Value, SupportType]:
             return NotImplemented
         return self._distribution == other._distribution
 
-    def __str__(self) -> str:
-        parts = [f"{v} -> {s}" for s, v in self._distribution.items()]
-        return ", ".join(parts)
+    def __repr__(self) -> str:
+        return f"Distribution({self._distribution!r})"
+
+    __str__ = __repr__
 
     def __add__(
         self, other: "Distribution[ValueType, SupportType]"

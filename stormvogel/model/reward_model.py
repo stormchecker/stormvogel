@@ -46,13 +46,19 @@ class RewardModel[ValueType: Value]:
                 and self.model.supports_actions()
                 and s in self.model.transitions
             ):
+                n_actions = len(list(s.available_actions()))
                 # check that all entries for this state have the same reward, otherwise raise an error
-                for _ in s.available_actions():
-                    if vector[combined_id] != self.rewards[s]:
+                for i in range(1, n_actions):
+                    if combined_id + i >= len(vector):
+                        raise ValueError(
+                            f"Reward vector too short: expected entry at index {combined_id + i} "
+                            f"for state {s}, but vector has length {len(vector)}."
+                        )
+                    if vector[combined_id + i] != vector[combined_id]:
                         raise ValueError(
                             f"Reward vector has different values for different actions of state {s}."
                         )
-                combined_id += len(list(s.available_actions()))
+                combined_id += n_actions
             else:
                 combined_id += 1
 

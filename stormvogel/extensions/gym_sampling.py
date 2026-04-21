@@ -72,7 +72,7 @@ def sample_to_stormvogel(
     initial_states: defaultdict[Any, int],
     transition_counts: defaultdict[Tuple[Any, Any], defaultdict[Any, int]],
     transition_samples: defaultdict[Tuple[Any, Any], int],
-    reward_sums: defaultdict[Tuple[Any, Any], int],
+    reward_sums: defaultdict[Tuple[Any, Any], float],
     no_actions: int,
     no_samples: int,
     max_size: int = 10000,

@@ -5,13 +5,9 @@ import pytest
 from model_testing import assert_models_equal
 
 
-try:
-    import stormpy
-except ImportError:
-    stormpy = None
+stormpy = pytest.importorskip("stormpy")
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_pmc_conversion():
     # Create a new model
     pmc = stormvogel.model.new_dtmc()
@@ -51,7 +47,6 @@ def test_pmc_conversion():
     assert_models_equal(pmc, new_pmc)
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_pmdp_conversion():
     # Create a new model
     pmdp = stormvogel.model.new_mdp()
@@ -99,7 +94,6 @@ def test_pmdp_conversion():
     assert_models_equal(pmdp, new_pmdp)
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_pmc_conversion_from_stormpy():
     import stormvogel.examples.stormpy_examples.stormpy_pmc
 
@@ -113,7 +107,6 @@ def test_pmc_conversion_from_stormpy():
     assert_models_equal(stormvogel_pmc, new_stormvogel_pmc)
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_pmc_valuations():
     # we build a simple pmc
     pmc = stormvogel.model.new_dtmc()

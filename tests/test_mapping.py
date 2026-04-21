@@ -14,10 +14,7 @@ import re
 from typing import Union
 from model_testing import assert_models_equal
 
-try:
-    import stormpy
-except ImportError:
-    stormpy = None
+stormpy = pytest.importorskip("stormpy")
 
 
 def sparse_equal(
@@ -28,8 +25,6 @@ def sparse_equal(
     outputs true if the sparse models are the same and false otherwise
     Note: this function is only here because the equality functions in storm do not work currently.
     """
-    assert stormpy is not None
-
     # check if states are the same:
     states_equal = True
     for i in range(m0.nr_states):
@@ -107,9 +102,7 @@ def sparse_equal(
     )
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormpy_to_stormvogel_and_back_dtmc():
-    assert stormpy is not None
     # we test it for an example stormpy representation of a dtmc
     stormpy_dtmc = (
         stormvogel.examples.stormpy_examples.stormpy_dtmc.example_building_dtmcs_01()
@@ -124,9 +117,7 @@ def test_stormpy_to_stormvogel_and_back_dtmc():
     assert sparse_equal(stormpy_dtmc, new_stormpy_dtmc)
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormvogel_to_stormpy_and_back_dtmc():
-    assert stormpy is not None
     # we test it for the die dtmc
     stormvogel_dtmc = stormvogel.examples.die.create_die_dtmc()
 
@@ -147,7 +138,6 @@ def test_stormvogel_to_stormpy_and_back_dtmc():
     assert_models_equal(new_stormvogel_dtmc, stormvogel_dtmc)
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormpy_to_stormvogel_and_back_mdp():
     # we test it for an example stormpy representation of an mdp
     stormpy_mdp = (
@@ -163,9 +153,7 @@ def test_stormpy_to_stormvogel_and_back_mdp():
     assert sparse_equal(stormpy_mdp, new_stormpy_mdp)
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormvogel_to_stormpy_and_back_mdp():
-    assert stormpy is not None
     # we test it for monty hall mdp
     stormvogel_mdp = stormvogel.examples.monty_hall.create_monty_hall_mdp()
 
@@ -183,9 +171,7 @@ def test_stormvogel_to_stormpy_and_back_mdp():
     assert_models_equal(new_stormvogel_mdp, stormvogel_mdp)
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormvogel_to_stormpy_and_back_ctmc():
-    assert stormpy is not None
     # we create a stormpy representation of an example ctmc
     stormvogel_ctmc = (
         stormvogel.examples.nuclear_fusion_ctmc.create_nuclear_fusion_ctmc()
@@ -199,9 +185,7 @@ def test_stormvogel_to_stormpy_and_back_ctmc():
     assert_models_equal(new_stormvogel_ctmc, stormvogel_ctmc)
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormpy_to_stormvogel_and_back_ctmc():
-    assert stormpy is not None
     # we create a stormpy representation of an example ctmc
     stormpy_ctmc = (
         stormvogel.examples.stormpy_examples.stormpy_ctmc.example_building_ctmcs_01()
@@ -216,9 +200,7 @@ def test_stormpy_to_stormvogel_and_back_ctmc():
     assert sparse_equal(stormpy_ctmc, new_stormpy_ctmc)
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormvogel_to_stormpy_and_back_pomdp():
-    assert stormpy is not None
     # we create a stormpy representation of an example pomdp
     stormvogel_pomdp = stormvogel.examples.monty_hall_pomdp.create_monty_hall_pomdp()
     stormpy_pomdp = mapping.stormvogel_to_stormpy(stormvogel_pomdp)
@@ -227,9 +209,7 @@ def test_stormvogel_to_stormpy_and_back_pomdp():
     assert_models_equal(new_stormvogel_pomdp, stormvogel_pomdp)
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormpy_to_stormvogel_and_back_pomdp():
-    assert stormpy is not None
     # we create a stormpy representation of an example pomdp
     stormpy_pomdp = (
         stormvogel.examples.stormpy_examples.stormpy_pomdp.example_building_pomdps_01()
@@ -284,9 +264,7 @@ def test_stormpy_to_stormvogel_and_back_pomdp():
 #     assert new_stormvogel_ma == stormvogel_ma
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_stormpy_to_stormvogel_and_back_ma():
-    assert stormpy is not None
     # we create a stormpy representation of an example ma
     stormpy_ma = (
         stormvogel.examples.stormpy_examples.stormpy_ma.example_building_mas_01()
@@ -304,9 +282,7 @@ def test_stormpy_to_stormvogel_and_back_ma():
 # Tests for modified models (to test if removing states does not cause problems)
 
 
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_modified_stormpy_to_stormvogel_and_back():
-    assert stormpy is not None
     # we build a simple stormpy dtmc
     builder = stormpy.SparseMatrixBuilder(
         rows=0,
@@ -389,7 +365,6 @@ def test_modified_stormpy_to_stormvogel_and_back():
 
 
 # Test id mappings in case they are out of order
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_id_mapping():
     # make stormvogel model of dtmc
     stormvogel_dtmc = stormvogel.examples.die.create_die_dtmc()
@@ -408,7 +383,6 @@ def test_id_mapping():
 
 
 # we test if a model with multiple states without incoming transitions (>2) gives an error
-@pytest.mark.skipif(stormpy is None, reason="stormpy is not available")
 def test_labels():
     model = stormvogel.model.new_dtmc(create_initial_state=False)
     model.new_state()
