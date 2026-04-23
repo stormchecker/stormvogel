@@ -8,7 +8,7 @@ only when called.
 from __future__ import annotations
 
 from fractions import Fraction
-from typing import Any
+from typing import Any, cast
 
 import sympy as sp
 
@@ -66,7 +66,7 @@ def _degree_sympy(value: sp.Expr) -> int:
 
 @evaluate.register(sp.Expr)
 def _evaluate_sympy(value: sp.Expr, values: dict[str, Number]):
-    subs: dict[sp.Symbol, Number] = {}
+    subs: dict[sp.Symbol, Any] = {}
     # Map string keys to whatever Symbol objects the expression already uses,
     # so that assumptions on declared symbols are preserved.
     by_name = {s.name: s for s in value.free_symbols}
@@ -78,8 +78,9 @@ def _evaluate_sympy(value: sp.Expr, values: dict[str, Number]):
             if sym is None:
                 # Key not referenced by this expression — harmless, just skip.
                 continue
+            assert isinstance(sym, sp.Symbol)
             subs[sym] = v
-    substituted = value.subs(subs)
+    substituted = value.subs(cast(Any, subs))
     # Coerce to a native Python number when possible.
     if substituted.is_Integer:
         return int(substituted)
@@ -226,17 +227,17 @@ class SympyBackend:
 
         if denominator.is_constant() and float(denominator.constant_part()) == 1:
             if numerator.is_constant():
-                # Plain number — hand back a Python float so the caller can
+                # Plain number — hand back a sympy Float so the caller can
                 # treat it as non-parametric.
-                return float(numerator.constant_part())
+                return sp.Float(float(numerator.constant_part()))
             names = _poly_symbols(numerator)
             locals_ = {n: sp.Symbol(n) for n in names}
-            return sp.sympify(_poly_str(numerator), locals=locals_)
+            return sp.sympify(_poly_str(numerator), locals_)  # type: ignore[call-overload]
 
         names = set(_poly_symbols(numerator)) | set(_poly_symbols(denominator))
         locals_ = {n: sp.Symbol(n) for n in names}
-        num = sp.sympify(_poly_str(numerator), locals=locals_)
-        den = sp.sympify(_poly_str(denominator), locals=locals_)
+        num = sp.sympify(_poly_str(numerator), locals_)  # type: ignore[call-overload]
+        den = sp.sympify(_poly_str(denominator), locals_)  # type: ignore[call-overload]
         return num / den
 
 

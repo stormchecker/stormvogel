@@ -173,6 +173,10 @@ def visualise_iterations(iterations, background_gradient: str | None = None):
 
 
 class VI:
+    """
+    Plain value iteration.
+    """
+
     def __init__(
         self, operator: BellmanOperator, initial_values: dict[model.State, model.Value]
     ):
@@ -189,6 +193,10 @@ class VI:
 
 
 class IVI:
+    """
+    Interval value iteration: Run two independent iterations simultaneously; one from above, and one from below.
+    """
+
     def __init__(self, lowerVI: VI, upperVI: VI):
         self._lowerVI = lowerVI
         self._upperVI = upperVI
@@ -196,3 +204,7 @@ class IVI:
     def step(self):
         self._lowerVI.step()
         self._upperVI.step()
+
+    @property
+    def current_values(self):
+        return zip(self._lowerVI.current_values, self._upperVI.current_values)

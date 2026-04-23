@@ -160,6 +160,9 @@ __all__ = [
     "Number",
     "Parametric",
     "ParametricBackend",
+    # Regions and interval MDP
+    "RectangularRegion",
+    "to_interval_mdp",
     # Generic helpers
     "is_zero",
     "free_symbol_names",
@@ -184,3 +187,4 @@ __all__ = [
 # generics defined above. Keep this import at module bottom to avoid
 # circular-import pitfalls.
 from stormvogel.parametric import sympy_backend as _sympy_backend  # noqa: E402, F401
+from stormvogel.parametric.region import RectangularRegion, to_interval_mdp  # noqa: E402

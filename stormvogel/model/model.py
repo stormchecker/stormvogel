@@ -6,7 +6,7 @@ from uuid import UUID
 
 from copy import deepcopy
 
-from deprecated import deprecated
+from deprecated import deprecated  # type: ignore[import]
 
 from stormvogel.model.choices import Choices, ChoicesShorthand, choices_from_shorthand
 from stormvogel.model.action import Action, EmptyAction
@@ -494,6 +494,10 @@ class Model[ValueType: Value]:
                 return state
         raise RuntimeError(f"State with id {state_id} not found.")
 
+    def predecessors(self, s: State) -> list[State]:
+        """Return all states with a non-zero transition to *s*. Note that this operation is slow."""
+        return [c for c in self.states if s in self.get_successor_states(c)]
+
     # Observation management
 
     def new_observation(
@@ -921,6 +925,21 @@ class Model[ValueType: Value]:
             # for ctmcs and mas we currently only add self loops
             self.add_self_loops()
 
+    def copy(self) -> "Model":
+        """Return a deep copy of this model, preserving all state UUIDs.
+
+        Each state in the copy shares the same ``state_id`` as its original,
+        so callers can cross-reference states via
+        ``new_model.get_state_by_id(s.state_id)``.
+
+        Implemented via :func:`copy.deepcopy`, so all current and future
+        fields are included automatically.  Sympy expressions (parametric
+        transition probabilities) are immutable and shared by reference.
+
+        :returns: A new :class:`Model` with identical structure.
+        """
+        return deepcopy(self)
+
     def get_sub_model(self, states: Iterable[State], normalize: bool = True) -> "Model":
         """Return a submodel containing only the given states.
 
@@ -929,7 +948,7 @@ class Model[ValueType: Value]:
         :returns: A new model containing only the specified states.
         """
         keep_ids = {s.state_id for s in states}
-        sub_model = deepcopy(self)
+        sub_model = self.copy()
         remove = [state for state in sub_model if state.state_id not in keep_ids]
         for state in remove:
             sub_model.remove_state(state, normalize=False, suppress_warning=True)

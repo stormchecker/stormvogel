@@ -184,7 +184,7 @@ def test_partial_instantiation_preserves_remaining_parameters():
     pmc.add_self_loops()
 
     # Substitute x; y should remain.
-    partial = pmc.get_instantiated_model({"x": sp.Rational(1, 4)})
+    partial = pmc.get_instantiated_model({"x": Fraction(1, 4)})
 
     assert partial.parameters == ("y",)
     assert partial.is_parametric()
@@ -200,7 +200,7 @@ def test_partial_instantiation_preserves_remaining_parameters():
 
     # A follow-up full substitution on the remaining parameter should flip
     # is_parametric() back to False and empty the registry.
-    full = partial.get_instantiated_model({"y": sp.Rational(1, 4)})
+    full = partial.get_instantiated_model({"y": Fraction(1, 4)})
     assert not full.is_parametric()
     assert full.parameters == ()
 
@@ -213,6 +213,6 @@ def test_instantiation_ignores_unknown_keys():
     pmc.initial_state.set_choices([(x, s), (1 - x, s)])
 
     # Pass a bogus key alongside a real one.
-    partial = pmc.get_instantiated_model({"x": sp.Rational(1, 2), "bogus": 99})
+    partial = pmc.get_instantiated_model({"x": Fraction(1, 2), "bogus": 99})
     assert partial.parameters == ()
     assert not partial.is_parametric()
