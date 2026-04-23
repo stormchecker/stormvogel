@@ -1,8 +1,9 @@
 """Reward model."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from stormvogel.model.value import Value
 from stormvogel.model.state import State
+from stormvogel.model.action import Action
 
 from typing import TYPE_CHECKING
 
@@ -12,16 +13,21 @@ if TYPE_CHECKING:
 
 @dataclass(eq=False)
 class RewardModel[ValueType: Value]:
-    """Represent a state-exit reward model.
+    """Represent a reward model supporting state rewards and transition rewards.
 
     :param name: Name of the reward model.
     :param model: The model this reward model belongs to.
-    :param rewards: Mapping from states to their reward values.
+    :param rewards: Mapping from states to their state reward values.
+    :param transition_rewards: Sparse mapping from (source, action, target) triples
+        to reward values collected on that specific transition.
     """
 
     name: str
     model: "Model"
     rewards: dict[State, ValueType]
+    transition_rewards: dict[tuple[State, Action, State], ValueType] = field(
+        default_factory=dict
+    )
 
     def set_from_rewards_vector(
         self, vector: list[ValueType], state_action: bool = False
@@ -32,6 +38,11 @@ class RewardModel[ValueType: Value]:
         :param state_action: If ``True``, the vector has one entry per (state, action)
             pair; only the first entry for each state is used.
         """
+        if self.transition_rewards:
+            raise RuntimeError(
+                f"Reward model '{self.name}' already has transition rewards; "
+                "cannot mix with state rewards."
+            )
         combined_id = 0
         self.rewards = dict()
         for s in self.model:
@@ -78,6 +89,11 @@ class RewardModel[ValueType: Value]:
         :param state: The state to set the reward for.
         :param value: The reward value to assign.
         """
+        if self.transition_rewards:
+            raise RuntimeError(
+                f"Reward model '{self.name}' already has transition rewards; "
+                "cannot mix with state rewards."
+            )
         self.rewards[state] = value
 
     def set_unset_rewards(self, value: ValueType):
@@ -85,9 +101,33 @@ class RewardModel[ValueType: Value]:
 
         :param value: The default reward value to assign to unset states.
         """
+        if self.transition_rewards:
+            raise RuntimeError(
+                f"Reward model '{self.name}' already has transition rewards; "
+                "cannot mix with state rewards."
+            )
         for s in self.model:
             if s not in self.rewards:
                 self.rewards[s] = value
+
+    def has_transition_rewards(self) -> bool:
+        """Return True if any nonzero transition reward is present."""
+        return bool(self.transition_rewards)
+
+    def set_transition_reward(
+        self, s: State, a: Action, s_next: State, value: ValueType
+    ) -> None:
+        """Set the reward collected when transitioning from s via a to s_next."""
+        if self.rewards:
+            raise RuntimeError(
+                f"Reward model '{self.name}' already has state rewards; "
+                "cannot mix with transition rewards."
+            )
+        self.transition_rewards[(s, a, s_next)] = value
+
+    def get_transition_reward(self, s: State, a: Action, s_next: State) -> ValueType:
+        """Return the transition reward for (s, a, s_next), or 0 if absent."""
+        return self.transition_rewards.get((s, a, s_next), 0)  # type: ignore[return-value]
 
     def __iter__(self):
         return iter(self.rewards.items())
@@ -97,6 +137,11 @@ class RewardModel[ValueType: Value]:
 
         :returns: A flat list of reward values as floats.
         """
+        if self.transition_rewards:
+            raise RuntimeError(
+                f"Reward model '{self.name}' has transition rewards; "
+                "call Model.eliminate_transition_rewards() first."
+            )
         if any(not isinstance(val, (int, float)) for val in self.rewards.values()):
             raise RuntimeError(
                 "Cannot get reward vector if not all rewards are numeric."

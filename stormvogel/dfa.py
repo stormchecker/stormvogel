@@ -89,7 +89,7 @@ class ProductState(stormvogel.bird.State):
         return self._mdp_state
 
     @property
-    def dfa_state(self) -> State:
+    def dfa_state(self) -> object:
         return self._dfa_state
 
     @property
@@ -111,7 +111,7 @@ def product(mdp: stormvogel.model.Model, dfa: SymbolicDFA):
 
     def _friendly_name(sq: ProductState) -> str:
         assert sq.mdp_state.friendly_name is not None
-        return "(" + sq.mdp_state.friendly_name + "," + sq.dfa_state + ")"
+        return "(" + sq.mdp_state.friendly_name + "," + str(sq.dfa_state) + ")"
 
     def _delta(sq: ProductState, a: str):
         result = []
