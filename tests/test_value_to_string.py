@@ -2,11 +2,12 @@ import math
 from fractions import Fraction
 
 import pytest
+import sympy as sp
 from hypothesis import given, strategies as st
 
 from stormvogel.model import value_to_string, Interval
 from stormvogel.model.value import is_zero
-from stormvogel import parametric
+from stormvogel import parametric  # noqa: F401 (ensures default backend registers)
 
 
 def test_int():
@@ -28,20 +29,18 @@ def test_fraction():
 
 
 def test_parametric_polynomial():
-    pol = parametric.Polynomial(["x", "y", "z"])
-    pol.add_term((1, 2, 3), 4)
-    pol.add_term((1, 0, 0), 3)
-    assert value_to_string(pol) == "4.0*xy^2z^3 + 3.0*x"
+    x, y, z = sp.symbols("x y z")
+    pol = 4 * x * y**2 * z**3 + 3 * x
+    # sympy's standard pretty-printer is used; the exact rendering depends on
+    # sympy's term ordering, which is deterministic but not necessarily what a
+    # human would pick by hand.
+    assert value_to_string(pol) == sp.sstr(pol)
 
 
 def test_parametric_rational():
-    pol1 = parametric.Polynomial(["x", "y", "z"])
-    pol1.add_term((1, 2, 3), 4)
-    pol1.add_term((1, 0, 0), 3)
-    pol2 = parametric.Polynomial(["z"])
-    pol2.add_term((1,), 2)
-    rat = parametric.RationalFunction(pol1, pol2)
-    assert value_to_string(rat) == "(4.0*xy^2z^3 + 3.0*x)/(2.0*z)"
+    x, y, z = sp.symbols("x y z")
+    rat = (4 * x * y**2 * z**3 + 3 * x) / (2 * z)
+    assert value_to_string(rat) == sp.sstr(rat)
 
 
 def test_interval():
@@ -79,10 +78,12 @@ def test_is_zero_interval():
 
 
 def test_is_zero_parametric():
-    pol = parametric.Polynomial(["x"])
-    assert is_zero(pol)  # empty polynomial is zero
-    pol.add_term((1,), 1)
-    assert not is_zero(pol)
+    x = sp.Symbol("x")
+    # Symbolic cancellation: x - x == 0.
+    assert is_zero(x - x)
+    assert is_zero(sp.Integer(0))
+    assert not is_zero(x)
+    assert not is_zero(x + 1)
 
 
 def test_is_zero_unsupported_type():

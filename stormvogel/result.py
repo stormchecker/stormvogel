@@ -2,6 +2,8 @@ import stormvogel.model
 import random
 from typing import Callable
 
+from stormvogel import parametric
+
 
 class Scheduler:
     """Specify what action to take in each state.
@@ -175,9 +177,7 @@ class Result:
         values = list(self.values.values())
         max_val = values[0]
         for v in values:
-            if isinstance(v, stormvogel.model.Interval) or isinstance(
-                v, stormvogel.parametric.Parametric
-            ):
+            if isinstance(v, stormvogel.model.Interval) or parametric.is_parametric(v):
                 raise RuntimeError(
                     "maximum result function does not work for interval/parametric models"
                 )

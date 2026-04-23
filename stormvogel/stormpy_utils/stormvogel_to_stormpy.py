@@ -10,36 +10,6 @@ except ImportError:
     stormpy = None
 
 
-def convert_polynomial_to_stormpy(
-    polynomial: parametric.Polynomial,
-    variables: list["stormpy.pycarl.Variable"],
-) -> "stormpy.pycarl.cln.FactorizedPolynomial":
-    """Convert a stormvogel polynomial to a pycarl factorized polynomial.
-
-    :param polynomial: The stormvogel polynomial to convert.
-    :param variables: The list of pycarl variables.
-    :returns: The converted pycarl factorized polynomial.
-    """
-    assert stormpy is not None
-
-    terms = []
-    var_str_map = {str(var): var for var in variables}
-    for exponent, coefficient in polynomial.terms.items():
-        if coefficient != 0:
-            stormpy_term = stormpy.pycarl.cln.Term(
-                stormpy.pycarl.cln.Rational(coefficient)
-            )
-            for var_name, exp in exponent:
-                for i in range(exp):
-                    stormpy_term *= var_str_map[var_name]
-            terms.append(stormpy_term)
-    polynomial = stormpy.pycarl.cln.Polynomial(terms)
-    factorized_polynomial = stormpy.pycarl.cln.FactorizedPolynomial(
-        polynomial, stormpy.pycarl.cln.factorization_cache
-    )
-    return factorized_polynomial
-
-
 def value_to_stormpy(
     value: Value,
     variables: list["stormpy.pycarl.Variable"],
@@ -47,8 +17,14 @@ def value_to_stormpy(
 ) -> "stormpy.pycarl.cln.FactorizedRationalFunction | stormpy.pycarl.Interval | Value":
     """Convert a stormvogel transition value to a stormpy value.
 
+    Parametric values are delegated to the active parametric backend's
+    :func:`to_pycarl` hook; the pycarl variables are passed in as a mapping
+    from parameter name to ``pycarl.Variable`` so that the backend does not
+    have to (re-)create them.
+
     :param value: The stormvogel value to convert.
-    :param variables: The list of pycarl variables for parametric models.
+    :param variables: The list of pycarl variables for parametric models,
+        aligned with ``model.parameter_symbols()`` by index.
     :param model: The stormvogel model providing context.
     :returns: The converted stormpy value.
     """
@@ -66,25 +42,14 @@ def value_to_stormpy(
             factorized_rational = stormpy.pycarl.cln.FactorizedRationalFunction(
                 factorized_polynomial
             )
-        elif isinstance(value, parametric.RationalFunction):
-            factorized_numerator = convert_polynomial_to_stormpy(
-                value.numerator, variables
-            )
-            factorized_denominator = convert_polynomial_to_stormpy(
-                value.denominator, variables
-            )
+            return factorized_rational
 
-            # TODO gives segmentation fault
-            factorized_rational = stormpy.pycarl.cln.FactorizedRationalFunction(
-                factorized_numerator, factorized_denominator
-            )
-        else:
-            assert isinstance(value, parametric.Polynomial)
-            factorized_rational = stormpy.pycarl.cln.FactorizedRationalFunction(
-                convert_polynomial_to_stormpy(value, variables)
-            )
-
-        return factorized_rational
+        # Parametric values are handled by the active backend. We pass in
+        # pycarl variables keyed by parameter name (in the model's declared
+        # order) so the backend can build the pycarl polynomial deterministically.
+        name_to_var = dict(zip(model.parameters, variables))
+        backend = parametric.backend_for(value)
+        return backend.to_pycarl(value, name_to_var)
     elif model.is_interval_model():
         # in the case of interval models, we convert intervals, and regular values are converted
         # to intervals where the lower and upper value are the same
@@ -684,7 +649,10 @@ def stormvogel_to_stormpy(
         stormpy_id[state] = index
     model.stormpy_id = stormpy_id
 
-    # we store the pycarl parameters of a model
+    # we store the pycarl parameters of a model. We iterate over the model's
+    # declared parameter names (deterministic, insertion-ordered) rather than
+    # re-scanning transitions, so the resulting pycarl variable list matches
+    # model.parameter_symbols() index-for-index.
     stormpy.pycarl.clear_variable_pool()
     variables = []
     for p in model.parameters:

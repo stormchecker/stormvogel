@@ -1,4 +1,3 @@
-import re
 import json
 from typing import Union, cast
 
@@ -47,85 +46,16 @@ def value_to_stormvogel(value, sparsemodel) -> Value:
 
     assert stormpy is not None
 
-    def is_float(val) -> bool:
-        """Check if a value can be converted to a float.
-
-        :param val: The value to check.
-        :returns: ``True`` if the value is convertible to float.
-        """
-        try:
-            float(val)
-            return True
-        except (ValueError, TypeError):
-            return False
-
-    def convert_polynomial(
-        polynomial: stormpy.pycarl.cln.Polynomial,
-    ) -> parametric.Polynomial:
-        """Convert a pycarl polynomial to a stormvogel polynomial.
-
-        :param polynomial: The pycarl polynomial to convert.
-        :returns: The converted stormvogel polynomial.
-        """
-
-        # we create the list of variables
-        # TODO make this more concise
-        var = polynomial.gather_variables()
-        var = re.sub(r"{|}", "", str(var))
-        var = re.sub(r"<Variable (\w+).*?>", r"\1", var)
-        variables_list = [v.strip() for v in var.split(",")]
-
-        # we convert the polynomial to a more suitable list format
-        parts = re.split(r"\+(?![^(]*\))", str(polynomial))
-        stripped_parts = [part.replace("(", "").replace(")", "") for part in parts]
-        term_list = []
-        for p in stripped_parts:
-            factors = re.split(r"[*^](?![^(]*\))", str(p))
-            term_list.append(factors)
-
-        # we initialize the polynomial
-        stormvogel_polynomial = parametric.Polynomial(variables_list)
-
-        # and then we add the terms to it
-        for term in term_list:
-            # we iterate through all terms, variables and exponents
-            index_tuple = [0 for i in range(len(variables_list))]
-            for i in range(len(term)):
-                for j, var in enumerate(variables_list):
-                    # we check if there is an exponent or not
-                    if term[i] == var:
-                        if i < len(term) - 1 and is_float(term[i + 1]):
-                            index_tuple[j] = int(term[i + 1])
-                        else:
-                            index_tuple[j] = 1
-
-            # we check if there is a coefficient at the beginning
-            if is_float(term[0]):
-                stormvogel_polynomial.add_term(tuple(index_tuple), float(term[0]))
-            else:
-                stormvogel_polynomial.add_term(tuple(index_tuple), float(1))
-
-        return stormvogel_polynomial
-
     if sparsemodel.has_parameters:
-        # if the model has parameters, all values are rational functions
+        # For parametric models, stormpy values are (factorized) rational
+        # functions. We delegate the conversion to the active parametric
+        # backend, which knows how to build a native expression from a pycarl
+        # value. The backend returns a plain float when the value is a
+        # constant (denominator 1, numerator constant), which keeps the
+        # non-parametric arithmetic path in the caller unchanged.
         regular_form = value.rational_function()
-        numerator = regular_form.numerator
-        denominator = regular_form.denominator
-        converted_numerator = convert_polynomial(numerator)
-
-        # we only return a polynomial if the denominator is 1
-        if denominator.is_constant():
-            if float(denominator.constant_part()) == 1:
-                if numerator.is_constant():
-                    return float(numerator.constant_part())
-                else:
-                    return converted_numerator
-        converted_denominator = convert_polynomial(denominator)
-        stormvogel_rational_function = parametric.RationalFunction(
-            converted_numerator, converted_denominator
-        )
-        return stormvogel_rational_function
+        backend = parametric.get_default()
+        return backend.from_pycarl(regular_form)
     else:
         # we check if our value is an interval
         if isinstance(value, stormpy.pycarl.Interval):
@@ -263,6 +193,11 @@ def stormpy_to_stormvogel(
         # we create the model
         model = Model(ModelType.DTMC, create_initial_state=False)
 
+        # pre-declare parameters so set_choices validation passes
+        if sparsedtmc.has_parameters:
+            for var in sparsedtmc.collect_all_parameters():
+                model.declare_parameter(var.name)
+
         # we add the states
         add_states(model, sparsedtmc)
 
@@ -300,6 +235,11 @@ def stormpy_to_stormvogel(
 
         # we create the model
         model = new_mdp(create_initial_state=False)
+
+        # pre-declare parameters so set_choices validation passes
+        if sparsemdp.has_parameters:
+            for var in sparsemdp.collect_all_parameters():
+                model.declare_parameter(var.name)
 
         # we add the states
         add_states(model, sparsemdp)

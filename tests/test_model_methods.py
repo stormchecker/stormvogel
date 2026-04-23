@@ -821,15 +821,15 @@ def test_model_get_rewards_raises_not_found():
 
 def test_model_normalize_raises_for_parametric():
     """Model.normalize raises RuntimeError for parametric models."""
-    from stormvogel.parametric import Polynomial
+    import sympy as sp
 
     dtmc = stormvogel.model.new_dtmc()
     s = dtmc.new_state()
-    p = Polynomial(["x"])  # x^1 — a non-zero polynomial
-    p.add_term((1,), 1.0)
+    p = sp.Symbol("x")
     d = stormvogel.model.Distribution({s: p})
     c = stormvogel.model.Choices({stormvogel.model.EmptyAction: d})
     dtmc.transitions[dtmc.initial_state] = c  # bypass set_choices zero-check
+    dtmc.declare_parameter("x")
     with pytest.raises(RuntimeError, match="normalize"):
         dtmc.normalize()
 

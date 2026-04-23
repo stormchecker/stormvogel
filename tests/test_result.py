@@ -998,6 +998,7 @@ def test_induced_dtmc():
     rewardmodel.set_state_reward(other_dtmc.states[1], 1)
     rewardmodel.set_state_reward(other_dtmc.states[2], 2)
 
+    assert dtmc is not None
     assert_models_equal(dtmc, other_dtmc)
 
 
