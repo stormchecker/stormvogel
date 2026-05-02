@@ -285,6 +285,27 @@ class Model[ValueType: Value]:
             self._is_parametric = False
         return self._is_parametric
 
+    def is_affine_parametric(self) -> bool:
+        """Return whether all parametric transition probabilities and rewards are affine.
+
+        A model is affine parametric if every symbolic value has total
+        polynomial degree ≤ 1.  Non-parametric (constant) values are trivially
+        affine.  A non-parametric model always returns ``True``.
+        """
+        for _, choice in self.transitions.items():
+            for _, branch in choice:
+                for value, _ in branch:
+                    if parametric.is_parametric(value) and parametric.degree(value) > 1:
+                        return False
+        for reward_model in self.rewards:
+            for value in reward_model.rewards.values():
+                if parametric.is_parametric(value) and parametric.degree(value) > 1:
+                    return False
+            for value in reward_model.transition_rewards.values():
+                if parametric.is_parametric(value) and parametric.degree(value) > 1:
+                    return False
+        return True
+
     def is_stochastic(self, epsilon=1e-6) -> bool | None:
         """Check whether the model is stochastic.
 

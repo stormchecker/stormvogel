@@ -246,7 +246,7 @@ def test_ma_model_checking_reachability(stormvogel_ma):
     assert result is not None
 
     for i, state in enumerate(stormvogel_ma.states):
-        value = float(result.get_result_of_state(state))
+        value = float(result.at(state))
         assert (
             abs(value - _EXPECTED_REACH[i]) < 1e-6
         ), f"state {i} {sorted(state.labels)}: expected {_EXPECTED_REACH[i]}, got {value}"
@@ -261,7 +261,7 @@ def test_ma_model_checking_expected_time(stormvogel_ma):
     assert result is not None
 
     for i, state in enumerate(stormvogel_ma.states):
-        value = float(result.get_result_of_state(state))
+        value = float(result.at(state))
         assert (
             abs(value - _EXPECTED_TIME[i]) < 1e-4
         ), f"state {i} {sorted(state.labels)}: expected {_EXPECTED_TIME[i]}, got {value}"
@@ -282,6 +282,6 @@ def test_ma_double_roundtrip_model_checking(stormvogel_ma):
     assert result1 is not None
     assert result2 is not None
 
-    v1 = float(result1.get_result_of_state(stormvogel_ma.initial_state))
-    v2 = float(result2.get_result_of_state(stormvogel_ma2.initial_state))
+    v1 = float(result1.at(stormvogel_ma.initial_state))
+    v2 = float(result2.at(stormvogel_ma2.initial_state))
     assert abs(v1 - v2) < 1e-6

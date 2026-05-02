@@ -241,6 +241,26 @@ class State[ValueType: Value]:
                     return False
         return True
 
+    def has_selfloop(self) -> bool:
+        """Check whether this state has a self-loop.
+
+        Returns ``True`` if any action has a transition back to this state with
+        positive probability. For interval models a transition counts as positive
+        when its upper bound is non-zero; for parametric models when the
+        expression is not syntactically zero.
+
+        :returns: ``True`` if a self-loop exists, ``False`` otherwise.
+        """
+        from stormvogel.model.value import is_zero
+
+        if self not in self.model.transitions:
+            return False
+        for _, branch in self.choices:
+            for prob, target in branch:
+                if target == self and not is_zero(prob):
+                    return True
+        return False
+
     def is_initial(self):
         """Check whether this state is the initial state."""
         return self.has_label("init")

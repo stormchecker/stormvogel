@@ -4,11 +4,14 @@ Intended for teaching: results are exact rationals, and the intermediate
 linear system can be displayed in a notebook.
 """
 
-from typing import Iterable, cast
+from typing import TYPE_CHECKING, Iterable, cast
 
 import sympy as sp
 
 import stormvogel.model as model
+
+if TYPE_CHECKING:
+    pass
 
 
 def _check_dtmc(dtmc: model.Model) -> None:
@@ -18,6 +21,19 @@ def _check_dtmc(dtmc: model.Model) -> None:
 
 def _state_variables(dtmc: model.Model) -> dict[model.State, sp.Symbol]:
     return {s: sp.Symbol(f"x_{s.state_id.hex}") for s in dtmc.states}
+
+
+def _to_expr(val) -> sp.Expr:
+    """Convert *val* to a sympy expression.
+
+    Passes through values that are already :class:`sympy.Expr` (parametric
+    models store probabilities and rewards as sympy expressions directly).
+    Numeric values (``int``, ``float``, :class:`fractions.Fraction`) are
+    converted to exact rationals via :func:`sympy.nsimplify`.
+    """
+    if isinstance(val, sp.Expr):
+        return val
+    return sp.nsimplify(val)
 
 
 def _predecessors(dtmc: model.Model) -> dict[model.State, set[model.State]]:
@@ -111,7 +127,15 @@ def equations_reachability(
     *one_states* contribute ``x_s - 1``; states in *zero_states* contribute
     ``x_s``; all other states contribute ``x_s - Σ P(s,s') x_{s'}``.
 
-    :param dtmc: A stormvogel DTMC.
+    Works for both plain DTMCs (numeric probabilities) and parametric DTMCs
+    (probabilities that are sympy expressions over declared parameters).  For
+    parametric models, solving the returned system with :func:`sympy.linsolve`
+    yields reachability as a rational function in the parameters.
+
+    The zero-state auto-detection is graph-based and assumes parameters are
+    strictly positive (no edge is degenerate for the given parameter range).
+
+    :param dtmc: A stormvogel DTMC (plain or parametric).
     :param one_states: States with reachability probability 1.
     :param zero_states: States with reachability probability 0, or ``None``
         to auto-detect from the graph structure.
@@ -138,7 +162,7 @@ def equations_reachability(
         else:
             _, branch = next(iter(s.choices))
             rhs: sp.Expr = sum(  # type: ignore[assignment]
-                sp.nsimplify(prob) * x[s_next] for prob, s_next in branch
+                _to_expr(prob) * x[s_next] for prob, s_next in branch
             )
             residuals.append(x[s] - rhs)
     return residuals
@@ -156,6 +180,10 @@ def equations_expected_reward(
     contribute ``x_s``; non-terminal states contribute
     ``x_s - r_s - γ Σ P(s,s') x_{s'}``.
 
+    Works for both plain and parametric DTMCs; probabilities and rewards that
+    are sympy expressions are used directly, yielding a parametric solution
+    when the system is solved.
+
     For *undiscounted* problems (*discount* = 1) the system is ill-defined when
     a non-terminal state cannot reach any terminal state, because the expected
     reward would be infinite.  A :exc:`ValueError` is raised in that case
@@ -164,7 +192,7 @@ def equations_expected_reward(
     For *discounted* problems (*discount* < 1) the system always has a unique
     solution and no reachability check is needed.
 
-    :param dtmc: A stormvogel DTMC.
+    :param dtmc: A stormvogel DTMC (plain or parametric).
     :param reward_model: Per-state rewards; missing states are treated as 0.
     :param terminal_states: States fixed to value 0 (reward collection stops).
     :param discount: Discount factor γ ∈ (0, 1].  Must be a sympy expression
@@ -200,9 +228,9 @@ def equations_expected_reward(
             residuals.append(x[s])
         else:
             _, branch = next(iter(s.choices))
-            reward = sp.nsimplify(reward_model.get_state_reward(s) or 0)
+            reward = _to_expr(reward_model.get_state_reward(s) or 0)
             successor_sum: sp.Expr = sum(  # type: ignore[assignment]
-                sp.nsimplify(prob) * x[s_next] for prob, s_next in branch
+                _to_expr(prob) * x[s_next] for prob, s_next in branch
             )
             residuals.append(x[s] - reward - discount_sym * successor_sum)
     return residuals

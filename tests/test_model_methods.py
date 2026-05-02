@@ -59,6 +59,32 @@ def test_is_absorbing():
     assert empty_state.is_absorbing()
 
 
+def test_has_selfloop():
+    dtmc = stormvogel.model.new_dtmc(create_initial_state=False)
+    s0 = dtmc.new_state(friendly_name="s0")
+    s1 = dtmc.new_state(friendly_name="s1")
+
+    # s0 → s1 only: no self-loop
+    s0.set_choices([(1.0, s1)])
+    assert not s0.has_selfloop()
+
+    # s1 → s1 (absorbing self-loop)
+    s1.set_choices([(1.0, s1)])
+    assert s1.has_selfloop()
+
+    # s0 gets a mixed transition: 0.4 back to itself, 0.6 to s1
+    s0.set_choices([(0.4, s0), (0.6, s1)])
+    assert s0.has_selfloop()
+
+    # state with no choices at all
+    s2 = dtmc.new_state(friendly_name="s2")
+    assert not s2.has_selfloop()
+
+    # zero-probability self-loop doesn't count
+    s2.set_choices([(0.0, s2), (1.0, s1)])
+    assert not s2.has_selfloop()
+
+
 def test_choices_from_shorthand():
     # First we test it for a model without actions
     dtmc = stormvogel.model.new_dtmc()
@@ -960,6 +986,66 @@ def test_model_is_stochastic_interval():
     s = dtmc.new_state()
     dtmc.set_choices(dtmc.initial_state, [(Interval(0.4, 0.6), s)])
     assert dtmc.is_stochastic()
+
+
+# ── is_affine_parametric ──────────────────────────────────────────────────────
+
+
+def _make_affine_pmc():
+    pmc = stormvogel.model.new_dtmc()
+    x = pmc.declare_parameter("x")
+    s0 = pmc.initial_state
+    sa = pmc.new_state()
+    sb = pmc.new_state()
+    pmc.set_choices(s0, [(x, sa), (1 - x, sb)])
+    pmc.set_choices(sa, [(1, sa)])
+    pmc.set_choices(sb, [(1, sb)])
+    return pmc, x
+
+
+def test_is_affine_parametric_true_for_affine():
+    pmc, _ = _make_affine_pmc()
+    assert pmc.is_affine_parametric()
+
+
+def test_is_affine_parametric_true_for_non_parametric():
+    dtmc = stormvogel.model.new_dtmc()
+    s = dtmc.new_state()
+    dtmc.set_choices(dtmc.initial_state, [(1.0, s)])
+    assert dtmc.is_affine_parametric()
+
+
+def test_is_affine_parametric_false_for_quadratic_transition():
+    pmc, x = _make_affine_pmc()
+    s0 = pmc.initial_state
+    sa, sb = [s for s in pmc.states if s is not s0][:2]
+    pmc.set_choices(s0, [(x**2, sa), (1 - x**2, sb)])
+    assert not pmc.is_affine_parametric()
+
+
+def test_is_affine_parametric_false_for_quadratic_state_reward():
+    pmc, x = _make_affine_pmc()
+    rm = pmc.new_reward_model("R")
+    rm.set_state_reward(pmc.initial_state, x**2)
+    assert not pmc.is_affine_parametric()
+
+
+def test_is_affine_parametric_true_for_linear_reward():
+    pmc, x = _make_affine_pmc()
+    rm = pmc.new_reward_model("R")
+    rm.set_state_reward(pmc.initial_state, x)
+    assert pmc.is_affine_parametric()
+
+
+def test_is_affine_parametric_false_for_quadratic_transition_reward():
+    pmc, x = _make_affine_pmc()
+    s0 = pmc.initial_state
+    sa, _ = [s for s in pmc.states if s is not s0][:2]
+    from stormvogel.model.action import EmptyAction
+
+    rm = pmc.new_reward_model("R")
+    rm.transition_rewards[(s0, EmptyAction, sa)] = x**2
+    assert not pmc.is_affine_parametric()
 
 
 # ── State edge cases ──────────────────────────────────────────────────────────

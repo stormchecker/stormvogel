@@ -1,6 +1,9 @@
 import stormvogel.model
 import random
+from dataclasses import dataclass
 from typing import Callable
+
+from deprecated import deprecated  # type: ignore[import]
 
 from stormvogel import parametric
 
@@ -40,12 +43,17 @@ class Scheduler:
         else:
             raise RuntimeError("This state is not a part of the model")
 
-    def generate_induced_dtmc(self) -> stormvogel.model.Model | None:
+    def generate_induced_dtmc(
+        self, drop_unreachable: bool = True
+    ) -> stormvogel.model.Model | None:
         """Resolve the nondeterminacy of the MDP and return the scheduler-induced DTMC.
 
         Copies the MDP (preserving state UUIDs), changes the model type to DTMC,
         and replaces each state's choices with only the scheduled action's branch.
 
+        :param drop_unreachable: When ``True`` (default), states not reachable from
+            the initial state under the scheduler are pruned from the result.
+            Set to ``False`` to keep the full state space.
         :returns: The induced DTMC, or ``None`` if the model is not an MDP.
         """
         if self.model.model_type == stormvogel.model.ModelType.MDP:
@@ -64,6 +72,20 @@ class Scheduler:
                     for prob, target in transitions
                 ]
                 induced.set_choices(new_state, remapped)
+
+            if drop_unreachable:
+                reachable: set[stormvogel.model.State] = set()
+                queue = [induced.initial_state]
+                reachable.add(induced.initial_state)
+                while queue:
+                    s = queue.pop()
+                    for _, branch in induced.transitions[s]:
+                        for _, t in branch:
+                            if t not in reachable:
+                                reachable.add(t)
+                                queue.append(t)
+                if len(reachable) < len(induced.states):
+                    induced = induced.get_sub_model(reachable)
 
             return induced
 
@@ -121,9 +143,7 @@ class Result:
         else:
             self.scheduler = None
 
-    def get_result_of_state(
-        self, state: stormvogel.model.State
-    ) -> stormvogel.model.Value | None:
+    def at(self, state: stormvogel.model.State) -> stormvogel.model.Value:
         """Return the model checking result for a given state.
 
         :param state: The state to look up.
@@ -134,6 +154,16 @@ class Result:
             return self.values[state]
         else:
             raise RuntimeError("This state is not a part of the model")
+
+    def at_init(self) -> stormvogel.model.Value:
+        """Return the model checking result for the initial state."""
+        return self.at(self.model.initial_state)
+
+    @deprecated(version="0.12.0", reason="use at() instead.")
+    def get_result_of_state(
+        self, state: stormvogel.model.State
+    ) -> stormvogel.model.Value:
+        return self.at(state)
 
     def filter(
         self, value_predicate: Callable[[stormvogel.model.Value], bool]
@@ -218,3 +248,32 @@ class Result:
 
     def __iter__(self):
         return iter(self.values.items())
+
+
+@dataclass
+class ParetoResult:
+    """Result of a multiobjective Pareto model checking query.
+
+    Holds the under- and over-approximation of the Pareto front as vertex lists.
+    Each point is a list of floats with one entry per objective. The number of
+    objectives is unrestricted, but plotting is limited to 2 objectives.
+
+    :param lower_points: Vertices of the under-approximation (known achievable region).
+    :param upper_points: Vertices of the over-approximation.
+    :param property_labels: One label per objective, auto-extracted from the formula.
+    """
+
+    lower_points: list[list[float]]
+    upper_points: list[list[float]]
+    property_labels: list[str] | None = None
+
+    def plot(self, ax=None, labels: tuple[str, str] | None = None):
+        """Plot the Pareto front. Only 2-objective results are supported.
+
+        :param ax: Target axes; creates a new figure if None.
+        :param labels: Override axis labels; defaults to :attr:`property_labels`.
+        :returns: The populated axes.
+        """
+        from stormvogel.teaching.pareto import plot_pareto_result
+
+        return plot_pareto_result(self, ax=ax, labels=labels)
