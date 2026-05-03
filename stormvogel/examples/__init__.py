@@ -2,6 +2,7 @@ from stormvogel.examples.car import create_car_mdp  # NOQA
 from stormvogel.examples.debugging import create_debugging_mdp  # NOQA
 from stormvogel.examples.die import create_die_dtmc, generate_dice_image  # NOQA
 from stormvogel.examples.end_components import create_end_components_mdp  # NOQA
+from stormvogel.examples.mixed_mec import create_mixed_mec_mdp  # NOQA
 from stormvogel.examples.lion import create_lion_mdp  # NOQA
 from stormvogel.examples.monty_hall import create_monty_hall_mdp  # NOQA
 from stormvogel.examples.monty_hall_pomdp import create_monty_hall_pomdp  # NOQA

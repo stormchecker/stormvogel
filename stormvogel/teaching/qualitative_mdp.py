@@ -3,11 +3,12 @@
 Implements the operators and provides a generic
 :class:`FixpointIterator` and :func:`visualise_iterations`
 
-Three operators are defined, each mirroring one qualitative reachability property:
+Four operators are defined, each mirroring one qualitative reachability property:
 
-* :func:`psi_spos`    — LFP for :math:`S_{\\text{pos}}`   (possible max reach)
-* :func:`psi_sposmin` — LFP for :math:`S_{\\text{pos}}^{\\min}` (possible min reach)
-* :func:`psi_smaxas`  — GFP for :math:`S_{\\text{as}}^{\\max}` (almost-sure max reach)
+* :func:`psi_spos`    — LFP for :math:`S_{\\text{pos}}`              (possible max reach)
+* :func:`psi_sposmin` — LFP for :math:`S_{\\text{pos}}^{\\min}`      (possible min reach)
+* :func:`psi_smaxas`  — GFP for :math:`S_{\\text{as}}^{\\max}`       (almost-sure max reach)
+* :func:`psi_sminas`  — GFP for :math:`S_{\\text{as}}^{\\min}`       (almost-sure min reach)
 """
 
 from collections.abc import Callable
@@ -119,7 +120,7 @@ def psi_smaxas(
     r"""Operator for :math:`S_{\text{as}}^{\max}` (almost-sure max reachability).
 
     A non-target state is *kept* when it has *some* action all of whose
-    successors are in *X*.  GFP starting from all states equals
+    successors are in *X*.  GFP starting from :math:`S_{\text{pos}}` equals
     :math:`S_{\text{as}}^{\max}`.
 
     .. math::
@@ -211,9 +212,17 @@ def smaxas(
     mdp: model.Model,
     target_states: list[model.State] | set[model.State],
 ) -> FixpointIterator:
-    """Return a :class:`FixpointIterator` for :math:`S_{\\text{as}}^{\\max}` (GFP)."""
+    r"""Return a :class:`FixpointIterator` for :math:`S_{\text{as}}^{\max}` (GFP).
+
+    Initialises from :math:`S_{\text{pos}}` rather than the full state space.
+    Starting from all states is a trivial fixed point whenever a non-target
+    absorbing state (e.g. a self-looping sink) is present.
+    """
     t = frozenset(target_states)
-    return FixpointIterator(psi_smaxas, frozenset(mdp.states), mdp, t)
+    spos_it = FixpointIterator(psi_spos, t, mdp, t)
+    while not spos_it.has_converged():
+        spos_it.step()
+    return FixpointIterator(psi_smaxas, spos_it.current, mdp, t)
 
 
 def sminas(
@@ -280,6 +289,24 @@ def compute_sminas(
 # ---------------------------------------------------------------------------
 # Visualisation
 # ---------------------------------------------------------------------------
+
+
+def run_and_collect(
+    it: FixpointIterator,
+    include_initial: bool = True,
+) -> list[frozenset[model.State]]:
+    """Run *it* to fixpoint and return all intermediate sets as a list.
+
+    :param it: The iterator to run.
+    :param include_initial: If True, prepend the initial set before the first step.
+    :returns: Ordered list of snapshots; pass the result to :func:`visualise_iterations`.
+    """
+    snapshots: list[frozenset[model.State]] = []
+    if include_initial:
+        snapshots.append(it.current)
+    while not it.has_converged():
+        snapshots.append(it.step())
+    return snapshots
 
 
 def visualise_iterations(

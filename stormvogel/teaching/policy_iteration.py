@@ -20,40 +20,65 @@ from stormvogel.teaching.qualitative_mdp import compute_spos, compute_sposmin
 
 def initial_scheduler(
     mdp: model.Model,
-    one_states: Iterable[model.State],
+    target_label: str,
     minimize: bool,
 ) -> result.Scheduler:
     """Return a suitable starting scheduler for policy iteration.
 
-    Uses a one-step Bellman lookahead from the zero vector (one_states fixed
+    Uses a one-step Bellman lookahead from the zero vector (target states fixed
     to 1, all others 0) to bias the initial scheduler:
 
     * **minimize** — picks the action with the *lowest* one-step expected
-      value, giving a pessimistic start that avoids the target.  This ensures
-      the induced DTMC has no spurious fixed points due to cycles.
+      value, giving a pessimistic start that avoids the target.
     * **maximize** — picks the action with the *highest* one-step expected
       value, giving an optimistic start that heads towards the target.
 
     :param mdp: The MDP.
-    :param one_states: States with reachability probability 1 (target states).
+    :param target_label: Label identifying the target states.
     :param minimize: If True, build a pessimistic scheduler; otherwise
         an optimistic one.
     :returns: A :class:`~stormvogel.result.Scheduler` for *mdp*.
     """
-    one_ids = {s.state_id for s in one_states}
+    target_states = list(mdp.state_labels[target_label])
+    one_ids = {s.state_id for s in target_states}
+
+    # States whose optimal reachability is 0: route them to actions that stay
+    # within the zero set so the induced DTMC is proper from the first step.
+    if minimize:
+        zero_ids = frozenset(
+            s.state_id
+            for s in mdp.states
+            if s not in compute_sposmin(mdp, target_states)
+        )
+    else:
+        zero_ids = frozenset(
+            s.state_id for s in mdp.states if s not in compute_spos(mdp, target_states)
+        )
+
     v0 = {
         s: sp.Integer(1) if s.state_id in one_ids else sp.Integer(0) for s in mdp.states
     }
     opt = min if minimize else max
     taken: dict[model.State, model.Action] = {}
     for s in mdp.states:
-        best_action, _ = opt(
-            s.choices,
-            key=lambda ab: sum(
-                sp.nsimplify(prob) * v0[s_next] for prob, s_next in ab[1]
-            ),
-        )
-        taken[s] = best_action
+        if s.state_id in zero_ids:
+            # Pick any action whose successors all stay in the zero set.
+            for action, branch in s.choices:
+                if all(t.state_id in zero_ids for _, t in branch):
+                    taken[s] = action
+                    break
+            else:
+                taken[s] = next(iter(s.choices))[
+                    0
+                ]  # unreachable given zero_ids definition
+        else:
+            best_action, _ = opt(
+                s.choices,
+                key=lambda ab: sum(
+                    sp.nsimplify(prob) * v0[s_next] for prob, s_next in ab[1]
+                ),
+            )
+            taken[s] = best_action
     return result.Scheduler(mdp, taken)
 
 
@@ -112,51 +137,45 @@ class PI:
 
     Usage::
 
-        sched0 = initial_scheduler(mdp, one_states=[s_target], minimize=False)
-        pi = PI(mdp, sched0, one_states=[s_target], minimize=False)
+        pi = PI(mdp, "target", minimize=False)
         while not pi.has_converged():
             scheduler, values = pi.step()
 
     :param mdp: The MDP to optimise.
-    :param scheduler: Starting scheduler.  Use :func:`initial_scheduler` to
-        obtain a well-initialised one.
-    :param one_states: States with reachability probability 1 (target states).
+    :param target_label: Label identifying the target (one) states.
     :param minimize: If True, minimize reachability; otherwise maximize.
+    :param scheduler: Starting scheduler.  If *None* (default),
+        :func:`initial_scheduler` is called with the same *minimize* flag.
     """
 
     def __init__(
         self,
         mdp: model.Model,
-        scheduler: result.Scheduler,
-        one_states: Iterable[model.State],
+        target_label: str,
         minimize: bool,
+        scheduler: result.Scheduler | None = None,
         reward_model: model.RewardModel | None = None,
         discount: sp.Expr = sp.Integer(1),
     ):
         self._mdp = mdp
-        self._scheduler = scheduler
-        self._one_states = list(one_states)
+        self._one_states = list(mdp.state_labels[target_label])
         self._minimize = minimize
+        self._scheduler = (
+            scheduler
+            if scheduler is not None
+            else initial_scheduler(mdp, target_label, minimize)
+        )
         self._reward_model = reward_model
         self._discount = sp.nsimplify(discount)
         self._values: dict[model.State, sp.Expr] | None = None
         self._converged = False
-        if reward_model is None:
-            # Reachability: fix Sminzero states to 0 for minimisation.
-            if minimize:
-                sposmin_states = compute_sposmin(mdp, list(one_states))
-                self._mdp_zero_ids: frozenset = frozenset(
-                    s.state_id for s in mdp.states if s not in sposmin_states
-                )
-            else:
-                self._mdp_zero_ids = frozenset()
-        elif self._discount == sp.Integer(1):
+        if reward_model is not None and self._discount == sp.Integer(1):
             # Undiscounted expected reward: ill-defined when terminal is
             # unreachable.  Catch the bad cases early with a clear message.
             if minimize:
-                bad = frozenset(mdp.states) - compute_spos(mdp, list(one_states))
+                bad = frozenset(mdp.states) - compute_spos(mdp, self._one_states)
             else:
-                bad = frozenset(mdp.states) - compute_sposmin(mdp, list(one_states))
+                bad = frozenset(mdp.states) - compute_sposmin(mdp, self._one_states)
             if bad:
                 names = sorted(s.friendly_name or str(s.state_id) for s in bad)
                 raise ValueError(
@@ -164,10 +183,6 @@ class PI:
                     f"{'cannot reach' if minimize else 'can avoid'} the terminal "
                     f"set under {'some' if not minimize else 'every'} policy."
                 )
-            self._mdp_zero_ids = frozenset()
-        else:
-            # Discounted expected reward: always well-defined.
-            self._mdp_zero_ids = frozenset()
 
     @property
     def current_scheduler(self) -> result.Scheduler:
@@ -188,7 +203,7 @@ class PI:
         :returns: The new scheduler and the exact values under the old one.
         :raises RuntimeError: If the scheduler cannot induce a DTMC.
         """
-        dtmc = self._scheduler.generate_induced_dtmc()
+        dtmc = self._scheduler.generate_induced_dtmc(drop_unreachable=False)
         if dtmc is None:
             raise RuntimeError("Could not induce a DTMC from the current scheduler.")
 
@@ -205,10 +220,8 @@ class PI:
                 dtmc, dtmc_rewards, self._one_states, self._discount
             )
         else:
-            dtmc_zeros = [dtmc.get_state_by_id(uid) for uid in self._mdp_zero_ids]
-            dtmc_values = solve_reachability(
-                dtmc, self._one_states, zero_states=dtmc_zeros or None
-            )
+            dtmc_ones = [dtmc.get_state_by_id(s.state_id) for s in self._one_states]
+            dtmc_values = solve_reachability(dtmc, dtmc_ones)
 
         # Lift DTMC values back to MDP states by matching UUIDs.
         id_to_value = {s.state_id: v for s, v in dtmc_values.items()}

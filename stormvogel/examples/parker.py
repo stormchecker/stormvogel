@@ -34,6 +34,8 @@ def create_parker_mdp():
                         return [(1, 3)]
 
     def _labels(s):
+        if s == 2:
+            return ["s" + str(s), "target"]
         return "s" + str(s)
 
     def _friendly_name(s):

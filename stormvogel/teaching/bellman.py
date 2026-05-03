@@ -366,19 +366,30 @@ class BellmanOperator[ValueType: model.Value]:
         return result
 
 
-def visualise_iterations(iterations, background_gradient: str | None = None):
+def visualise_iterations(
+    iterations, background_gradient: str | None = None, digits: int = 5
+):
     import pandas as pd
 
-    states = list(iterations[0].keys())
+    def _round(v):
+        if isinstance(v, tuple):
+            return tuple(round(x, digits) for x in v)
+        try:
+            return round(v, digits)
+        except TypeError:
+            return v
 
-    data = {i: [iteration[s] for s in states] for i, iteration in enumerate(iterations)}
+    states = list(iterations[0].keys())
+    data = {
+        i: [_round(iteration[s]) for s in states]
+        for i, iteration in enumerate(iterations)
+    }
 
     df = pd.DataFrame(data, index=states)  # type: ignore
 
     df.index.name = "state"
     df.columns.name = "iteration"
 
-    # nicer labels if State objects are used
     df.index = [s.friendly_name for s in df.index]
     if background_gradient is not None:
         df.style.background_gradient(cmap=background_gradient)
