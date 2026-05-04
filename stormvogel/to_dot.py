@@ -4,7 +4,7 @@ import re
 from uuid import uuid4
 
 import pydot
-from IPython.display import HTML, display
+from IPython.display import display
 
 import stormvogel.model
 from stormvogel.model import EmptyAction
@@ -474,4 +474,15 @@ def plot_model_pydot(
         else:
             raise ValueError("output_file must end with .svg or .pdf")
     else:
-        display(HTML(_dark_mode_html(graph.create_svg())))
+
+        class _Display:
+            def __init__(self, g):
+                self._g = g
+
+            def _repr_html_(self):
+                return _dark_mode_html(self._g.create_svg())
+
+            def _repr_png_(self):
+                return self._g.create_png()
+
+        display(_Display(graph))

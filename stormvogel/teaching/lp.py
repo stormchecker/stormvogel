@@ -30,6 +30,9 @@ class LP:
         body = "\n".join(rows)
         return f"$$\\begin{{array}}{{ll}}\n{body}\n\\end{{array}}$$"
 
+    def _repr_markdown_(self) -> str:
+        return self._repr_latex_()
+
 
 @dataclass
 class LPSolution:
