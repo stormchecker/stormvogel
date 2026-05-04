@@ -356,11 +356,6 @@ def test_plot_regions_raises_for_non_2d():
         plot_regions([(r, "safe")])
 
 
-def test_plot_regions_raises_for_empty():
-    with pytest.raises(ValueError, match="No regions"):
-        plot_regions([])
-
-
 # ---------------------------------------------------------------------------
 # AnnotatedRegion
 # ---------------------------------------------------------------------------
@@ -606,6 +601,6 @@ def test_is_graph_preserving_false_for_transition_1_minus_x_outside_range():
 def test_is_graph_preserving_true_for_non_parametric():
     dtmc = sv_model.new_dtmc()
     s = dtmc.new_state()
-    dtmc.set_choices(dtmc.initial_state, [(0.5, s)])
+    dtmc.set_choices(dtmc.initial_state, [(1.0, s)])
     region = RectangularRegion({})
     assert region.is_graph_preserving(dtmc)

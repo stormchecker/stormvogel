@@ -17,7 +17,6 @@ from stormvogel.stormpy_utils.parametric_analysis import (
 stormpy = pytest.importorskip("stormpy")
 
 _PROP = 'P=? [F "rolled1"]'
-_PROP_REGION = 'P<=0.5 [F "rolled1"]'  # bounded formula required for region checking
 _FAIR = {"x": 0.5}
 _REGION_FAIR = RectangularRegion({"x": (0.4, 0.6)})
 
@@ -31,7 +30,7 @@ def analyser():
 @pytest.fixture(scope="module")
 def analyser_region():
     pmc = create_knuth_yao_pmc()
-    return AnalyseParametric(pmc, _PROP_REGION)
+    return AnalyseParametric(pmc, _PROP)
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +182,6 @@ def test_get_region_bound_raises_for_non_graph_preserving(analyser_region):
 # ===========================================================================
 
 _FAIR_XY = {"x": 0.5, "y": 0.5}
-_PROP_REGION_XY = 'P<=0.5 [F "rolled1"]'
 _REGION_FAIR_XY = RectangularRegion({"x": (0.4, 0.6), "y": (0.4, 0.6)})
 
 
@@ -196,7 +194,7 @@ def analyser_xy():
 @pytest.fixture(scope="module")
 def analyser_xy_region():
     pmc = create_knuth_yao_pmc_twocoins()
-    return AnalyseParametric(pmc, _PROP_REGION_XY)
+    return AnalyseParametric(pmc, _PROP)
 
 
 # ---------------------------------------------------------------------------
@@ -272,7 +270,7 @@ def test_twocoins_annotate_region_center_within_bounds(analyser_xy_region):
 # Two-coin / rolled2 — regression for float-vs-Fraction clamping bug
 # ===========================================================================
 
-_PROP_ROLLED2 = 'P<=0.5 [F "rolled2"]'
+_PROP_ROLLED2 = 'P=? [F "rolled2"]'
 _REGION_ROLLED2 = RectangularRegion({"x": (0.4, 0.6), "y": (0.4, 0.6)})
 
 
@@ -365,7 +363,7 @@ def test_parameter_space_partitioning_chain_pmc():
     region = RectangularRegion({"x": (Fraction(1, 10), Fraction(9, 10))})
     result = parameter_space_partitioning(
         _make_chain_pmc(),
-        'P<=0.2 [F "T"]',
+        'P=? [F "T"]',
         0.2,
         initial_region=region,
         max_iterations=5,

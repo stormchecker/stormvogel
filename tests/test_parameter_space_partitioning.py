@@ -13,7 +13,7 @@ from stormvogel.teaching.parametric import parameter_space_partitioning
 
 stormpy = pytest.importorskip("stormpy")
 
-_PROP = 'P<=0.2 [F "rolled1"]'
+_PROP = 'P=? [F "rolled1"]'
 _THRESHOLD = 1 / 6
 
 

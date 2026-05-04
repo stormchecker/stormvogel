@@ -125,6 +125,8 @@ class RectangularRegion:
         [0, 1], every reward is non-negative for all instantiations within
         the region, and the probabilities of every choice sum to exactly 1
         as a formal identity.  Requires an affine parametric model.
+
+        For non-parametric models, the check basically asks whether the model is stochastic.
         """
         for val in _unique_transition_values(model):
             if is_parametric(val):

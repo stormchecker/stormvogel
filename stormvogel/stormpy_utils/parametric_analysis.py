@@ -75,6 +75,11 @@ class AnalyseParametric:
             raise ImportError("stormpy is required for AnalyseParametric.")
         if not model.is_parametric():
             raise ValueError("AnalyseParametric requires a parametric model.")
+        if "=?" not in prop:
+            raise ValueError(
+                "prop must be a quantitative property (e.g. 'P=? [F \"target\"]'); "
+                "qualitative threshold properties such as 'P<=0.5 [...]' are not supported."
+            )
 
         self.model = model
         self._sp_model = mapping.stormvogel_to_stormpy(model)

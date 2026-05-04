@@ -80,9 +80,9 @@ def test_has_selfloop():
     s2 = dtmc.new_state(friendly_name="s2")
     assert not s2.has_selfloop()
 
-    # zero-probability self-loop doesn't count
-    s2.set_choices([(0.0, s2), (1.0, s1)])
-    assert not s2.has_selfloop()
+    # mixed transition with a self-loop
+    s2.set_choices([(0.3, s2), (0.7, s1)])
+    assert s2.has_selfloop()
 
 
 def test_choices_from_shorthand():
