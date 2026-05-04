@@ -111,6 +111,29 @@ def eliminate_mecs(
         for sv_old, sp_id in mdp.stormpy_id.items()
     }
 
+    # Assign friendly names.  Build a reverse map sp_id → old sv State.
+    sp_id_to_sv_old: dict[int, model.State] = {
+        sp_id: sv_old for sv_old, sp_id in mdp.stormpy_id.items()
+    }
+    # Group old stormpy IDs by the new state they map to.
+    new_id_to_old_sp_ids: dict[int, list[int]] = {}
+    for sp_id in range(sp_model.nr_states):
+        nid = res.old_to_new_state_mapping[sp_id]
+        new_id_to_old_sp_ids.setdefault(nid, []).append(sp_id)
+
+    mec_counter = 0
+    for nid, old_sp_ids in new_id_to_old_sp_ids.items():
+        s_new = sv_new.states[nid]
+        if len(old_sp_ids) == 1:
+            # Pass-through state: inherit the original friendly name.
+            old_name = sp_id_to_sv_old[old_sp_ids[0]].friendly_name
+            if old_name is not None:
+                s_new.set_friendly_name(old_name)
+        else:
+            # Representative of a non-trivial MEC.
+            s_new.set_friendly_name(f"_mec_{mec_counter}")
+            mec_counter += 1
+
     if remove_representative_selfloops or make_representatives_absorbing:
         # Collect representative states: new states that multiple old states map to.
         new_id_count: dict[int, int] = {}

@@ -286,3 +286,101 @@ def test_label_not_propagated_when_support_disagrees():
     assert any("goal" in str(w.message) for w in caught)
     init_state = next(iter(mdp.state_labels["init"]))
     assert "goal" not in list(init_state.labels)
+
+
+# ---------------------------------------------------------------------------
+# Cheese maze integration tests
+# ---------------------------------------------------------------------------
+
+
+def _cheese_maze_setup(**kwargs):
+    """Return (maze, initial_belief) for the cheese maze.
+
+    The initial belief is uniform over the three corridor cells directly
+    above the bottom row (the successors of the start state).
+    kwargs are forwarded to create_cheese_maze.
+    """
+    from stormvogel.examples.cheese_maze import create_cheese_maze
+
+    maze = create_cheese_maze(**kwargs)
+    pomdp_init = next(s for s in maze.states if "init" in s.labels)
+    _, branch = next(iter(maze.transitions[pomdp_init]))
+    initial_belief = {target: Fraction(1, 3) for _, target in branch}
+    return maze, initial_belief
+
+
+def test_cheese_maze_belief_mdp_is_mdp():
+    maze, initial_belief = _cheese_maze_setup()
+    mdp = belief_mdp(maze, initial_belief, cutoff_value=Fraction(1, 2))
+    assert mdp.model_type == ModelType.MDP
+
+
+def test_cheese_maze_cheese_and_dragon_labels_propagate():
+    """cheese and dragon labels must appear in the belief MDP."""
+    maze, initial_belief = _cheese_maze_setup()
+    mdp = belief_mdp(maze, initial_belief, cutoff_value=Fraction(1, 2))
+    assert "cheese" in mdp.state_labels
+    assert "dragon" in mdp.state_labels
+
+
+def test_cheese_maze_south_splits_one_third_two_thirds():
+    """From the uniform initial belief, south yields cheese (1/3) and dragon (2/3)."""
+    maze, initial_belief = _cheese_maze_setup()
+    mdp = belief_mdp(maze, initial_belief, cutoff_value=Fraction(1, 2))
+
+    mdp_init = next(iter(mdp.state_labels["init"]))
+    south_branch = None
+    for action, branch in mdp.transitions[mdp_init]:
+        if action.label == "south":
+            south_branch = list(branch)
+            break
+    assert south_branch is not None, "south action not found in belief MDP"
+
+    cheese_prob = sum(p for p, s in south_branch if "cheese" in s.labels)
+    dragon_prob = sum(p for p, s in south_branch if "dragon" in s.labels)
+    assert cheese_prob == Fraction(1, 3)
+    assert dragon_prob == Fraction(2, 3)
+
+
+def test_cheese_maze_finite_belief_space():
+    """The default cheese maze has a small enough belief space that max_states=1000 is never hit."""
+    maze, initial_belief = _cheese_maze_setup()
+    mdp = belief_mdp(maze, initial_belief, cutoff_value=Fraction(1, 2), max_states=1000)
+    assert "frontier" not in mdp.state_labels
+
+
+# ---------------------------------------------------------------------------
+# Cheese maze belief MDP model checking tests
+# ---------------------------------------------------------------------------
+
+
+def test_cheese_maze_max_reach_cheese_is_one():
+    """Pmax of reaching cheese from the uniform initial belief equals 1.
+
+    The agent can always identify its corridor by navigating to the top row
+    (where corner observations are unique), then route to the cheese corridor.
+    cutoff_value=0 is pessimistic for frontier states, but with max_states=1000
+    no frontier is created, so the result is exact.
+    """
+    pytest.importorskip("stormpy")
+    from stormvogel.stormpy_utils.model_checking import model_checking
+
+    maze, initial_belief = _cheese_maze_setup()
+    mdp = belief_mdp(maze, initial_belief, cutoff_value=0, max_states=1000)
+
+    result = model_checking(mdp, 'Pmax=? [F "cheese"]')
+    assert result is not None
+    assert result.at_init() == pytest.approx(1.0)
+
+
+def test_cheese_maze_slippery_max_reach_cheese():
+    """With slippery=0.1 and max_states=100 (cutoff_value=0), Pmax is a lower bound near 1."""
+    pytest.importorskip("stormpy")
+    from stormvogel.stormpy_utils.model_checking import model_checking
+
+    maze, initial_belief = _cheese_maze_setup(slippery=0.1)
+    mdp = belief_mdp(maze, initial_belief, cutoff_value=0, max_states=100)
+
+    result = model_checking(mdp, 'Pmax=? [F "cheese"]')
+    assert result is not None
+    assert result.at_init() == pytest.approx(0.9962936236800002, abs=1e-6)

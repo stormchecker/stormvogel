@@ -306,6 +306,33 @@ class Model[ValueType: Value]:
                     return False
         return True
 
+    def has_fixed_graph(self) -> bool:
+        """Return whether the set of reachable transitions is fixed (graph-independent of choices).
+
+        - For constant (non-parametric, non-interval) models: always ``True``.
+        - For parametric models: raises :class:`ValueError` because the graph
+          depends on parameter values and cannot be determined symbolically.
+        - For interval models: ``True`` if every interval lower bound is
+          strictly positive (every edge always exists regardless of nature's
+          choice); ``False`` if any lower bound is zero (nature may remove
+          that edge entirely).
+
+        :raises ValueError: If the model is parametric.
+        """
+        if self.is_parametric():
+            raise ValueError(
+                "has_fixed_graph() is undefined for parametric models: "
+                "the graph depends on parameter instantiation."
+            )
+        if not self.is_interval_model():
+            return True
+        for choice in self.transitions.values():
+            for _, branch in choice:
+                for value, _ in branch:
+                    if isinstance(value, Interval) and value.lower <= 0:
+                        return False
+        return True
+
     def is_stochastic(self, epsilon=1e-6) -> bool | None:
         """Check whether the model is stochastic.
 

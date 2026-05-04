@@ -219,6 +219,26 @@ def suggest_positions(
     return positions
 
 
+def _observation_color_map(
+    model: stormvogel.model.Model,
+    saturation: float = 0.40,
+    lightness: float = 0.82,
+) -> dict:
+    """Return a mapping from each Observation to a muted pastel hex color."""
+    if not model.supports_observations():
+        return {}
+    obs_list = list(model.observation_aliases)
+    n = len(obs_list)
+    result = {}
+    for i, obs in enumerate(obs_list):
+        hue = i / n if n > 1 else 0.0
+        r, g, b = colorsys.hls_to_rgb(hue, lightness, saturation)
+        result[obs] = "#{:02x}{:02x}{:02x}".format(
+            round(r * 255), round(g * 255), round(b * 255)
+        )
+    return result
+
+
 def plot_model_pydot(
     model: stormvogel.model.Model,
     output_file: str | None = None,
@@ -233,6 +253,7 @@ def plot_model_pydot(
     auto_action_positions: bool = True,
     highlight_state: "stormvogel.model.State | None" = None,
     self_loop_position: "str | dict[stormvogel.model.State, str] | None" = None,
+    color_by_observation: bool = False,
 ) -> None:
     """Render a stormvogel model to SVG/PDF using pydot.
 
@@ -278,6 +299,10 @@ def plot_model_pydot(
         all self-loops; a ``dict[State, str]`` gives per-state control.
         Both ``headport`` and ``tailport`` are set to the chosen direction.
         ``None`` (default) lets Graphviz decide.
+    :param color_by_observation: When ``True``, states are filled with
+        automatically chosen muted pastel colors, one distinct color per
+        observation. ``state_colors`` (label-based) still takes priority.
+        Has no effect on models that do not support observations.
     """
     use_positions = bool(positions)
     prog = "neato" if use_positions else "dot"
@@ -338,6 +363,7 @@ def plot_model_pydot(
         return self_loop_position.get(state)
 
     node_id = {s: str(i) for i, s in enumerate(model.states)}
+    obs_color_map = _observation_color_map(model) if color_by_observation else {}
 
     # Initial state arrow
     try:
@@ -350,6 +376,10 @@ def plot_model_pydot(
     # State nodes
     for s in model.states:
         fill = default_fill
+        if obs_color_map and isinstance(s.observation, stormvogel.model.Observation):
+            obs_color = obs_color_map.get(s.observation)
+            if obs_color:
+                fill = obs_color
         if state_colors:
             for label, color in state_colors.items():
                 if label in s.labels:

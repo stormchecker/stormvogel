@@ -1,3 +1,5 @@
+import warnings
+
 import stormvogel.stormpy_utils.mapping as mapping
 import stormvogel.stormpy_utils.convert_results as convert_results
 import stormvogel.model
@@ -46,7 +48,21 @@ def model_checking(
             stormpy_result = stormpy.model_checking(stormpy_model, prop[0])
             return convert_results.convert_pareto_result(stormpy_result, prop[0])
 
-        if model.supports_actions() and scheduler:
+        if model.is_interval_model():
+            if not model.has_fixed_graph():
+                warnings.warn(
+                    "Interval model has transitions with lower bound 0: the graph "
+                    "is not fixed and stormpy model checking may be ill-supported.",
+                    stacklevel=2,
+                )
+            task = stormpy.CheckTask(prop[0].raw_formula, True)
+            task.set_uncertainty_resolution_mode(
+                stormpy.UncertaintyResolutionMode.ROBUST
+            )
+            stormpy_result = stormpy.check_interval_mdp(
+                stormpy_model, task, stormpy.Environment()
+            )
+        elif model.supports_actions() and scheduler:
             stormpy_result = stormpy.model_checking(
                 stormpy_model, prop[0], extract_scheduler=True
             )

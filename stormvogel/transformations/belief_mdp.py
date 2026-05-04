@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import warnings
 from fractions import Fraction
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -95,7 +96,7 @@ _SINK = _Terminal("sink")
 
 def belief_mdp(
     pomdp: "Model",
-    initial_belief: "dict[State, Fraction | int]",
+    initial_belief: "Mapping[State, Fraction | int]",
     cutoff_value: "Fraction | int | float",
     max_states: int = 1000,
 ) -> "Model":

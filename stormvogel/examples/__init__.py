@@ -22,3 +22,4 @@ from stormvogel.examples.stormpy_examples.stormpy_ma import (
 )
 
 from stormvogel.examples.study import create_study_mdp  # NOQA
+from stormvogel.examples.cheese_maze import create_cheese_maze  # NOQA
