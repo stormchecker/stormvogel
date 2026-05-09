@@ -1,10 +1,10 @@
-"""Tests for stormvogel.teaching.pomdp belief tracking."""
+"""Tests for stormvogel.teaching.belief."""
 
 import pytest
 from fractions import Fraction
 
 from stormvogel.examples.four_state_reachability import create_4state_reachability_pomdp
-from stormvogel.teaching.pomdp import belief_trace, belief_update, initial_belief
+from stormvogel.teaching.belief import belief_trace, belief_update, initial_belief
 
 
 @pytest.fixture(scope="module")

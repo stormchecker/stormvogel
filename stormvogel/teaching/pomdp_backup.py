@@ -24,9 +24,7 @@ if TYPE_CHECKING:
     from stormvogel.model.model import Model
     from stormvogel.model.state import State
 
-#: A belief is an exact rational probability distribution over states.
-#: Absent states have implicit probability zero.
-Belief = dict["State", Fraction]
+from stormvogel.teaching.belief import Belief
 
 
 # ---------------------------------------------------------------------------

@@ -9,7 +9,7 @@ The green region is the downward closure of the convex hull of all achievable po
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
 import numpy as np
 import stormvogel.model
@@ -17,9 +17,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.axes import Axes
 from scipy.spatial import ConvexHull, QhullError
-
-if TYPE_CHECKING:
-    from stormvogel.result import ParetoResult
 
 
 EPS: float = 1e-9
@@ -257,84 +254,6 @@ def plot_pareto(
         rf"$P(\diamond\, {l2})$",
         legend,
     )
-    return resolved_ax
-
-
-def plot_pareto_result(
-    result: ParetoResult,
-    ax: Axes | None = None,
-    labels: tuple[str, str] | None = None,
-    bbox_pad: float = 0.2,
-) -> Axes:
-    """Plot the under- and over-approximation of a 2-objective Pareto model checking result.
-
-    Renders:
-    - Green filled polygon: under-approximation (known achievable region)
-    - Blue dashed outline: over-approximation (upper bound on achievable region)
-    - Black dots: vertices of the under-approximation
-
-    :param result: A :class:`~stormvogel.result.ParetoResult` from multiobjective model checking.
-    :param ax: Target axes; creates a new figure if None.
-    :param labels: Override axis labels; defaults to :attr:`~stormvogel.result.ParetoResult.property_labels`.
-    :param bbox_pad: Fractional padding around the points for axis limits.
-    :returns: The populated axes.
-    :raises ValueError: If *result* does not contain exactly 2-dimensional points.
-
-    TODO: Consider integrating this with stormpy plotting capabilities.
-    """
-    all_points = result.lower_points + result.upper_points
-    if not all_points:
-        raise ValueError("ParetoResult contains no points.")
-    if len(all_points[0]) != 2:
-        raise ValueError(
-            f"plot_pareto_result only supports 2-objective results; "
-            f"got {len(all_points[0])} objectives."
-        )
-
-    if labels is not None:
-        l1, l2 = labels
-    elif result.property_labels is not None and len(result.property_labels) >= 2:
-        l1, l2 = result.property_labels[0], result.property_labels[1]
-    else:
-        l1, l2 = "Objective 1", "Objective 2"
-
-    resolved_ax, x_hi, y_hi = _prepare_ax(all_points, bbox_pad, ax)
-
-    if result.upper_points:
-        resolved_ax.add_patch(
-            mpatches.Polygon(
-                np.array(result.upper_points),
-                closed=True,
-                facecolor="none",
-                edgecolor="steelblue",
-                linestyle="--",
-                linewidth=1.2,
-                label="Over-approximation",
-            )
-        )
-
-    if result.lower_points:
-        resolved_ax.add_patch(
-            mpatches.Polygon(
-                np.array(result.lower_points),
-                closed=True,
-                facecolor="green",
-                edgecolor="darkgreen",
-                linewidth=0.5,
-                alpha=0.4,
-                label="Under-approximation",
-            )
-        )
-        resolved_ax.scatter(
-            [p[0] for p in result.lower_points],
-            [p[1] for p in result.lower_points],
-            color="black",
-            zorder=5,
-            s=30,
-            label="Achievable points",
-        )
-
-    _finalize_ax(resolved_ax, x_hi, y_hi, l1, l2)
     return resolved_ax
 
 

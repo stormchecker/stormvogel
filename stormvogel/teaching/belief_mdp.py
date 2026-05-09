@@ -1,4 +1,4 @@
-"""Transformation: bounded belief-MDP exploration for POMDPs."""
+"""Bounded belief-MDP exploration for POMDPs."""
 
 from __future__ import annotations
 
@@ -6,47 +6,13 @@ import warnings
 from fractions import Fraction
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 import stormvogel.bird as _bird
+from stormvogel.teaching.belief import Belief
 
 if TYPE_CHECKING:
     from stormvogel.model.model import Model
     from stormvogel.model.state import State
-
-
-# ---------------------------------------------------------------------------
-# Belief state types
-# ---------------------------------------------------------------------------
-
-
-class Belief:
-    """Exact probability distribution over POMDP states.
-
-    Used as the node type in belief-MDP exploration.  All probabilities are
-    stored as :class:`~fractions.Fraction` for exact arithmetic.
-
-    :param dist: Mapping from POMDP states to their belief probabilities.
-        Zero-probability states are silently dropped.
-    """
-
-    def __init__(self, dist: "dict[State, Fraction]") -> None:
-        self.dist: dict["State", Fraction] = {s: p for s, p in dist.items() if p > 0}
-        # Stable hash key: sort by state UUID so equal beliefs always hash the same.
-        self._key: tuple[tuple[UUID, Fraction], ...] = tuple(
-            sorted(((s.state_id, p) for s, p in self.dist.items()), key=lambda x: x[0])
-        )
-
-    def __hash__(self) -> int:
-        return hash(self._key)
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Belief):
-            return self._key == other._key
-        return NotImplemented
-
-    def __repr__(self) -> str:
-        return f"Belief({self.dist!r})"
 
 
 class FrontierBelief(Belief):
@@ -226,8 +192,7 @@ def belief_mdp(
         for grp in obs_groups.values():
             obs_prob = sum(grp.values(), Fraction(0))
             if obs_prob > 0:
-                new_belief = Belief({s: w / obs_prob for s, w in grp.items()})
-                result.append((obs_prob, new_belief))
+                result.append((obs_prob, Belief.normalize(grp)))
         return result
 
     # --- Bird callbacks ------------------------------------------------------

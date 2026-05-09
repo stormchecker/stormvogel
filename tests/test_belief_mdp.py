@@ -7,7 +7,8 @@ import pytest
 
 import stormvogel.model as sv_model
 from stormvogel.model.model import ModelType
-from stormvogel.teaching.belief_mdp import Belief, FrontierBelief, belief_mdp
+from stormvogel.teaching.belief import Belief
+from stormvogel.teaching.belief_mdp import FrontierBelief, belief_mdp
 
 
 # ---------------------------------------------------------------------------

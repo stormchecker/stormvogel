@@ -18,7 +18,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 import stormvogel.bird as _bird
-from stormvogel.teaching.belief_mdp import Belief
+from stormvogel.teaching.belief import Belief
 
 if TYPE_CHECKING:
     from stormvogel.model.model import Model
