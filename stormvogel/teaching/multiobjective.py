@@ -8,6 +8,9 @@ import sympy as sp
 
 import stormvogel.bird
 import stormvogel.model
+from stormvogel.transformations.eliminate_transition_rewards import (
+    eliminate_transition_rewards,
+)
 
 if TYPE_CHECKING:
     import stormvogel.result
@@ -150,7 +153,7 @@ def weighted_multi_target_reachability(
                 if r:
                     rw.set_transition_reward(s, a, s_next, r)
 
-    return unfolded.eliminate_transition_rewards()
+    return eliminate_transition_rewards(unfolded)
 
 
 def compute_weighted_reachability_policy(

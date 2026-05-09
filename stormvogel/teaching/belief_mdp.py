@@ -52,9 +52,10 @@ class Belief:
 class FrontierBelief(Belief):
     """A belief that was cut off at the exploration boundary.
 
-    In the belief MDP a frontier belief has a single ``"cut"`` action
-    that leads to the shared ``"target"`` state with probability
-    *cutoff_value* and to the shared ``"sink"`` state with the remainder.
+    In the belief MDP a frontier belief has a single ``"cut"`` action.
+    The probability of reaching the target is the dot product
+    ``Σ_s c(s) · b(s)`` of the per-state cutoff function *c* with the
+    frontier belief; the remainder goes to the fresh absorbing sink.
     Frontier beliefs receive the label ``"frontier"``.
     """
 
@@ -97,7 +98,7 @@ _SINK = _Terminal("sink")
 def belief_mdp(
     pomdp: "Model",
     initial_belief: "Mapping[State, Fraction | int]",
-    cutoff_value: "Fraction | int | float",
+    cutoff: "Mapping[State, Fraction | float] | Fraction | int | float" = Fraction(0),
     max_states: int = 1000,
 ) -> "Model":
     """Explore the belief MDP of a POMDP up to *max_states* distinct beliefs.
@@ -108,10 +109,20 @@ def belief_mdp(
     any new successor belief becomes a :class:`FrontierBelief` instead.
 
     **Frontier transitions**: each :class:`FrontierBelief` has a single
-    ``"cut"`` action leading to the shared *target* state with probability
-    *cutoff_value* and the shared *sink* state with ``1 − cutoff_value``.
-    Both terminal states are absorbing.  Setting *cutoff_value* to 1 (resp. 0)
-    yields an optimistic (resp. pessimistic) value approximation.
+    ``"cut"`` action.  The probability of reaching the shared target state is
+    the dot product :math:`c \\cdot b_f = \\sum_s c(s)\\, b_f(s)` of the
+    cutoff function with the frontier belief; the remainder goes to the shared
+    sink.  Both terminal states are absorbing.
+
+    *cutoff* may be:
+
+    - A scalar in ``[0, 1]``: uniform per-state value.  ``0`` (default) gives
+      a pessimistic lower bound; ``1`` gives an optimistic upper bound.
+    - A ``Mapping[State, Fraction | float]``: per-state cutoff function
+      :math:`c \\colon S \\to [0,1]`.  Absent states default to 0.
+      Passing the MDP value function (e.g. from
+      :func:`~stormvogel.teaching.pomdp_backup.mdp_bound_alpha`) yields the
+      MDP-value upper bound.
 
     **Rewards**: propagated as expected POMDP reward ``Σ_s b[s] · r(s)``.
     Frontier, target, and sink states carry reward 0 in every reward model.
@@ -123,14 +134,14 @@ def belief_mdp(
         observations.
     :param initial_belief: Mapping from POMDP states to non-negative
         probabilities summing to 1.
-    :param cutoff_value: Probability of reaching ``"target"`` from any
-        frontier state; must lie in [0, 1].
+    :param cutoff: Per-state cutoff function :math:`c\\colon S\\to[0,1]`, or
+        a scalar applied uniformly.  Defaults to ``0`` (pessimistic).
     :param max_states: Maximum number of distinct :class:`Belief` nodes to
         expand fully (including the initial belief).
     :returns: The explored belief MDP as a stormvogel MDP model.
     :raises ValueError: If *pomdp* is not a POMDP, any state has a stochastic
-        observation, *initial_belief* does not sum to 1, or *cutoff_value* is
-        outside [0, 1].
+        observation, *initial_belief* does not sum to 1, or a scalar *cutoff*
+        is outside [0, 1].
     """
     from stormvogel.model.distribution import Distribution
     from stormvogel.model.model import ModelType
@@ -138,9 +149,17 @@ def belief_mdp(
     if pomdp.model_type != ModelType.POMDP:
         raise ValueError(f"belief_mdp requires a POMDP; got {pomdp.model_type}.")
 
-    cutoff = Fraction(cutoff_value)
-    if not (Fraction(0) <= cutoff <= Fraction(1)):
-        raise ValueError(f"cutoff_value must be in [0, 1]; got {cutoff_value}.")
+    # Normalise cutoff to a per-state dict or a scalar Fraction.
+    if isinstance(cutoff, Mapping):
+        cutoff_map: dict["State", Fraction] = {
+            s: Fraction(v) for s, v in cutoff.items()
+        }
+        _scalar_cutoff: Fraction | None = None
+    else:
+        _scalar_cutoff = Fraction(cutoff)
+        cutoff_map = {}
+        if not (Fraction(0) <= _scalar_cutoff <= Fraction(1)):
+            raise ValueError(f"cutoff must be in [0, 1]; got {cutoff!r}.")
 
     # --- Validate initial belief ----------------------------------------------
 
@@ -233,17 +252,27 @@ def belief_mdp(
                 )
         return sorted(common)
 
+    def _cut_prob(b: FrontierBelief) -> Fraction:
+        """Probability of reaching target from frontier belief b under cutoff c."""
+        if _scalar_cutoff is not None:
+            return _scalar_cutoff
+        return sum(
+            (cutoff_map.get(s, Fraction(0)) * p for s, p in b.dist.items()),
+            Fraction(0),
+        )
+
     def delta(b: object, action: str) -> list:
         if b is _TARGET:
             return [(1, _TARGET)]
         if b is _SINK:
             return [(1, _SINK)]
         if isinstance(b, FrontierBelief):
-            if cutoff == 0:
+            cp = _cut_prob(b)
+            if cp == 0:
                 return [(1, _SINK)]
-            if cutoff == 1:
+            if cp == 1:
                 return [(1, _TARGET)]
-            return [(cutoff, _TARGET), (1 - cutoff, _SINK)]
+            return [(cp, _TARGET), (1 - cp, _SINK)]
         assert isinstance(b, Belief)
         result = []
         for obs_prob, successor in _update(b, action):
@@ -295,7 +324,7 @@ def belief_mdp(
         assert isinstance(b, (Belief, FrontierBelief))
         idx = {s: i for i, s in enumerate(pomdp.states)}
         parts = [
-            f"s{idx[s]}:{float(p):.3f}"
+            f"s{idx[s]}:{p if max(abs(p.numerator), p.denominator) < 10000 else f'{float(p):.3f}'}"
             for s, p in sorted(b.dist.items(), key=lambda kv: idx[kv[0]])
         ]
         prefix = "frontier" if isinstance(b, FrontierBelief) else "b"

@@ -161,21 +161,22 @@ class SympyBackend:
         order."""
         from stormpy import pycarl
 
-        # Polynomial variables in insertion order, matching var_map.
-        sym_order = [sp.Symbol(name) for name in var_map]
-
         # A constant polynomial — no need to call sp.Poly.
         expr_symbols = {s.name for s in expr.free_symbols}
         if not expr_symbols:
             rational = pycarl.cln.Rational(sp.Rational(expr))
             return pycarl.cln.Polynomial(rational)
 
-        # Restrict the variable list to the ones sp.Poly will actually see.
-        # sp.Poly is happy to accept extra symbols, but narrowing keeps
-        # exponent tuples small.
-        active = [s for s in sym_order if s.name in expr_symbols]
+        # Use the actual Symbol objects from the expression rather than
+        # creating fresh sp.Symbol(name) objects.  Symbols declared with
+        # assumptions (e.g. positive=True) are distinct from plain symbols
+        # with the same name, so re-creating them by name would cause sp.Poly
+        # to treat the original symbols as constants instead of variables.
+        name_to_sym = {s.name: s for s in expr.free_symbols}
+        active_names = [name for name in var_map if name in name_to_sym]
+        active = [name_to_sym[name] for name in active_names]
         poly = sp.Poly(expr, *active)
-        pycarl_vars = [var_map[s.name] for s in active]
+        pycarl_vars = [var_map[name] for name in active_names]
 
         terms = []
         for exponents, coeff in poly.terms():

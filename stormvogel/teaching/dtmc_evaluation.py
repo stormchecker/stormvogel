@@ -39,7 +39,7 @@ def _to_expr(val) -> sp.Expr:
 def _predecessors(dtmc: model.Model) -> dict[model.State, set[model.State]]:
     pred: dict[model.State, set[model.State]] = {s: set() for s in dtmc.states}
     for s in dtmc.states:
-        _, branch = next(iter(s.choices))
+        branch = s.unique_branch
         for _prob, t in branch:
             pred[t].add(s)
     return pred
@@ -160,7 +160,7 @@ def equations_reachability(
         elif s.state_id in zero_ids:
             residuals.append(x[s])
         else:
-            _, branch = next(iter(s.choices))
+            branch = s.unique_branch
             rhs: sp.Expr = sum(  # type: ignore[assignment]
                 _to_expr(prob) * x[s_next] for prob, s_next in branch
             )
@@ -227,7 +227,7 @@ def equations_expected_reward(
         if s.state_id in terminal_ids:
             residuals.append(x[s])
         else:
-            _, branch = next(iter(s.choices))
+            branch = s.unique_branch
             reward = _to_expr(reward_model.get_state_reward(s) or 0)
             successor_sum: sp.Expr = sum(  # type: ignore[assignment]
                 _to_expr(prob) * x[s_next] for prob, s_next in branch

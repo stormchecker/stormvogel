@@ -207,7 +207,7 @@ def feasibility_problem(
         elif s in zero_set:
             zero_eqs.append(sp.Eq(p[s], sp.Integer(0)))
         else:
-            _, branch = next(iter(s.choices))
+            branch = s.unique_branch
             rhs: sp.Expr = sum(  # type: ignore[assignment]
                 _to_expr(prob) * p[s_next] for prob, s_next in branch
             )
@@ -255,9 +255,10 @@ def _t_reachable_nontargets(
     target_set = set(target_states)
     reachable: set[model.State] = set(target_set)
     queue = list(target_set)
+    pred = pmc.compute_predecessors()
     i = 0
     while i < len(queue):
-        for p in pmc.predecessors(queue[i]):
+        for p in pred[queue[i]]:
             if p not in reachable:
                 reachable.add(p)
                 queue.append(p)
@@ -279,7 +280,7 @@ def eliminate_selfloop(pmc: model.Model, s: model.State) -> None:
     _check_markov_chain(pmc)
     if len(pmc.transitions[s]) == 0:
         raise ValueError(f"State {s!r} has no outgoing transitions.")
-    action, branch = next(iter(pmc.transitions[s]))
+    action, branch = s.unique_choice
     loop = sp.cancel(_to_expr(branch[s])) if s in branch else sp.Integer(0)
     if loop.is_zero:
         return
@@ -301,8 +302,8 @@ def eliminate_transition(pmc: model.Model, s_in: model.State, s: model.State) ->
         raise ValueError(f"State {s_in!r} has no outgoing transitions.")
     if len(pmc.transitions[s]) == 0:
         raise ValueError(f"State {s!r} has no outgoing transitions.")
-    action_in, branch_in = next(iter(pmc.transitions[s_in]))
-    _, branch_s = next(iter(pmc.transitions[s]))
+    action_in, branch_in = s_in.unique_choice
+    branch_s = s.unique_branch
 
     w = sp.cancel(_to_expr(branch_in[s])) if s in branch_in else sp.Integer(0)
     if w.is_zero:
@@ -328,7 +329,7 @@ def eliminate_state(pmc: model.Model, s: model.State, remove: bool = False) -> N
     :param remove: If ``True``, remove *s* from the model after elimination.
     """
     _check_markov_chain(pmc)
-    for s_in in list(pmc.predecessors(s)):
+    for s_in in pmc.compute_predecessors()[s]:
         eliminate_transition(pmc, s_in, s)
     if remove:
         pmc.remove_state(s, normalize=False, suppress_warning=True)
@@ -363,7 +364,7 @@ def solve_reachability(
     init = copy.initial_state
     eliminate_selfloop(copy, init)
 
-    _, branch = next(iter(copy.transitions[init]))
+    branch = init.unique_branch
     result: sp.Expr = sp.Integer(0)
     for val, t in branch:
         if t.state_id in target_ids:

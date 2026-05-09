@@ -157,7 +157,7 @@ def test_unused_and_prune_parameters():
     s = pmc.new_state(labels=["A"])
     t = pmc.new_state(labels=["B"])
     pmc.initial_state.set_choices([(x, s), (1 - x, t)])
-    assert pmc.unused_parameters() == {"stale"}
+    assert pmc.find_unused_parameters() == {"stale"}
     removed = pmc.prune_parameters()
     assert removed == {"stale"}
     assert pmc.parameters == ("x",)

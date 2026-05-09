@@ -141,4 +141,4 @@ def test_eliminate_state_remove_leaves_no_predecessors():
     eliminate_selfloop(dtmc, s0)
     # After removal, s0 is no longer a predecessor of s1 (s1 keeps its self-loop).
     eliminate_state(dtmc, s0, remove=True)
-    assert s0 not in dtmc.predecessors(s1)
+    assert s0 not in dtmc.compute_predecessors()[s1]

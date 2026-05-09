@@ -89,7 +89,6 @@ class Model[ValueType: Value]:
         self.observation_valuations = dict()
         self.state_observations = dict()
         self.markovian_states = set()
-        self._is_parametric: bool | None = None
         self._is_interval: bool | None = None
         self._state_index_cache: dict[State, int] | None = None
         # Ordered map from parameter name to backend-native symbol. Preserves
@@ -172,6 +171,7 @@ class Model[ValueType: Value]:
         self._parameters[name] = sym
         return sym
 
+    @property
     def parameter_symbols(self) -> tuple[Parametric, ...]:
         """Return the declared parameters as backend-native symbols, in order.
 
@@ -182,7 +182,7 @@ class Model[ValueType: Value]:
         """
         return tuple(self._parameters.values())
 
-    def unused_parameters(self) -> set[str]:
+    def find_unused_parameters(self) -> set[str]:
         """Return declared parameters that do not appear in any transition.
 
         This walks all transitions and collects free symbol names; the set
@@ -198,13 +198,13 @@ class Model[ValueType: Value]:
         return set(self._parameters.keys()) - used
 
     def prune_parameters(self) -> set[str]:
-        """Drop declared parameters that no longer occur in any transition.
+        """Drop declared parameters that (no longer) occur in any transition.
 
         Returns the set of parameter names that were removed. This is an
         explicit, on-demand operation: the model never prunes automatically on
         mutation.
         """
-        unused = self.unused_parameters()
+        unused = self.find_unused_parameters()
         for name in unused:
             del self._parameters[name]
         return unused
@@ -274,16 +274,8 @@ class Model[ValueType: Value]:
         return self._is_interval
 
     def is_parametric(self) -> bool:
-        """Return whether this model contains parametric transition values."""
-        if self._is_parametric is None:
-            for _, choice in self.transitions.items():
-                for _, branch in choice:
-                    for value, _ in branch:
-                        if parametric.is_parametric(value):
-                            self._is_parametric = True
-                            return self._is_parametric
-            self._is_parametric = False
-        return self._is_parametric
+        """Return whether this model has parameters declared."""
+        return bool(self._parameters)
 
     def is_affine_parametric(self) -> bool:
         """Return whether all parametric transition probabilities and rewards are affine.
@@ -348,6 +340,7 @@ class Model[ValueType: Value]:
 
         # if the model is parametric or an interval model, it should be trivially true, as the probabilities do
         # not even sum to a constant.
+        # TODO this can be refined.
         if self.is_parametric() or self.is_interval_model():
             return True
         if not self.supports_rates():
@@ -395,7 +388,6 @@ class Model[ValueType: Value]:
             )
 
         self._is_interval = None
-        self._is_parametric = None
         self._state_index_cache = None
         state = State(self)
 
@@ -441,7 +433,6 @@ class Model[ValueType: Value]:
         :raises RuntimeError: If the state is not part of this model.
         """
         self._is_interval = None
-        self._is_parametric = None
         self._state_index_cache = None
         if not suppress_warning:
             import warnings
@@ -542,9 +533,20 @@ class Model[ValueType: Value]:
                 return state
         raise RuntimeError(f"State with id {state_id} not found.")
 
-    def predecessors(self, s: State) -> list[State]:
-        """Return all states with a non-zero transition to *s*. Note that this operation is slow."""
-        return [c for c in self.states if s in self.get_successor_states(c)]
+    def compute_predecessors(self) -> "dict[State, list[State]]":
+        """Build and return the full predecessor map for every state.
+
+        This is an O(states × transitions) operation; call it once and reuse
+        the result rather than calling it in a loop.
+
+        :returns: A dict mapping each state to the list of states that have a
+            direct transition to it.
+        """
+        pred: dict[State, list[State]] = {s: [] for s in self.states}
+        for src in self.states:
+            for succ in self.get_successor_states(src):
+                pred[succ].append(src)
+        return pred
 
     # Observation management
 
@@ -590,6 +592,27 @@ class Model[ValueType: Value]:
             if obs_alias == alias:
                 return obs
         raise KeyError(f"Observation with alias {alias} not found.")
+
+    def compute_states_per_observation(self) -> "dict[Observation, set[State]]":
+        """Build and return a mapping from every observation to its set of states.
+
+        This is an O(states) operation; call it once and reuse the result
+        rather than calling it in a loop.
+
+        :returns: A dict mapping each :class:`Observation` to the set of states
+            assigned to it.
+        :raises RuntimeError: If the model does not support observations.
+        """
+        if not self.supports_observations():
+            raise RuntimeError(
+                "Called compute_states_per_observation on a model that does not support observations"
+            )
+        result: dict[Observation, set[State]] = {
+            obs: set() for obs in self.observation_aliases.keys()
+        }
+        for s, obs in self.state_observations.items():
+            result[obs].add(s)  # type: ignore[index]  # obs is Observation for deterministic models
+        return result
 
     def observation(self, alias: str) -> Observation:
         """Makes a new observation if the given alias does not exist and returns it, otherwise returns the existing observation with the given alias."""
@@ -656,6 +679,28 @@ class Model[ValueType: Value]:
                 for label in state.labels:
                     self.state_labels[label].remove(state)
 
+    def make_fully_observable(self) -> "Model":
+        """Remove observations and convert this model to its fully-observable counterpart.
+
+        POMDP → MDP and HMM → DTMC.  All observation data
+        (``state_observations``, ``observation_aliases``,
+        ``observation_valuations``) is cleared.  The model is mutated in place
+        and returned for chaining.
+
+        :returns: ``self``, with model type updated and observations removed.
+        :raises ValueError: If the model is not a POMDP or HMM.
+        """
+        _map = {ModelType.POMDP: ModelType.MDP, ModelType.HMM: ModelType.DTMC}
+        if self.model_type not in _map:
+            raise ValueError(
+                f"make_fully_observable requires a POMDP or HMM; got {self.model_type}."
+            )
+        self.model_type = _map[self.model_type]
+        self.state_observations.clear()
+        self.observation_aliases.clear()
+        self.observation_valuations.clear()
+        return self
+
     # Action management
 
     def new_action(self, label: str) -> Action:
@@ -697,10 +742,7 @@ class Model[ValueType: Value]:
         if choices.has_zero_transition():
             raise RuntimeError("All transition probabilities should be nonzero.")
 
-        if not self._validate_parametric_choices(choices):
-            # No parametric values in the new choices; replacing this state's
-            # transitions might have removed the last parametric transition.
-            self._is_parametric = None
+        self._validate_parametric_choices(choices)
         self.transitions[s] = choices
 
     def add_choices(self, s: State, choices: Choices | ChoicesShorthand) -> None:
@@ -719,10 +761,7 @@ class Model[ValueType: Value]:
         if choices.has_zero_transition():
             raise RuntimeError("All transition probabilities should be nonzero.")
 
-        if self._validate_parametric_choices(choices):
-            # Short-circuit: we found a parametric value, no need to re-walk.
-            self._is_parametric = True
-        # else: adding non-parametric choices cannot change the parametric status.
+        self._validate_parametric_choices(choices)
         if s not in self.transitions:
             self.transitions[s] = Choices(dict())
         self.transitions[s].add(choices)
@@ -730,8 +769,7 @@ class Model[ValueType: Value]:
     def _validate_parametric_choices(self, choices: Choices) -> bool:
         """Check that all free symbols in parametric transitions are declared.
 
-        Returns True if any parametric value was found, so callers can update
-        the ``_is_parametric`` cache without a second pass.
+        Returns True if any parametric value was found and False otherwise
 
         :raises ValueError: If a transition references a symbol not in
             :attr:`parameters`. Call :meth:`declare_parameter` first.
@@ -838,89 +876,6 @@ class Model[ValueType: Value]:
             if model.name == name:
                 return model
         raise RuntimeError(f"Reward model {name} not present in model.")
-
-    def eliminate_transition_rewards(self) -> "Model":
-        """Rewrite transition rewards into state rewards via auxiliary entry states.
-
-        For each transition (s, a, s') carrying reward r in any reward model,
-        inserts an auxiliary state e and reroutes:
-            s --a, p--> s'   =>   s --a, p--> e --τ, 1--> s'
-        with state_reward(e) = r.
-
-        Returns a new model with only state rewards. If no transition rewards are
-        present, returns self unchanged.
-        """
-        has_any = any(rw.has_transition_rewards() for rw in self.rewards)
-        if not has_any:
-            return self
-
-        new_model: Model = Model(model_type=self.model_type, create_initial_state=False)
-
-        state_map: dict = {}
-        for s in self.states:
-            new_s = new_model.new_state()
-            for label in s.labels:
-                new_s.add_label(label)
-            if s.friendly_name:
-                new_s.set_friendly_name(s.friendly_name)
-            state_map[s] = new_s
-
-        rewarded_triples: set = set()
-        for rw in self.rewards:
-            for (s, a, s_next), v in rw.transition_rewards.items():
-                if v:
-                    rewarded_triples.add((s, a, s_next))
-
-        entry_map: dict = {}
-        for s, a, s_next in rewarded_triples:
-            e = new_model.new_state()
-            s_name = s.friendly_name or str(s.state_id)
-            t_name = s_next.friendly_name or str(s_next.state_id)
-            a_name = a.label if a != EmptyAction else "ε"
-            e.set_friendly_name(f"e({s_name},{a_name},{t_name})")
-            entry_map[(s, a, s_next)] = e
-
-        uses_actions = self.supports_actions()
-        tau = new_model.action("τ") if uses_actions else EmptyAction
-
-        for s, choice in self.transitions.items():
-            new_s = state_map[s]
-            new_choices: dict = {}
-            for a, branch in choice:
-                if a != EmptyAction:
-                    assert a.label is not None
-                    new_a = new_model.action(a.label)
-                else:
-                    new_a = EmptyAction
-                new_branch = [
-                    (
-                        prob,
-                        entry_map[(s, a, s_next)]
-                        if (s, a, s_next) in entry_map
-                        else state_map[s_next],
-                    )
-                    for prob, s_next in branch
-                ]
-                new_choices[new_a] = Distribution(new_branch)
-            new_model.add_choices(new_s, Choices(new_choices))
-
-        for (s, a, s_next), e in entry_map.items():
-            dest = state_map[s_next]
-            new_model.add_choices(
-                e,
-                Choices({tau: Distribution([(1, dest)])}),
-            )
-
-        for rw in self.rewards:
-            new_rw = new_model.new_reward_model(rw.name)
-            for s, v in rw.rewards.items():
-                new_rw.set_state_reward(state_map[s], v)
-            for (s, a, s_next), e in entry_map.items():
-                v = rw.get_transition_reward(s, a, s_next)
-                if v:
-                    new_rw.set_state_reward(e, v)
-
-        return new_model
 
     # Model operations
 
@@ -1031,9 +986,6 @@ class Model[ValueType: Value]:
         # untouched parameters may still appear in the remaining transitions.
         for name in values:
             evaluated_model._parameters.pop(name, None)
-        # Invalidate the `is_parametric` cache so the next query recomputes
-        # against the (possibly still-parametric) transitions.
-        evaluated_model._is_parametric = None
         return evaluated_model
 
     def add_valuation_at_remaining_states(

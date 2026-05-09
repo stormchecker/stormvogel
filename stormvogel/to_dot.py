@@ -253,7 +253,7 @@ def plot_model_pydot(
     auto_action_positions: bool = True,
     highlight_state: "stormvogel.model.State | None" = None,
     self_loop_position: "str | dict[stormvogel.model.State, str] | None" = None,
-    color_by_observation: bool = False,
+    color_by_observation: bool = True,
 ) -> None:
     """Render a stormvogel model to SVG/PDF using pydot.
 
@@ -480,7 +480,22 @@ def plot_model_pydot(
                 self._g = g
 
             def _repr_html_(self):
-                return _dark_mode_html(self._g.create_svg())
+                svg = _dark_mode_html(self._g.create_svg())
+                uid = f"sv-{uuid4().hex[:8]}"
+                return (
+                    f'<div style="display:inline-block;max-width:100%">'
+                    f'<div style="cursor:zoom-in" onclick="document.getElementById(\'{uid}\').showModal()">'
+                    f'<div style="pointer-events:none">{svg}</div>'
+                    f"</div>"
+                    f'<dialog id="{uid}" onclick="this.close()" '
+                    f'style="border:none;padding:16px;border-radius:8px;'
+                    f"max-width:90vw;max-height:90vh;overflow:auto;"
+                    f'box-shadow:0 8px 64px rgba(0,0,0,.4)">'
+                    f"<style>#{uid}::backdrop{{background:rgba(0,0,0,.6);cursor:zoom-out}}</style>"
+                    f"{svg}"
+                    f"</dialog>"
+                    f"</div>"
+                )
 
             def _repr_png_(self):
                 return self._g.create_png()

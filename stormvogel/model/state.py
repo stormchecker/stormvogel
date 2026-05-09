@@ -122,6 +122,30 @@ class State[ValueType: Value]:
         else:
             raise RuntimeError("The model this state belongs to does not have choices")
 
+    @property
+    def unique_branch(self) -> "Distribution[ValueType, State[ValueType]]":
+        """Return the single branch of this state.
+
+        :raises RuntimeError: If the state does not have exactly one choice.
+        """
+        _, branch = self.unique_choice
+        return branch
+
+    @property
+    def unique_choice(
+        self,
+    ) -> "tuple[Action, Distribution[ValueType, State[ValueType]]]":
+        """Return the single ``(action, branch)`` pair of this state.
+
+        :raises RuntimeError: If the state does not have exactly one choice.
+        """
+        choices = self.choices
+        if len(choices) != 1:
+            raise RuntimeError(
+                f"State {self!r} has {len(choices)} choices; expected exactly 1."
+            )
+        return next(iter(choices))
+
     def set_choices(self, choices: Choices | ChoicesShorthand):
         """Set the choices for this state.
 

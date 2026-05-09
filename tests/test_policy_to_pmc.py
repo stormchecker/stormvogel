@@ -1,11 +1,11 @@
-"""Tests for stormvogel.transformations.policy_to_pmc."""
+"""Tests for stormvogel.teaching.policy_to_pmc."""
 
 import pytest
 import sympy as sp
 
 import stormvogel.model as sv_model
 from stormvogel.model.model import ModelType
-from stormvogel.transformations.policy_to_pmc import policy_to_pmc
+from stormvogel.teaching.policy_to_pmc import policy_to_pmc
 
 
 # ---------------------------------------------------------------------------
@@ -280,3 +280,107 @@ def test_raises_for_stochastic_observation():
     pomdp.set_choices(s, [(1, s)])
     with pytest.raises(ValueError, match="stochastic"):
         policy_to_pmc(pomdp)
+
+
+# ---------------------------------------------------------------------------
+# Condensed Monty Hall POMDP → pMC
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def monty_hall_pmc():
+    from stormvogel.examples.condensed_monty_hall import create_condensed_monty_hall
+
+    return policy_to_pmc(create_condensed_monty_hall())
+
+
+def test_monty_hall_result_is_dtmc(monty_hall_pmc):
+    assert monty_hall_pmc.model_type == sv_model.ModelType.DTMC
+
+
+def test_monty_hall_state_count_preserved(monty_hall_pmc):
+    assert monty_hall_pmc.nr_states == 10
+
+
+def test_monty_hall_param_count(monty_hall_pmc):
+    # "blue" obs (pick1/pick2/pick3) → 3 params; "teal" obs (stay/switch) → 2.
+    assert len(monty_hall_pmc.parameters) == 5
+
+
+def test_monty_hall_pick_params_present(monty_hall_pmc):
+    params = set(monty_hall_pmc.parameters)
+    assert {"y_pick_pick1", "y_pick_pick2", "y_pick_pick3"} <= params
+
+
+def test_monty_hall_show_params_present(monty_hall_pmc):
+    params = set(monty_hall_pmc.parameters)
+    assert {"y_show_stay", "y_show_switch"} <= params
+
+
+def test_monty_hall_pick_states_share_params(monty_hall_pmc):
+    """d1, d2, d3 all carry the same y_pick_* parameters."""
+
+    def _free(state):
+        names: set[str] = set()
+        for _, branch in monty_hall_pmc.transitions[state]:
+            for val, _ in branch:
+                if sv_model.parametric.is_parametric(val):
+                    names |= sv_model.parametric.free_symbol_names(val)
+        return names
+
+    d_states = [
+        s
+        for s in monty_hall_pmc.states
+        if monty_hall_pmc.friendly_names.get(s) in {"d1", "d2", "d3"}
+    ]
+    assert len(d_states) == 3
+    param_sets = [_free(s) for s in d_states]
+    assert param_sets[0] == param_sets[1] == param_sets[2]
+
+
+def test_monty_hall_win_lose_not_parametric(monty_hall_pmc):
+    """Terminal states have no parametric transitions."""
+    for lbl in ("win", "lose"):
+        s = next(iter(monty_hall_pmc.state_labels[lbl]))
+        for _, branch in monty_hall_pmc.transitions[s]:
+            for val, _ in branch:
+                assert not sv_model.parametric.is_parametric(val)
+
+
+# stormpy-gated: verify the classic Monty Hall result via AnalyseParametric
+_stormpy = pytest.importorskip("stormpy", reason="stormpy required")
+
+
+@pytest.fixture(scope="module")
+def monty_hall_analyser(monty_hall_pmc):
+    from stormvogel.stormpy_utils.parametric_analysis import AnalyseParametric
+
+    return AnalyseParametric(monty_hall_pmc, 'P=? [F "win"]')
+
+
+def test_monty_hall_switch_wins_two_thirds(monty_hall_analyser):
+    """Switching wins with probability 2/3."""
+    result = monty_hall_analyser.evaluate_at_point(
+        {
+            "y_pick_pick1": 1 / 3,
+            "y_pick_pick2": 1 / 3,
+            "y_pick_pick3": 1 / 3,
+            "y_show_stay": 0.0,
+            "y_show_switch": 1.0,
+        }
+    )
+    assert abs(result - 2 / 3) < 1e-6
+
+
+def test_monty_hall_stay_wins_one_third(monty_hall_analyser):
+    """Staying wins with probability 1/3."""
+    result = monty_hall_analyser.evaluate_at_point(
+        {
+            "y_pick_pick1": 1 / 3,
+            "y_pick_pick2": 1 / 3,
+            "y_pick_pick3": 1 / 3,
+            "y_show_stay": 1.0,
+            "y_show_switch": 0.0,
+        }
+    )
+    assert abs(result - 1 / 3) < 1e-6
