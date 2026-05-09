@@ -30,8 +30,8 @@ from stormvogel.teaching.belief_mdp import FrontierBelief, belief_mdp
 def _make_pomdp():
     pomdp = sv_model.new_pomdp(create_initial_state=False)
     obs = pomdp.new_observation("same")
-    s0 = pomdp.new_state(["init", "s0"], observation=obs)
-    s1 = pomdp.new_state(["s1"], observation=obs)
+    s0 = pomdp.new_state(["init"], observation=obs)
+    s1 = pomdp.new_state([], observation=obs)
     act_a = pomdp.new_action("a")
     act_b = pomdp.new_action("b")
     pomdp.set_choices(

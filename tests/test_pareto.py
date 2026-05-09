@@ -2,12 +2,11 @@
 
 import numpy as np
 import pytest
-from stormvogel.result import ParetoResult
+from stormvogel.result import ParetoResult, plot_pareto_result
 from stormvogel.teaching.pareto import (
     ParetoQuery,
     _feasible_polygon,
     plot_pareto,
-    plot_pareto_result,
 )
 
 

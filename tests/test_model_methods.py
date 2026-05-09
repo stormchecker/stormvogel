@@ -1432,10 +1432,14 @@ def test_copy_observation_model_points_to_copy():
 
 def test_copy_state_label_mutation_does_not_affect_original():
     """Mutating a copy state's labels must not touch the original model."""
+    import warnings
+
     m = _make_copy_test_dtmc()
     c = m.copy()
     copy_sa = next(iter(c.get_states_with_label("A")))
-    copy_sa.set_labels({"A", "extra"})
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        copy_sa.set_labels({"A", "extra"})
     assert not any("extra" in list(s.labels) for s in m.states)
 
 
