@@ -122,7 +122,7 @@ import gymnasium as gym
 from stormvogel.extensions.gym_grid import *
 
 env = gym.make(
-    "Taxi-v3", render_mode="rgb_array"
+    "Taxi-v4", render_mode="rgb_array"
 )  # Set `is_slippery=True` for stochastic behavior
 sv_model = gymnasium_grid_to_stormvogel(env)
 # This model is so big that it is better not to display it.
