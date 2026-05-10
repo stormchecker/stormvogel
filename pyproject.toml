@@ -67,6 +67,7 @@ line-length = 88
 target-version = "py311"
 fix = true
 
+# pyright configuration is in pyrightconfig.json; settings here are ignored when that file exists.
 [tool.pyright]
 venvPath = "."
 venv = ".venv"

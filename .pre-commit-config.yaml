@@ -14,8 +14,8 @@ repos:
       - id: pretty-format-json
         args: [--autofix, --no-sort-keys]
 
+  # pyright configuration (e.g. excludes) is in pyrightconfig.json
   - repo: https://github.com/RobertCraigie/pyright-python
     rev: v1.1.408
     hooks:
       - id: pyright
-        exclude: docs/

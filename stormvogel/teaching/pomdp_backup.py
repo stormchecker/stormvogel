@@ -552,8 +552,8 @@ def _mdp_values(pomdp: "Model", target_label: str) -> dict["State", Fraction]:
 def mdp_bound_alpha(pomdp: "Model", target_label: str) -> AlphaVector:
     """Return the fully-observable MDP value function as an alpha vector.
 
-    The MDP upper bound lifts the optimal fully-observable value $V_\\text{MDP}$
-    to the belief space by expectation:
+    The MDP upper bound lifts the optimal fully-observable value
+    :math:`V_\\text{MDP}` to the belief space by expectation:
 
     .. math::
 
@@ -561,13 +561,13 @@ def mdp_bound_alpha(pomdp: "Model", target_label: str) -> AlphaVector:
                          = \\alpha_\\text{MDP} \\cdot b.
 
     Because any observation-based policy is also an MDP policy, this is an
-    upper bound: $V^*(b) \\leq V_\\text{MDP}(b)$.
+    upper bound: :math:`V^*(b) \\leq V_\\text{MDP}(b)`.
 
     Requires stormpy (via :func:`stormvogel.model_checking`).
 
     :param pomdp: The POMDP model.
     :param target_label: Label identifying target states.
-    :returns: An :class:`AlphaVector` whose values equal $V_\\text{MDP}(s)$.
+    :returns: An :class:`AlphaVector` whose values equal :math:`V_\\text{MDP}(s)`.
     """
     return AlphaVector(values=_mdp_values(pomdp, target_label))
 
@@ -576,7 +576,7 @@ def qmdp_alphas(pomdp: "Model", target_label: str) -> list[AlphaVector]:
     """Return the QMDP alpha vectors, one per named action.
 
     QMDP assumes the state becomes fully observable after the *first* action,
-    so the agent picks $a$ to maximise the expected MDP value of the successor:
+    so the agent picks :math:`a` to maximise the expected MDP value of the successor:
 
     .. math::
 
@@ -591,8 +591,8 @@ def qmdp_alphas(pomdp: "Model", target_label: str) -> list[AlphaVector]:
             + \\mathbb{1}[s \\notin T]
             \\cdot \\sum_{s'} P(s'\\mid s,a)\\, V_\\text{MDP}(s').
 
-    The value function is $V_\\text{QMDP}(b) = \\max_a \\alpha_a \\cdot b$, and
-    satisfies $V^*(b) \\leq V_\\text{QMDP}(b) \\leq V_\\text{MDP}(b)$.
+    The value function is :math:`V_\\text{QMDP}(b) = \\max_a \\alpha_a \\cdot b`, and
+    satisfies :math:`V^*(b) \\leq V_\\text{QMDP}(b) \\leq V_\\text{MDP}(b)`.
 
     Requires stormpy (via :func:`stormvogel.model_checking`).
 

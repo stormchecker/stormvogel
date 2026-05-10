@@ -11,6 +11,7 @@ import pytest
 from fractions import Fraction
 
 from stormvogel.examples.four_state_reachability import create_4state_reachability_pomdp
+from stormvogel.teaching.belief import Belief
 from stormvogel.teaching.pomdp_backup import (
     AlphaVI,
     AlphaVector,
@@ -60,8 +61,8 @@ def sink(model):
     return _state(model, "sink")
 
 
-def _belief(s1, s2, p: Fraction):
-    return {s1: p, s2: 1 - p}
+def _belief(s1, s2, p: Fraction) -> Belief:
+    return Belief({s1: p, s2: 1 - p})
 
 
 # ---------------------------------------------------------------------------
@@ -97,7 +98,7 @@ def test_dot_non_target_belief_is_zero(model, s1, s2):
 
 def test_dot_point_mass_target(model, target):
     alpha = initial_alpha(model, "target")
-    assert dot(alpha, {target: Fraction(1)}) == Fraction(1)
+    assert dot(alpha, Belief({target: Fraction(1)})) == Fraction(1)
 
 
 def test_value_function_single_alpha_zero(model, s1, s2):

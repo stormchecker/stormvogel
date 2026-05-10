@@ -1,8 +1,10 @@
 """Pareto front geometry visualization for 2-objective MDP model checking.
 
 Each query (w, p) defines:
+
   - supporting hyperplane   w·x = w·p   (black dashed)
   - infeasible halfspace    w·x ≥ w·p   one red region per query
+
 The green region is the downward closure of the convex hull of all achievable points.
 """
 

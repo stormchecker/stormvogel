@@ -12,10 +12,11 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 import stormvogel.model as sv_model
 from stormvogel.model.value import Interval
-from stormvogel.parametric import RectangularRegion, to_interval_mdp
 from stormvogel.parametric.region import (
     AnnotatedRegion,
+    RectangularRegion,
     plot_regions,
+    to_interval_mdp,
 )
 
 

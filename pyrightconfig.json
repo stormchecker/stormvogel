@@ -3,6 +3,9 @@
   "venv": ".venv",
   "reportAttributeAccessIssue": false,
   "reportMissingImports": false,
+  "exclude": [
+    "docs"
+  ],
   "ignore": [
     "**/.vscode/**",
     "**.ipynb"

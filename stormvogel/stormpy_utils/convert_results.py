@@ -1,3 +1,10 @@
+__all__ = [
+    "convert_scheduler_to_stormvogel",
+    "convert_model_checking_result",
+    "map_result_to_original_model",
+    "convert_pareto_result",
+]
+
 import stormvogel.model
 import stormvogel.result
 from stormvogel import parametric
@@ -48,18 +55,18 @@ def convert_model_checking_result(
 
     # we distinguish between quantitative and qualitative results
     # (determines what kind of values our result contains)
-    if type(stormpy_result) == stormpy.ExplicitQuantitativeCheckResult:
+    if isinstance(stormpy_result, stormpy.ExplicitQuantitativeCheckResult):
         values = {
             model.states[index]: value
             for (index, value) in enumerate(stormpy_result.get_values())
         }
-    elif type(stormpy_result) == stormpy.ExplicitParametricQuantitativeCheckResult:
+    elif isinstance(stormpy_result, stormpy.ExplicitParametricQuantitativeCheckResult):
         backend = parametric.get_default()
         values = {
             model.states[index]: backend.from_pycarl(value.rational_function())
             for (index, value) in enumerate(stormpy_result.get_values())
         }
-    elif type(stormpy_result) == stormpy.ExplicitQualitativeCheckResult:
+    elif isinstance(stormpy_result, stormpy.ExplicitQualitativeCheckResult):
         values = {
             model.states[i]: stormpy_result.at(i) for i in range(0, len(model.states))
         }

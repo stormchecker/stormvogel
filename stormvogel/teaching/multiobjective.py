@@ -57,7 +57,7 @@ def goal_unfolding(
 
     _init_labels = frozenset(mdp.initial_state.labels)
     _init_bits = tuple(goal_labels[i] in _init_labels for i in range(m))
-    _init = stormvogel.bird.State(_mdp_state=mdp.initial_state, _bits=_init_bits)
+    _init = stormvogel.bird.BirdState(_mdp_state=mdp.initial_state, _bits=_init_bits)
 
     def _next_bits(bits: tuple, state_labels: frozenset[str]) -> tuple:
         return tuple(bits[i] or (goal_labels[i] in state_labels) for i in range(m))
@@ -71,7 +71,7 @@ def goal_unfolding(
         return [
             (
                 prob,
-                stormvogel.bird.State(
+                stormvogel.bird.BirdState(
                     _mdp_state=t, _bits=_next_bits(sq._bits, frozenset(t.labels))
                 ),
             )

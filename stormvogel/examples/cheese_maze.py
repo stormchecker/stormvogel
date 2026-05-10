@@ -66,7 +66,10 @@ def create_cheese_maze(
     def delta(s, action: str):
         if getattr(s, "type", None) == "start":
             return [
-                (Fraction(1, num_corridors), bird.State(row=vcorridor_length, col=c))
+                (
+                    Fraction(1, num_corridors),
+                    bird.BirdState(row=vcorridor_length, col=c),
+                )
                 for c in corridor_cols
             ]
         row, col = s.row, s.col
@@ -77,10 +80,10 @@ def create_cheese_maze(
         if not _is_valid(nr, nc):
             nr, nc = row, col
         if slippery == 0 or (nr == row and nc == col):
-            return [(1, bird.State(row=nr, col=nc))]
+            return [(1, bird.BirdState(row=nr, col=nc))]
         return [
-            (slippery, bird.State(row=row, col=col)),
-            (1 - slippery, bird.State(row=nr, col=nc)),
+            (slippery, bird.BirdState(row=row, col=col)),
+            (1 - slippery, bird.BirdState(row=nr, col=nc)),
         ]
 
     def observations(s) -> int:
@@ -118,7 +121,7 @@ def create_cheese_maze(
 
     model = bird.build_bird(
         delta=delta,
-        init=bird.State(type="start"),
+        init=bird.BirdState(type="start"),
         labels=labels,
         friendly_names=friendly_names,
         available_actions=available_actions,

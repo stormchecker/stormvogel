@@ -8,6 +8,8 @@ import stormvogel.model as model
 
 
 class Gets(sp.Function):
+    """Sympy function rendering as a LaTeX assignment arrow (``\\gets``)."""
+
     nargs = 2
 
 

@@ -12,38 +12,38 @@ def create_knuth_yao_pmc():
     """
     x = sp.Symbol("x")
 
-    initial_state = bird.State(s=0)
+    initial_state = bird.BirdState(s=0)
 
-    def delta(s: bird.State):
+    def delta(s: bird.BirdState):
         match s.s:
             case 0:
-                return [(x, bird.State(s=1)), (1 - x, bird.State(s=2))]
+                return [(x, bird.BirdState(s=1)), (1 - x, bird.BirdState(s=2))]
             case 1:
-                return [(x, bird.State(s=3)), (1 - x, bird.State(s=4))]
+                return [(x, bird.BirdState(s=3)), (1 - x, bird.BirdState(s=4))]
             case 2:
-                return [(x, bird.State(s=5)), (1 - x, bird.State(s=6))]
+                return [(x, bird.BirdState(s=5)), (1 - x, bird.BirdState(s=6))]
             case 3:
-                return [(x, bird.State(s=1)), (1 - x, bird.State(s=7, d=1))]
+                return [(x, bird.BirdState(s=1)), (1 - x, bird.BirdState(s=7, d=1))]
             case 4:
                 return [
-                    (x, bird.State(s=7, d=2)),
-                    (1 - x, bird.State(s=7, d=3)),
+                    (x, bird.BirdState(s=7, d=2)),
+                    (1 - x, bird.BirdState(s=7, d=3)),
                 ]
             case 5:
                 return [
-                    (x, bird.State(s=7, d=4)),
-                    (1 - x, bird.State(s=7, d=5)),
+                    (x, bird.BirdState(s=7, d=4)),
+                    (1 - x, bird.BirdState(s=7, d=5)),
                 ]
             case 6:
-                return [(x, bird.State(s=2)), (1 - x, bird.State(s=7, d=6))]
+                return [(x, bird.BirdState(s=2)), (1 - x, bird.BirdState(s=7, d=6))]
             case 7:
                 return [(1, s)]
 
-    def labels(s: bird.State) -> str | None:
+    def labels(s: bird.BirdState) -> str | None:
         if s.s == 7:
             return f"rolled{str(s.d)}"
 
-    def friendly_names(s: bird.State) -> str:
+    def friendly_names(s: bird.BirdState) -> str:
         return "s" + str(s.s) if s.s != 7 else "=" + str(s.d)
 
     return bird.build_bird(
@@ -60,38 +60,38 @@ def create_knuth_yao_pmc_twocoins():
     x = sp.Symbol("x")
     y = sp.Symbol("y")
 
-    initial_state = bird.State(s=0)
+    initial_state = bird.BirdState(s=0)
 
-    def delta(s: bird.State):
+    def delta(s: bird.BirdState):
         match s.s:
             case 0:
-                return [(x, bird.State(s=1)), (1 - x, bird.State(s=2))]
+                return [(x, bird.BirdState(s=1)), (1 - x, bird.BirdState(s=2))]
             case 1:
-                return [(y, bird.State(s=3)), (1 - y, bird.State(s=4))]
+                return [(y, bird.BirdState(s=3)), (1 - y, bird.BirdState(s=4))]
             case 2:
-                return [(y, bird.State(s=5)), (1 - y, bird.State(s=6))]
+                return [(y, bird.BirdState(s=5)), (1 - y, bird.BirdState(s=6))]
             case 3:
-                return [(x, bird.State(s=1)), (1 - x, bird.State(s=7, d=1))]
+                return [(x, bird.BirdState(s=1)), (1 - x, bird.BirdState(s=7, d=1))]
             case 4:
                 return [
-                    (x, bird.State(s=7, d=2)),
-                    (1 - x, bird.State(s=7, d=3)),
+                    (x, bird.BirdState(s=7, d=2)),
+                    (1 - x, bird.BirdState(s=7, d=3)),
                 ]
             case 5:
                 return [
-                    (x, bird.State(s=7, d=4)),
-                    (1 - x, bird.State(s=7, d=5)),
+                    (x, bird.BirdState(s=7, d=4)),
+                    (1 - x, bird.BirdState(s=7, d=5)),
                 ]
             case 6:
-                return [(x, bird.State(s=2)), (1 - x, bird.State(s=7, d=6))]
+                return [(x, bird.BirdState(s=2)), (1 - x, bird.BirdState(s=7, d=6))]
             case 7:
                 return [(1, s)]
 
-    def labels(s: bird.State) -> str | None:
+    def labels(s: bird.BirdState) -> str | None:
         if s.s == 7:
             return f"rolled{str(s.d)}"
 
-    def friendly_names(s: bird.State) -> str:
+    def friendly_names(s: bird.BirdState) -> str:
         return "s" + str(s.s) if s.s != 7 else "=" + str(s.d)
 
     return bird.build_bird(

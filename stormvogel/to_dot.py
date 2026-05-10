@@ -402,7 +402,7 @@ def plot_model_pydot(
         pos = _node_pos(s)
         if pos:
             attrs["pos"] = pos
-        graph.add_node(pydot.Node(node_id[s], **attrs))
+        graph.add_node(pydot.Node(node_id[s], **attrs))  # type: ignore[arg-type]
 
     # Transitions (with or without action nodes)
     for state, choice in model.transitions.items():
@@ -425,7 +425,7 @@ def plot_model_pydot(
                 pos = _node_pos((state, action))
                 if pos:
                     act_attrs["pos"] = pos
-                graph.add_node(pydot.Node(act_id, **act_attrs))
+                graph.add_node(pydot.Node(act_id, **act_attrs))  # type: ignore[arg-type]
                 graph.add_edge(
                     pydot.Edge(
                         node_id[state],

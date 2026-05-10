@@ -25,7 +25,7 @@ def gymnasium_grid_to_stormvogel(
     INV_MAP = {v: k for k, v in action_label_map.items()}
     ALL_ACTIONS = list(action_label_map.values())
 
-    def action_numer_map(a: bird.Action):
+    def action_numer_map(a: bird.BirdAction):
         return INV_MAP[a]
 
     # Precompute which states need proxy states (rewards differ by action).
@@ -45,11 +45,11 @@ def gymnasium_grid_to_stormvogel(
 
     if "taxi" in env.spec.id.lower():
         # For Taxi, we need a special initial state that goes to every state. This is to account for the randomized starting position.
-        init = bird.State(n=-1, done=False, proxy_action=None)
+        init = bird.BirdState(n=-1, done=False, proxy_action=None)
     else:
-        init = bird.State(n=0, done=False, proxy_action=None)
+        init = bird.BirdState(n=0, done=False, proxy_action=None)
 
-    def available_actions(s: bird.State):
+    def available_actions(s: bird.BirdState):
         if s.n == -1:
             return [""]
         if s.proxy_action is not None:
@@ -57,12 +57,12 @@ def gymnasium_grid_to_stormvogel(
             return [""]
         return ALL_ACTIONS[:NO_ACTIONS]
 
-    def delta(s: bird.State, a: bird.Action):
+    def delta(s: bird.BirdState, a: bird.BirdAction):
         if s.n == -1:
             # Special taxi init state.
             PLS = 4
             return [
-                (1 / PLS, bird.State(n=x, done=False, proxy_action=None))
+                (1 / PLS, bird.BirdState(n=x, done=False, proxy_action=None))
                 for x in range(PLS)
             ]
 
@@ -73,7 +73,7 @@ def gymnasium_grid_to_stormvogel(
                 map(
                     lambda x: (
                         x[0],
-                        bird.State(n=int(x[1]), done=x[3], proxy_action=None),
+                        bird.BirdState(n=int(x[1]), done=x[3], proxy_action=None),
                     ),
                     trans,
                 )
@@ -82,7 +82,12 @@ def gymnasium_grid_to_stormvogel(
         if needs_proxy[s.n]:
             # Rewards differ by action: go through a proxy state.
             return [
-                (1.0, bird.State(n=s.n, done=s.done, proxy_action=action_numer_map(a)))
+                (
+                    1.0,
+                    bird.BirdState(
+                        n=s.n, done=s.done, proxy_action=action_numer_map(a)
+                    ),
+                )
             ]
         else:
             # Rewards are uniform: transition directly.
@@ -91,13 +96,13 @@ def gymnasium_grid_to_stormvogel(
                 map(
                     lambda x: (
                         x[0],
-                        bird.State(n=int(x[1]), done=x[3], proxy_action=None),
+                        bird.BirdState(n=int(x[1]), done=x[3], proxy_action=None),
                     ),
                     trans,
                 )
             )
 
-    def rewards(s: bird.State) -> dict[str, stormvogel.model.Value]:
+    def rewards(s: bird.BirdState) -> dict[str, stormvogel.model.Value]:
         if s.n == -1:
             return {"R": 0.0}
         if s.proxy_action is not None:
@@ -110,7 +115,7 @@ def gymnasium_grid_to_stormvogel(
         # State that uses proxy: reward is on the proxy, not here.
         return {"R": 0.0}
 
-    def labels(s: bird.State):
+    def labels(s: bird.BirdState):
         if s.proxy_action is not None:
             return []
         labels = [str(s.n), str(to_coordinate(s.n, env))]
@@ -121,7 +126,7 @@ def gymnasium_grid_to_stormvogel(
         return labels
 
     def valuations(
-        s: bird.State,
+        s: bird.BirdState,
     ) -> dict[stormvogel.model.Variable, int | float | bool]:
         if s.proxy_action is not None:
             return {stormvogel.model.Variable("env_id"): -1}

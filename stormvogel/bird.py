@@ -11,7 +11,7 @@ from stormvogel import parametric
 
 
 @dataclass
-class State:
+class BirdState:
     """Represent a bird state as a dynamic attribute container."""
 
     def __init__(self, **kwargs):
@@ -25,20 +25,20 @@ class State:
         return hash(str(self.__dict__))
 
     def __eq__(self, other):
-        if isinstance(other, State):
+        if isinstance(other, BirdState):
             return self.__dict__ == other.__dict__
         return False
 
 
-type Action = str
+type BirdAction = str
 
 
 def _valid_input[ValueType: stormvogel.model.Value](
-    delta: Callable[[Any, Action], Any] | Callable[[Any], Any],
+    delta: Callable[[Any, BirdAction], Any] | Callable[[Any], Any],
     init: Any,
     rewards: Callable[[Any], dict[str, ValueType]] | None = None,
     labels: Callable[[Any], Sequence[str] | str | None] | None = None,
-    available_actions: Callable[[Any], list[Action]] | None = None,
+    available_actions: Callable[[Any], list[BirdAction]] | None = None,
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
     rates: Callable[[Any], float] | None = None,
     valuations: Callable[[Any], dict[Variable, float | int | bool]] | None = None,
@@ -168,14 +168,16 @@ def _valid_input[ValueType: stormvogel.model.Value](
 
 def build_bird[ValueType: stormvogel.model.Value](
     delta: (
-        Callable[[Any, Action], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None]
+        Callable[
+            [Any, BirdAction], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None
+        ]
         | Callable[[Any], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None]
     ),
     init: Any,
     rewards: Callable[[Any], dict[str, ValueType]] | None = None,
     labels: Callable[[Any], Sequence[str] | str | None] | None = None,
     friendly_names: Callable[[Any], str] | None = None,
-    available_actions: Callable[[Any], list[Action]] | None = None,
+    available_actions: Callable[[Any], list[BirdAction]] | None = None,
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
     rates: Callable[[Any], float] | None = None,
     valuations: Callable[[Any], dict[Variable, float | int | bool]] | None = None,
@@ -324,7 +326,7 @@ def build_bird[ValueType: stormvogel.model.Value](
                 )
 
             for action in actionslist:
-                # Actions must be strings
+                # BirdActions must be strings
                 if not isinstance(action, str):
                     raise ValueError(
                         f"On input {state}, the available actions function returns an action that is not a string: {action}"
@@ -552,3 +554,21 @@ def build_bird[ValueType: stormvogel.model.Value](
             s.set_friendly_name(name)
 
     return model
+
+
+def __getattr__(name: str):
+    if name == "State":
+        warnings.warn(
+            "bird.State is deprecated, use bird.BirdState instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return BirdState
+    if name == "Action":
+        warnings.warn(
+            "bird.Action is deprecated, use bird.BirdAction instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return BirdAction
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

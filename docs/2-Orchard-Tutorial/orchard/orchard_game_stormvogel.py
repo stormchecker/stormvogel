@@ -34,7 +34,7 @@ class GameState(Enum):
 
 
 # Main class for the orchard game
-class Orchard(stormvogel.bird.State):
+class Orchard(stormvogel.bird.BirdState):
     def __init__(self, fruit_types, num_fruits, raven_distance):
         self.trees = {fruit: num_fruits for fruit in fruit_types}
         self.raven = raven_distance

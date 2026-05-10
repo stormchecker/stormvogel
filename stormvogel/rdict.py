@@ -64,7 +64,7 @@ def merge_dict(dict1: dict, dict2: dict) -> dict:
     """
     for key, val in dict1.items():
         if isinstance(val, dict):
-            if key in dict2 and type(dict2[key] == dict):
+            if key in dict2 and isinstance(dict2[key], dict):
                 merge_dict(dict1[key], dict2[key])
         else:
             if key in dict2:

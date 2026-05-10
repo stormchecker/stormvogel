@@ -12,8 +12,10 @@ def eliminate_transition_rewards(model: "Model") -> "Model":
     """Rewrite transition rewards into state rewards via auxiliary entry states.
 
     For each transition (s, a, s') carrying reward r in any reward model,
-    inserts an auxiliary state e and reroutes:
+    inserts an auxiliary state e and reroutes::
+
         s --a, p--> s'   =>   s --a, p--> e --τ, 1--> s'
+
     with state_reward(e) = r.
 
     Returns a new model with only state rewards. If no transition rewards are

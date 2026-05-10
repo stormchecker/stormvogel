@@ -7,44 +7,53 @@ def create_knuth_yao_imc():
     inv_interval = model.Interval(1 / 7, 5 / 7)
 
     # we build the knuth yao dice using the bird model builder
-    def delta(s: bird.State):
+    def delta(s: bird.BirdState):
         match s.s:
             case 0:
-                return [(interval, bird.State(s=1)), (inv_interval, bird.State(s=2))]
+                return [
+                    (interval, bird.BirdState(s=1)),
+                    (inv_interval, bird.BirdState(s=2)),
+                ]
             case 1:
-                return [(interval, bird.State(s=3)), (inv_interval, bird.State(s=4))]
+                return [
+                    (interval, bird.BirdState(s=3)),
+                    (inv_interval, bird.BirdState(s=4)),
+                ]
             case 2:
-                return [(interval, bird.State(s=5)), (inv_interval, bird.State(s=6))]
+                return [
+                    (interval, bird.BirdState(s=5)),
+                    (inv_interval, bird.BirdState(s=6)),
+                ]
             case 3:
                 return [
-                    (interval, bird.State(s=1)),
-                    (inv_interval, bird.State(s=7, d=1)),
+                    (interval, bird.BirdState(s=1)),
+                    (inv_interval, bird.BirdState(s=7, d=1)),
                 ]
             case 4:
                 return [
-                    (interval, bird.State(s=7, d=2)),
-                    (inv_interval, bird.State(s=7, d=3)),
+                    (interval, bird.BirdState(s=7, d=2)),
+                    (inv_interval, bird.BirdState(s=7, d=3)),
                 ]
             case 5:
                 return [
-                    (interval, bird.State(s=7, d=4)),
-                    (inv_interval, bird.State(s=7, d=5)),
+                    (interval, bird.BirdState(s=7, d=4)),
+                    (inv_interval, bird.BirdState(s=7, d=5)),
                 ]
             case 6:
                 return [
-                    (interval, bird.State(s=2)),
-                    (inv_interval, bird.State(s=7, d=6)),
+                    (interval, bird.BirdState(s=2)),
+                    (inv_interval, bird.BirdState(s=7, d=6)),
                 ]
             case 7:
                 return [(1, s)]
 
-    def labels(s: bird.State):
+    def labels(s: bird.BirdState):
         if s.s == 7:
             return f"rolled{str(s.d)}"
 
     knuth_yao_imc = bird.build_bird(
         delta=delta,
-        init=bird.State(s=0),
+        init=bird.BirdState(s=0),
         labels=labels,
         modeltype=model.ModelType.DTMC,
     )

@@ -80,7 +80,7 @@ class SymbolicDFA(Generic[State]):
         return "\n".join(lines)
 
 
-class ProductState(stormvogel.bird.State):
+class ProductState(stormvogel.bird.BirdState):
     def __init__(self, mdp, dfa, mdp_state, dfa_state):
         super().__init__(_mdp=mdp, _dfa=dfa, _mdp_state=mdp_state, _dfa_state=dfa_state)
 

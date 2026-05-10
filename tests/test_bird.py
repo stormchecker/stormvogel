@@ -11,12 +11,12 @@ def test_bird_mdp():
     # we build the model with bird:
     N = 2
     p = 0.5
-    initial_state = bird.State(x=math.floor(N / 2))
+    initial_state = bird.BirdState(x=math.floor(N / 2))
 
     left = "left"
     right = "right"
 
-    def available_actions(s: bird.State) -> list[bird.Action]:
+    def available_actions(s: bird.BirdState) -> list[bird.BirdAction]:
         if s.x == N:
             return [right]
         elif s.x == 0:
@@ -24,18 +24,20 @@ def test_bird_mdp():
         else:
             return [left, right]
 
-    def rewards(s: bird.State) -> dict[str, model.Value]:
+    def rewards(s: bird.BirdState) -> dict[str, model.Value]:
         return {"r1": 1, "r2": 2}
 
-    def labels(s: bird.State):
+    def labels(s: bird.BirdState):
         return [str(s.x)]
 
-    def delta(s: bird.State, action: bird.Action) -> list[tuple[float, bird.State]]:
+    def delta(
+        s: bird.BirdState, action: bird.BirdAction
+    ) -> list[tuple[float, bird.BirdState]]:
         if action == left:
             return (
                 [
-                    (p, bird.State(x=s.x + 1)),
-                    (1 - p, bird.State(x=s.x)),
+                    (p, bird.BirdState(x=s.x + 1)),
+                    (1 - p, bird.BirdState(x=s.x)),
                 ]
                 if s.x < N
                 else []
@@ -43,8 +45,8 @@ def test_bird_mdp():
         elif action == right:
             return (
                 [
-                    (p, bird.State(x=s.x - 1)),
-                    (1 - p, bird.State(x=s.x)),
+                    (p, bird.BirdState(x=s.x - 1)),
+                    (1 - p, bird.BirdState(x=s.x)),
                 ]
                 if s.x > 0
                 else []
@@ -116,7 +118,7 @@ def test_bird_mdp_int():
     def labels(s):
         return [str(s)]
 
-    def delta(s, action: bird.Action):
+    def delta(s, action: bird.BirdAction):
         if action == left:
             return (
                 [
@@ -183,38 +185,38 @@ def test_bird_mdp_int():
 def test_bird_dtmc():
     # we build the model with bird:
     p = 0.5
-    initial_state = bird.State(s=0)
+    initial_state = bird.BirdState(s=0)
 
-    def rewards(s: bird.State) -> dict[str, model.Value]:
+    def rewards(s: bird.BirdState) -> dict[str, model.Value]:
         return {"r1": 1, "r2": 2}
 
-    def delta(s: bird.State) -> list[tuple[float, bird.State]] | None:
+    def delta(s: bird.BirdState) -> list[tuple[float, bird.BirdState]] | None:
         match s.s:
             case 0:
-                return [(p, bird.State(s=1)), (1 - p, bird.State(s=2))]
+                return [(p, bird.BirdState(s=1)), (1 - p, bird.BirdState(s=2))]
             case 1:
-                return [(p, bird.State(s=3)), (1 - p, bird.State(s=4))]
+                return [(p, bird.BirdState(s=3)), (1 - p, bird.BirdState(s=4))]
             case 2:
-                return [(p, bird.State(s=5)), (1 - p, bird.State(s=6))]
+                return [(p, bird.BirdState(s=5)), (1 - p, bird.BirdState(s=6))]
             case 3:
-                return [(p, bird.State(s=1)), (1 - p, bird.State(s=7, d=1))]
+                return [(p, bird.BirdState(s=1)), (1 - p, bird.BirdState(s=7, d=1))]
             case 4:
                 return [
-                    (p, bird.State(s=7, d=2)),
-                    (1 - p, bird.State(s=7, d=3)),
+                    (p, bird.BirdState(s=7, d=2)),
+                    (1 - p, bird.BirdState(s=7, d=3)),
                 ]
             case 5:
                 return [
-                    (p, bird.State(s=7, d=4)),
-                    (1 - p, bird.State(s=7, d=5)),
+                    (p, bird.BirdState(s=7, d=4)),
+                    (1 - p, bird.BirdState(s=7, d=5)),
                 ]
             case 6:
-                return [(p, bird.State(s=2)), (1 - p, bird.State(s=7, d=6))]
+                return [(p, bird.BirdState(s=2)), (1 - p, bird.BirdState(s=7, d=6))]
             case 7:
-                return [(1, bird.State(s=7, d=0))]
+                return [(1, bird.BirdState(s=7, d=0))]
 
     def valuations(
-        s: bird.State,
+        s: bird.BirdState,
     ) -> dict[stormvogel.model.Variable, float | int | bool]:
         s_var = stormvogel.model.Variable("s")
         d_var = stormvogel.model.Variable("d")
@@ -516,31 +518,31 @@ def test_bird_mdp_empty_action_3():
 
 def test_bird_endless():
     # we test if we get the correct error when the model gets too large
-    init = bird.State(x="")
+    init = bird.BirdState(x="")
 
-    def available_actions(s: bird.State):
+    def available_actions(s: bird.BirdState):
         if s == init:  # If we are in the initial state, we have a choice.
             return ["study", "don't study"]
         else:  # Otherwise, we don't have any choice, we are just a Markov chain.
             return [""]
 
-    def delta(s: bird.State, a: bird.Action):
+    def delta(s: bird.BirdState, a: bird.BirdAction):
         if a == "study":
-            return [(1, bird.State(x=["studied"]))]
+            return [(1, bird.BirdState(x=["studied"]))]
         elif a == "don't study":
-            return [(1, bird.State(x=["didn't study"]))]
+            return [(1, bird.BirdState(x=["didn't study"]))]
         elif "studied" in s.x:
             return [
-                (9 / 10, bird.State(x=["pass test"])),
-                (1 / 10, bird.State(x=["fail test"])),
+                (9 / 10, bird.BirdState(x=["pass test"])),
+                (1 / 10, bird.BirdState(x=["fail test"])),
             ]
         elif "didn't study" in s.x:
             return [
-                (2 / 5, bird.State(x=["pass test"])),
-                (3 / 5, bird.State(x=["fail test"])),
+                (2 / 5, bird.BirdState(x=["pass test"])),
+                (3 / 5, bird.BirdState(x=["fail test"])),
             ]
         else:
-            return [(1, bird.State(x=[f"{s.x[0]}0"]))]
+            return [(1, bird.BirdState(x=[f"{s.x[0]}0"]))]
 
     with pytest.raises(
         RuntimeError,
@@ -562,12 +564,12 @@ def test_bird_pomdp():
     # we build the pomdp model with bird:
     N = 2
     p = 0.5
-    initial_state = bird.State(x=math.floor(N / 2))
+    initial_state = bird.BirdState(x=math.floor(N / 2))
 
     left = "left"
     right = "right"
 
-    def available_actions(s: bird.State):
+    def available_actions(s: bird.BirdState):
         if s.x == N:
             return [right]
         elif s.x == 0:
@@ -575,21 +577,21 @@ def test_bird_pomdp():
         else:
             return [left, right]
 
-    def rewards(s: bird.State) -> dict[str, model.Value]:
+    def rewards(s: bird.BirdState) -> dict[str, model.Value]:
         return {"r1": 1, "r2": 2}
 
-    def labels(s: bird.State):
+    def labels(s: bird.BirdState):
         return [str(s.x)]
 
-    def observations(s: bird.State):
+    def observations(s: bird.BirdState):
         return 5
 
-    def delta(s: bird.State, action: bird.Action):
+    def delta(s: bird.BirdState, action: bird.BirdAction):
         if action == left:
             return (
                 [
-                    (p, bird.State(x=s.x + 1)),
-                    (1 - p, bird.State(x=s.x)),
+                    (p, bird.BirdState(x=s.x + 1)),
+                    (1 - p, bird.BirdState(x=s.x)),
                 ]
                 if s.x < N
                 else []
@@ -597,8 +599,8 @@ def test_bird_pomdp():
         elif action == right:
             return (
                 [
-                    (p, bird.State(x=s.x - 1)),
-                    (1 - p, bird.State(x=s.x)),
+                    (p, bird.BirdState(x=s.x - 1)),
+                    (1 - p, bird.BirdState(x=s.x)),
                 ]
                 if s.x > 0
                 else []
@@ -709,17 +711,17 @@ def test_bird_stochastic_observations():
     from stormvogel.model.distribution import Distribution
     from stormvogel.model.observation import Observation
 
-    initial_state = bird.State(x=0)
+    initial_state = bird.BirdState(x=0)
 
-    def available_actions(s: bird.State):
+    def available_actions(s: bird.BirdState):
         return ["a"]
 
-    def delta(s: bird.State, action: bird.Action):
+    def delta(s: bird.BirdState, action: bird.BirdAction):
         if s.x == 0:
-            return [(1, bird.State(x=1))]
+            return [(1, bird.BirdState(x=1))]
         return []
 
-    def observations(s: bird.State):
+    def observations(s: bird.BirdState):
         if s.x == 0:
             return [(0.6, 0), (0.4, 1)]
         else:
@@ -758,17 +760,17 @@ def test_bird_stochastic_observations_make_deterministic():
     """Stochastic observations from bird must work with make_observations_deterministic."""
     from stormvogel.model.distribution import Distribution
 
-    initial_state = bird.State(x=0)
+    initial_state = bird.BirdState(x=0)
 
-    def available_actions(s: bird.State):
+    def available_actions(s: bird.BirdState):
         return ["a"]
 
-    def delta(s: bird.State, action: bird.Action):
+    def delta(s: bird.BirdState, action: bird.BirdAction):
         if s.x == 0:
-            return [(1, bird.State(x=1))]
+            return [(1, bird.BirdState(x=1))]
         return []
 
-    def observations(s: bird.State):
+    def observations(s: bird.BirdState):
         if s.x == 0:
             return [(0.3, 0), (0.7, 1)]
         else:
