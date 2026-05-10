@@ -1,6 +1,14 @@
+import shutil
+
+import pytest
+
 import stormvogel
 import stormvogel.dfa as dfa
 from stormvogel.examples.minitown import create_minitown_mdp
+
+pytestmark = pytest.mark.skipif(
+    shutil.which("dot") is None, reason="Graphviz 'dot' not found in PATH"
+)
 
 
 def test_aut1():

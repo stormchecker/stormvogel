@@ -65,6 +65,7 @@ jobs:
           apt-get -y install pandoc
           apt-get -y install libcairo2-dev
           apt-get -y install nodejs
+          apt-get -y install graphviz
 
       - name: Configure Python
         uses: actions/setup-python@v5
