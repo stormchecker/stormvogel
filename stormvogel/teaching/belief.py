@@ -65,6 +65,33 @@ class Belief(Mapping["State", Fraction]):
     def __repr__(self) -> str:
         return f"Belief({self.dist!r})"
 
+    # --- LaTeX / Jupyter display ---------------------------------------------
+
+    @staticmethod
+    def _state_name(state: "State") -> str:
+        """Best short name for *state*: friendly_name > first label > index."""
+        if state.friendly_name is not None:
+            return state.friendly_name
+        labels = list(state.labels)
+        if labels:
+            return labels[0]
+        return str(state.state_id)
+
+    @staticmethod
+    def _fraction_latex(f: Fraction) -> str:
+        if f.denominator == 1:
+            return str(f.numerator)
+        return rf"\tfrac{{{f.numerator}}}{{{f.denominator}}}"
+
+    def _repr_latex_(self) -> str:
+        if not self.dist:
+            return r"$\emptyset$"
+        entries = ",\\quad ".join(
+            rf"{self._state_name(s)} \mapsto {self._fraction_latex(p)}"
+            for s, p in self.dist.items()
+        )
+        return rf"$\left\{{\, {entries} \,\right\}}$"
+
     @classmethod
     def normalize(cls, unnorm: "dict[State, Fraction]") -> "Belief":
         """Normalize *unnorm* to a probability distribution and return a Belief.
@@ -163,6 +190,38 @@ def belief_update(
             f"from the current belief under action '{action_label}'."
         )
     return Belief.normalize(unnorm)
+
+
+def belief_table(
+    beliefs: "list[Belief]",
+    trace: "list[tuple[str, str]]",
+) -> None:
+    """Render a belief trace as an HTML table in a Jupyter notebook.
+
+    Displays a table with columns Step / Action / Observation / Belief,
+    where the belief column uses the LaTeX representation of each
+    :class:`Belief`.  Row 0 shows the initial belief (no action/observation).
+
+    :param beliefs: List of beliefs as returned by :func:`belief_trace`
+        (length ``len(trace) + 1``).
+    :param trace: Sequence of ``(action_label, obs_alias)`` pairs passed to
+        :func:`belief_trace`.
+    """
+    try:
+        from IPython.display import HTML, display
+    except ImportError as e:
+        raise ImportError("belief_table requires IPython (pip install ipython).") from e
+
+    rows = [("", "", beliefs[0])]
+    for (action, obs), b in zip(trace, beliefs[1:]):
+        rows.append((action, obs, b))
+
+    header = "<tr><th>Step</th><th>Action</th><th>Observation</th><th>Belief</th></tr>"
+    body = "".join(
+        f"<tr><td>{i}</td><td>{a or '—'}</td><td>{o or '—'}</td><td>{b._repr_latex_()}</td></tr>"
+        for i, (a, o, b) in enumerate(rows)
+    )
+    display(HTML(f"<table>{header}{body}</table>"))
 
 
 def belief_trace(
