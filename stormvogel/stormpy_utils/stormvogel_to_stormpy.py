@@ -1,13 +1,18 @@
+from typing import TYPE_CHECKING
+
 from stormvogel import parametric
 from stormvogel.model.action import EmptyAction
 from stormvogel.model.distribution import Distribution
 from stormvogel.model.model import Model, ModelType
 from stormvogel.model.value import Number, Value, Interval
 
-try:
+if TYPE_CHECKING:
     import stormpy
-except ImportError:
-    stormpy = None
+else:
+    try:
+        import stormpy
+    except ImportError:
+        stormpy = None
 
 
 def value_to_stormpy(
@@ -543,8 +548,8 @@ def build_ma(
         if state in model.markovian_states:
             rate_sum = 0.0
             if state in model.transitions:
-                for _action, branch in model.transitions[state]:
-                    for val, _tgt in branch:
+                for _, branch in model.transitions[state]:
+                    for val, _ in branch:
                         rate_sum += float(val)
             exit_rates.append(rate_sum)
         else:

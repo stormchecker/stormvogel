@@ -574,14 +574,14 @@ def test_is_well_defined_true_for_non_parametric():
 
 
 def test_is_graph_preserving_true_for_interior_region():
-    pmc, s0, s_a, s_b = _simple_pmc()
+    pmc, *_ = _simple_pmc()
     region = RectangularRegion({"x": (Fraction(1, 4), Fraction(3, 4))})
     assert region.is_graph_preserving(pmc)
 
 
 def test_is_graph_preserving_false_when_x_reaches_zero():
     # x in [0, 1]: min of x = 0
-    pmc, s0, s_a, s_b = _simple_pmc()
+    pmc, *_ = _simple_pmc()
     region = RectangularRegion({"x": (Fraction(0), Fraction(1))})
     assert not region.is_graph_preserving(pmc)
 

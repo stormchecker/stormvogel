@@ -16,14 +16,15 @@ import stormvogel.stormpy_utils.mapping as mapping
 from stormvogel.parametric._backend import Number
 from stormvogel.parametric.region import AnnotatedRegion, RectangularRegion
 
-try:
+if TYPE_CHECKING:
     import stormpy
     import stormpy.pars
-except ImportError:
-    stormpy = None  # type: ignore[assignment]
-
-if TYPE_CHECKING:
-    pass
+else:
+    try:
+        import stormpy
+        import stormpy.pars
+    except ImportError:
+        stormpy = None
 
 
 def rectangular_region_to_stormpy(

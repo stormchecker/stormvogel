@@ -6,7 +6,7 @@ __all__ = [
 ]
 
 import json
-from typing import Union, cast
+from typing import TYPE_CHECKING, Union, cast
 
 from stormvogel import parametric
 from stormvogel.model.distribution import Distribution
@@ -24,10 +24,13 @@ from stormvogel.model.action import EmptyAction
 from stormvogel.model.value import Value, Interval
 from stormvogel.model.variable import Variable
 
-try:
+if TYPE_CHECKING:
     import stormpy
-except ImportError:
-    stormpy = None
+else:
+    try:
+        import stormpy
+    except ImportError:
+        stormpy = None
 
 
 def stormvogel_to_stormpy(model):
