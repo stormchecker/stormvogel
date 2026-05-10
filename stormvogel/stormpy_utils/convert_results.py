@@ -5,15 +5,19 @@ __all__ = [
     "convert_pareto_result",
 ]
 
+from typing import TYPE_CHECKING, Union
+
 import stormvogel.model
 import stormvogel.result
 from stormvogel import parametric
-from typing import Union
 
-try:
+if TYPE_CHECKING:
     import stormpy
-except ImportError:
-    stormpy = None
+else:
+    try:
+        import stormpy
+    except ImportError:
+        stormpy = None
 
 
 def convert_scheduler_to_stormvogel(

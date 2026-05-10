@@ -95,7 +95,7 @@ def _simple_pmc():
 
 
 def test_to_interval_mdp_preserves_state_uuids():
-    pmc, s0, s_a, s_b = _simple_pmc()
+    pmc, s0, s_a, _ = _simple_pmc()
     region = RectangularRegion({"x": (Fraction(1, 4), Fraction(3, 4))})
     imdp = to_interval_mdp(pmc, region)
     assert imdp.get_state_by_id(s0.state_id) is not None
@@ -103,14 +103,14 @@ def test_to_interval_mdp_preserves_state_uuids():
 
 
 def test_to_interval_mdp_is_interval_model():
-    pmc, s0, s_a, s_b = _simple_pmc()
+    pmc, *_ = _simple_pmc()
     region = RectangularRegion({"x": (Fraction(1, 4), Fraction(3, 4))})
     imdp = to_interval_mdp(pmc, region)
     assert imdp.is_interval_model()
 
 
 def test_to_interval_mdp_no_parameters():
-    pmc, s0, _, _ = _simple_pmc()
+    pmc, *_ = _simple_pmc()
     region = RectangularRegion({"x": (Fraction(1, 4), Fraction(3, 4))})
     imdp = to_interval_mdp(pmc, region)
     assert not imdp.is_parametric()
@@ -289,7 +289,7 @@ def test_split_auto_picks_largest_dimension():
             "y": (Fraction(0), Fraction(1, 5)),
         }
     )
-    lo, hi = r.split()
+    lo, _ = r.split()
     # x has range 1, y has range 1/5 — should split x
     assert lo.bounds["x"] == (Fraction(0), Fraction(1, 2))
     assert lo.bounds["y"] == r.bounds["y"]
@@ -505,21 +505,21 @@ def test_plot_solution_function():
 
 
 def test_is_well_defined_true_for_interior_region():
-    pmc, s0, s_a, s_b = _simple_pmc()
+    pmc, *_ = _simple_pmc()
     region = RectangularRegion({"x": (Fraction(1, 4), Fraction(3, 4))})
     assert region.is_well_defined(pmc)
 
 
 def test_is_well_defined_true_at_boundary():
     # x and 1-x both stay in [0, 1] when x in [0, 1]
-    pmc, s0, s_a, s_b = _simple_pmc()
+    pmc, *_ = _simple_pmc()
     region = RectangularRegion({"x": (Fraction(0), Fraction(1))})
     assert region.is_well_defined(pmc)
 
 
 def test_is_well_defined_false_when_prob_goes_negative():
     # x in [-1/10, 1/2]: x can be negative
-    pmc, s0, s_a, s_b = _simple_pmc()
+    pmc, *_ = _simple_pmc()
     region = RectangularRegion({"x": (Fraction(-1, 10), Fraction(1, 2))})
     assert not region.is_well_defined(pmc)
 
@@ -540,7 +540,7 @@ def test_is_well_defined_false_when_prob_exceeds_one():
 
 def test_is_well_defined_false_for_negative_reward():
     # reward -x with x in [1/4, 3/4]: reward in [-3/4, -1/4]
-    pmc, s0, s_a, s_b = _simple_pmc()
+    pmc, s0, *_ = _simple_pmc()
     x = sp.Symbol("x")
     rm = pmc.new_reward_model("R")
     rm.set_state_reward(s0, -x)
@@ -550,7 +550,7 @@ def test_is_well_defined_false_for_negative_reward():
 
 def test_is_well_defined_true_for_nonneg_reward():
     # reward x with x in [1/4, 3/4]: reward in [1/4, 3/4] >= 0
-    pmc, s0, s_a, s_b = _simple_pmc()
+    pmc, s0, *_ = _simple_pmc()
     x = sp.Symbol("x")
     rm = pmc.new_reward_model("R")
     rm.set_state_reward(s0, x)
@@ -560,7 +560,7 @@ def test_is_well_defined_true_for_nonneg_reward():
 
 def test_is_well_defined_false_for_transition_1_minus_x_outside_range():
     # 1-x with x in [1/2, 3/2]: min of 1-x = 1-3/2 = -1/2 < 0
-    pmc, s0, s_a, s_b = _simple_pmc()
+    pmc, *_ = _simple_pmc()
     region = RectangularRegion({"x": (Fraction(1, 2), Fraction(3, 2))})
     assert not region.is_well_defined(pmc)
 
@@ -588,14 +588,14 @@ def test_is_graph_preserving_false_when_x_reaches_zero():
 
 def test_is_graph_preserving_false_when_complement_reaches_zero():
     # x in [1/2, 1]: min of 1-x = 0
-    pmc, s0, s_a, s_b = _simple_pmc()
+    pmc, *_ = _simple_pmc()
     region = RectangularRegion({"x": (Fraction(1, 2), Fraction(1))})
     assert not region.is_graph_preserving(pmc)
 
 
 def test_is_graph_preserving_false_for_transition_1_minus_x_outside_range():
     # 1-x with x in [1/2, 3/2]: min of 1-x = -1/2 <= 0
-    pmc, s0, s_a, s_b = _simple_pmc()
+    pmc, *_ = _simple_pmc()
     region = RectangularRegion({"x": (Fraction(1, 2), Fraction(3, 2))})
     assert not region.is_graph_preserving(pmc)
 

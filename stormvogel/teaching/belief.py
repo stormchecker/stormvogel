@@ -90,7 +90,7 @@ class Belief(Mapping["State", Fraction]):
             rf"{self._state_name(s)} \mapsto {self._fraction_latex(p)}"
             for s, p in self.dist.items()
         )
-        return rf"$\left\{{\, {entries} \,\right\}}$"
+        return rf"$\textstyle\left\{{\, {entries} \,\right\}}$"
 
     @classmethod
     def normalize(cls, unnorm: "dict[State, Fraction]") -> "Belief":
@@ -218,7 +218,7 @@ def belief_table(
 
     header = "<tr><th>Step</th><th>Action</th><th>Observation</th><th>Belief</th></tr>"
     body = "".join(
-        f"<tr><td>{i}</td><td>{a or '—'}</td><td>{o or '—'}</td><td>{b._repr_latex_()}</td></tr>"
+        f"<tr><td>{i}</td><td>{a or '—'}</td><td>{o or '—'}</td><td style='white-space:nowrap'>{b._repr_latex_()}</td></tr>"
         for i, (a, o, b) in enumerate(rows)
     )
     display(HTML(f"<table>{header}{body}</table>"))
