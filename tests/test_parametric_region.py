@@ -480,6 +480,7 @@ def test_plot_annotated_regions_param_order():
 
 
 def test_plot_solution_function():
+    pytest.importorskip("stormpy")
     pkydie = stormvogel.examples.create_knuth_yao_pmc_twocoins()
     threshold = 1 / 6
     prop = 'P=? [F "rolled3"]'
