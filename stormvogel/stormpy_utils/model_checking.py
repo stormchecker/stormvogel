@@ -49,6 +49,12 @@ def model_checking(
             return convert_results.convert_pareto_result(stormpy_result, prop[0])
 
         if model.is_interval_model():
+            if model.model_type == stormvogel.model.ModelType.DTMC:
+                warnings.warn(
+                    "stormpy.check_interval_mdp is being called on a DTMC interval model. "
+                    "At the time of writing, stormy has no check_interval_dtmc, results should be correct but may be inefficient. ",
+                    stacklevel=2,
+                )
             if not model.has_fixed_graph():
                 warnings.warn(
                     "Interval model has transitions with lower bound 0: the graph "

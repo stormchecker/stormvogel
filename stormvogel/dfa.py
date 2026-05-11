@@ -3,7 +3,6 @@ from typing import TypeVar, Callable, Iterable, Dict, List, Tuple, Optional, Gen
 import stormvogel.bird
 import stormvogel.model
 import pydot
-from IPython.display import SVG, display
 
 State = TypeVar("State")
 Symbol = frozenset[str] | list[str]
@@ -124,13 +123,11 @@ def product(mdp: stormvogel.model.Model, dfa: SymbolicDFA):
         return result
 
     def _labels(state: ProductState) -> list[str]:
-        labels = (
-            [label for label in state.mdp_state.labels if label != "init"] + ["init"]
-            if state == _init
-            else [] + ["accept"]
-            if state.dfa_state in dfa.accepting_states
-            else []
-        )
+        labels = [label for label in state.mdp_state.labels if label != "init"]
+        if state == _init:
+            labels.append("init")
+        if state.dfa_state in dfa.accepting_states:
+            labels.append("accept")
         return labels
 
     def _available_actions(state: ProductState) -> list[str]:
@@ -171,7 +168,7 @@ def plot_symbolic_dfa_pydot(dfa, output_file=None, rankdir="LR"):
                 fillcolor=fillcolor,
                 fontcolor="black",
                 fontsize="12",
-                label=state,
+                label=str(state),
             )
         )
 
@@ -201,5 +198,7 @@ def plot_symbolic_dfa_pydot(dfa, output_file=None, rankdir="LR"):
             raise ValueError("output_file must end with .svg or .pdf")
     else:
         # Display inline as SVG (for Jupyter notebooks)
+        from IPython.display import SVG, display
+
         svg_data = graph.create_svg()
         display(SVG(svg_data))

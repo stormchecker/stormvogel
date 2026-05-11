@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from stormvogel.model.value import is_zero
+
 if TYPE_CHECKING:
     from stormvogel.model.model import Model
 
@@ -20,6 +22,12 @@ def eliminate_transition_rewards(model: "Model") -> "Model":
 
     Returns a new model with only state rewards. If no transition rewards are
     present, returns *model* unchanged.
+    Note that step-bounded properties are not preserved by this transformation.
+
+    Models with observations are not supported as the observed information changes
+     and there is currently no silent steps in stormvogel.
+
+    State valuations are currently dropped; support for them may be added later.
 
     :param model: The source model.
     :returns: A new model with only state rewards, or *model* if it had none.
@@ -28,6 +36,11 @@ def eliminate_transition_rewards(model: "Model") -> "Model":
     from stormvogel.model.choices import Choices
     from stormvogel.model.distribution import Distribution
     from stormvogel.model.model import Model as _Model
+
+    if model.supports_observations():
+        raise ValueError(
+            "eliminate_transition_rewards does not support models with observations."
+        )
 
     has_any = any(rw.has_transition_rewards() for rw in model.rewards)
     if not has_any:
@@ -47,7 +60,7 @@ def eliminate_transition_rewards(model: "Model") -> "Model":
     rewarded_triples: set = set()
     for rw in model.rewards:
         for (s, a, s_next), v in rw.transition_rewards.items():
-            if v:
+            if not is_zero(v):
                 rewarded_triples.add((s, a, s_next))
 
     entry_map: dict = {}
@@ -96,7 +109,7 @@ def eliminate_transition_rewards(model: "Model") -> "Model":
             new_rw.set_state_reward(state_map[s], v)
         for (s, a, s_next), e in entry_map.items():
             v = rw.get_transition_reward(s, a, s_next)
-            if v:
+            if not is_zero(v):
                 new_rw.set_state_reward(e, v)
 
     return new_model

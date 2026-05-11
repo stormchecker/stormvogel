@@ -14,6 +14,7 @@ import pytest
 
 import stormvogel.model as sv_model
 import stormvogel.stormpy_utils.mapping as mapping
+import stormvogel.stormpy_utils.model_checking as sv_mc
 from stormvogel.model.value import Interval
 
 stormpy = pytest.importorskip("stormpy")
@@ -168,3 +169,10 @@ def test_imdp_pmin():
 def test_imdp_pmax():
     sp_m = mapping.stormvogel_to_stormpy(_make_imdp())
     assert pytest.approx(_check(sp_m, 'Pmax=? [F "A"]', MAXIMIZE)) == 0.75
+
+
+def test_interval_dtmc_via_model_checking_warns():
+    """model_checking() on an interval DTMC should emit a warning."""
+    m = _make_imc_simple()
+    with pytest.warns(UserWarning, match="DTMC interval model"):
+        sv_mc.model_checking(m, 'Pmin=? [F "A"]')

@@ -257,7 +257,11 @@ class VisualizationBase:
         observations = self._format_observations(state)
         rewards = self._format_rewards(state, stormvogel.model.EmptyAction)
         group = self._group_state(state, "states")
-        id_label_part = f"{state.friendly_name}\n"
+        id_label_part = (
+            f"{state.state_id}\n"
+            if self.layout.layout["state_properties"]["show_ids"]
+            else ""
+        )
 
         color = None
 
