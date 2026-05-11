@@ -45,7 +45,7 @@ class Scheduler:
 
     def generate_induced_dtmc(
         self, drop_unreachable: bool = True
-    ) -> stormvogel.model.Model | None:
+    ) -> stormvogel.model.Model:
         """Resolve the nondeterminacy of the MDP and return the scheduler-induced DTMC.
 
         Copies the MDP (preserving state UUIDs), changes the model type to DTMC,
@@ -54,40 +54,48 @@ class Scheduler:
         :param drop_unreachable: When ``True`` (default), states not reachable from
             the initial state under the scheduler are pruned from the result.
             Set to ``False`` to keep the full state space.
-        :returns: The induced DTMC, or ``None`` if the model is not an MDP.
+        :returns: The induced DTMC.
+        :raises ValueError: If the model is not an MDP or POMDP.
         """
-        if self.model.model_type == stormvogel.model.ModelType.MDP:
-            induced = self.model.copy()
-            induced.model_type = stormvogel.model.ModelType.DTMC
+        if self.model.model_type not in (
+            stormvogel.model.ModelType.MDP,
+            stormvogel.model.ModelType.POMDP,
+        ):
+            raise ValueError(
+                f"generate_induced_dtmc requires an MDP or POMDP, "
+                f"got {self.model.model_type}."
+            )
+        induced = self.model.copy()
+        induced.model_type = stormvogel.model.ModelType.DTMC
 
-            for orig_state in self.model:
-                new_state = induced.get_state_by_id(orig_state.state_id)
-                action = self.get_action_at_state(orig_state)
-                transitions = orig_state.get_outgoing_transitions(action)
-                assert transitions is not None
-                # Replace the full Choices with just the scheduled branch.
-                # Targets are already the copied states (same UUIDs).
-                remapped = [
-                    (prob, induced.get_state_by_id(target.state_id))
-                    for prob, target in transitions
-                ]
-                induced.set_choices(new_state, remapped)
+        for orig_state in self.model:
+            new_state = induced.get_state_by_id(orig_state.state_id)
+            action = self.get_action_at_state(orig_state)
+            transitions = orig_state.get_outgoing_transitions(action)
+            assert transitions is not None
+            # Replace the full Choices with just the scheduled branch.
+            # Targets are already the copied states (same UUIDs).
+            remapped = [
+                (prob, induced.get_state_by_id(target.state_id))
+                for prob, target in transitions
+            ]
+            induced.set_choices(new_state, remapped)
 
-            if drop_unreachable:
-                reachable: set[stormvogel.model.State] = set()
-                queue = [induced.initial_state]
-                reachable.add(induced.initial_state)
-                while queue:
-                    s = queue.pop()
-                    for _, branch in induced.transitions[s]:
-                        for _, t in branch:
-                            if t not in reachable:
-                                reachable.add(t)
-                                queue.append(t)
-                if len(reachable) < len(induced.states):
-                    induced = induced.get_sub_model(reachable)
+        if drop_unreachable:
+            reachable: set[stormvogel.model.State] = set()
+            queue = [induced.initial_state]
+            reachable.add(induced.initial_state)
+            while queue:
+                s = queue.pop()
+                for _, branch in induced.transitions[s]:
+                    for _, t in branch:
+                        if t not in reachable:
+                            reachable.add(t)
+                            queue.append(t)
+            if len(reachable) < len(induced.states):
+                induced = induced.get_sub_model(reachable)
 
-            return induced
+        return induced
 
     def __str__(self) -> str:
         return "taken actions: " + str(self.taken_actions)

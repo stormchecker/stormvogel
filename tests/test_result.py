@@ -1197,7 +1197,7 @@ def test_scheduler_str():
     assert "go" in s
 
 
-def test_generate_induced_dtmc_returns_none_for_non_mdp():
+def test_generate_induced_dtmc_raises_for_non_mdp():
     dtmc = stormvogel.model.new_dtmc()
     s1 = dtmc.new_state()
     dtmc.set_choices(dtmc.initial_state, [(1.0, s1)])
@@ -1207,4 +1207,5 @@ def test_generate_induced_dtmc_returns_none_for_non_mdp():
         s1: stormvogel.model.EmptyAction,
     }
     sched = stormvogel.result.Scheduler(dtmc, taken_actions)
-    assert sched.generate_induced_dtmc() is None
+    with pytest.raises(ValueError, match="MDP or POMDP"):
+        sched.generate_induced_dtmc()

@@ -82,6 +82,47 @@ def initial_scheduler(
     return result.Scheduler(mdp, taken)
 
 
+def policy_evaluation(
+    mdp: model.Model,
+    one_states: Iterable[model.State],
+    scheduler: result.Scheduler,
+    reward_model: model.RewardModel | None = None,
+    discount: sp.Expr = sp.Integer(1),
+) -> dict[model.State, sp.Expr]:
+    """Evaluate *scheduler* exactly and return per-state values for *mdp*.
+
+    Induces a DTMC from *scheduler*, solves it via sympy, then lifts the
+    values back to MDP states by matching UUIDs.
+
+    :param mdp: The MDP.
+    :param one_states: Target (absorbing) states fixed to value 1.
+    :param scheduler: The scheduler to evaluate.
+    :param reward_model: If provided, solve for expected reward instead of reachability.
+    :param discount: Discount factor (default 1, i.e. undiscounted).
+    :returns: Exact sympy values for every state in *mdp*.
+    :raises ValueError: If the model is not an MDP or POMDP.
+    """
+    one_states = list(one_states)
+    dtmc = scheduler.generate_induced_dtmc(drop_unreachable=False)
+
+    if reward_model is not None:
+        dtmc_rewards = model.RewardModel(
+            reward_model.name,
+            dtmc,
+            {
+                dtmc.get_state_by_id(s.state_id): v
+                for s, v in reward_model.rewards.items()
+            },
+        )
+        dtmc_values = solve_expected_reward(dtmc, dtmc_rewards, one_states, discount)
+    else:
+        dtmc_ones = [dtmc.get_state_by_id(s.state_id) for s in one_states]
+        dtmc_values = solve_reachability(dtmc, dtmc_ones)
+
+    id_to_value = {s.state_id: v for s, v in dtmc_values.items()}
+    return {s: id_to_value[s.state_id] for s in mdp.states}
+
+
 def policy_improvement(
     mdp: model.Model,
     values: Mapping[model.State, sp.Expr],
@@ -108,26 +149,22 @@ def policy_improvement(
     opt = min if minimize else max
     taken: dict[model.State, model.Action] = {}
 
+    def _expected(branch) -> sp.Expr:
+        return sum(sp.nsimplify(prob) * values[s_next] for prob, s_next in branch)  # type: ignore[return-value]
+
     for s in mdp.states:
+        taken[s] = current_scheduler.get_action_at_state(s)
         if s in one:
-            taken[s] = current_scheduler.get_action_at_state(s)
             continue
 
-        current_action = current_scheduler.get_action_at_state(s)
+        best_action, best_val = opt(  # type: ignore[operator]
+            ((a, _expected(b)) for a, b in s.choices), key=lambda av: av[1]
+        )
 
-        def _expected(branch) -> sp.Expr:
-            return sum(sp.nsimplify(prob) * values[s_next] for prob, s_next in branch)  # type: ignore[return-value]
-
-        best_action, best_branch = opt(s.choices, key=lambda ab: _expected(ab[1]))
-        current_branch = s.get_outgoing_transitions(current_action)
-
-        best_val = _expected(best_branch)
-        curr_val = _expected(current_branch)
-
-        if (minimize and best_val < curr_val) or (not minimize and best_val > curr_val):
+        if (minimize and best_val < values[s]) or (
+            not minimize and best_val > values[s]
+        ):
             taken[s] = best_action
-        else:
-            taken[s] = current_action
 
     return result.Scheduler(mdp, taken)
 
@@ -203,31 +240,13 @@ class PI:
         :returns: The new scheduler and the exact values under the old one.
         :raises RuntimeError: If the scheduler cannot induce a DTMC.
         """
-        dtmc = self._scheduler.generate_induced_dtmc(drop_unreachable=False)
-        if dtmc is None:
-            raise RuntimeError("Could not induce a DTMC from the current scheduler.")
-
-        if self._reward_model is not None:
-            dtmc_rewards = model.RewardModel(
-                self._reward_model.name,
-                dtmc,
-                {
-                    dtmc.get_state_by_id(s.state_id): v
-                    for s, v in self._reward_model.rewards.items()
-                },
-            )
-            dtmc_values = solve_expected_reward(
-                dtmc, dtmc_rewards, self._one_states, self._discount
-            )
-        else:
-            dtmc_ones = [dtmc.get_state_by_id(s.state_id) for s in self._one_states]
-            dtmc_values = solve_reachability(dtmc, dtmc_ones)
-
-        # Lift DTMC values back to MDP states by matching UUIDs.
-        id_to_value = {s.state_id: v for s, v in dtmc_values.items()}
-        mdp_values: dict[model.State, sp.Expr] = {
-            s: id_to_value[s.state_id] for s in self._mdp.states
-        }
+        mdp_values = policy_evaluation(
+            self._mdp,
+            self._one_states,
+            self._scheduler,
+            self._reward_model,
+            self._discount,
+        )
 
         new_scheduler = policy_improvement(
             self._mdp,

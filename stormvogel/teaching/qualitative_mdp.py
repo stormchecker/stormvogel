@@ -339,6 +339,8 @@ def visualise_iterations(
 
     if highlight:
         return df.style.map(
-            lambda v: "background-color: #c6efce" if v else "background-color: #ffc7ce"
+            lambda v: "background-color: #198754; color: white"
+            if v
+            else "background-color: #dc3545; color: white"
         )
     return df
