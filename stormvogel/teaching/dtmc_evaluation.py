@@ -36,15 +36,6 @@ def _to_expr(val) -> sp.Expr:
     return sp.nsimplify(val)
 
 
-def _predecessors(dtmc: model.Model) -> dict[model.State, set[model.State]]:
-    pred: dict[model.State, set[model.State]] = {s: set() for s in dtmc.states}
-    for s in dtmc.states:
-        branch = s.unique_branch
-        for _prob, t in branch:
-            pred[t].add(s)
-    return pred
-
-
 def compute_zero_states(
     dtmc: model.Model,
     one_states: Iterable[model.State],
@@ -61,7 +52,7 @@ def compute_zero_states(
     """
     _check_dtmc(dtmc)
     one_ids = {s.state_id for s in one_states}
-    pred = _predecessors(dtmc)
+    pred = dtmc.compute_predecessors()
 
     can_reach: set[model.State] = set()
     queue = [s for s in dtmc.states if s.state_id in one_ids]
@@ -100,7 +91,7 @@ def compute_one_states(
     target_set: set[model.State] = set(target_states)
     sno = compute_zero_states(dtmc, target_set)
 
-    pred = _predecessors(dtmc)
+    pred = dtmc.compute_predecessors()
 
     # Backward BFS from Sno; do not cross target states.
     can_reach_sno: set[model.State] = set(sno)
