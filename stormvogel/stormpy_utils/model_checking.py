@@ -50,10 +50,10 @@ def model_checking(
 
         if model.is_interval_model():
             if model.model_type == stormvogel.model.ModelType.DTMC:
-                warnings.warn(
-                    "stormpy.check_interval_mdp is being called on a DTMC interval model. "
-                    "At the time of writing, stormy has no check_interval_dtmc, results should be correct but may be inefficient. ",
-                    stacklevel=2,
+                raise ValueError(
+                    "stormpy does not support check_interval_dtmc. "
+                    "To work around this, interpret your interval DTMC as an interval MDP "
+                    "by setting model.model_type = ModelType.MDP before calling model_checking."
                 )
             if not model.has_fixed_graph():
                 warnings.warn(

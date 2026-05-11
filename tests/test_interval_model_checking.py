@@ -171,8 +171,8 @@ def test_imdp_pmax():
     assert pytest.approx(_check(sp_m, 'Pmax=? [F "A"]', MAXIMIZE)) == 0.75
 
 
-def test_interval_dtmc_via_model_checking_warns():
-    """model_checking() on an interval DTMC should emit a warning."""
+def test_interval_dtmc_via_model_checking_raises():
+    """model_checking() on an interval DTMC should raise ValueError."""
     m = _make_imc_simple()
-    with pytest.warns(UserWarning, match="DTMC interval model"):
+    with pytest.raises(ValueError, match="check_interval_dtmc"):
         sv_mc.model_checking(m, 'Pmin=? [F "A"]')
