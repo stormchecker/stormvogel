@@ -11,10 +11,13 @@ import stormvogel.examples.monty_hall_pomdp
 import stormvogel.examples.stormpy_examples.stormpy_ma
 import pytest
 import re
-from typing import Union
+from typing import TYPE_CHECKING, Union
 from model_testing import assert_models_equal
 
-stormpy = pytest.importorskip("stormpy")
+if TYPE_CHECKING:
+    import stormpy
+else:
+    stormpy = pytest.importorskip("stormpy")
 
 
 def sparse_equal(

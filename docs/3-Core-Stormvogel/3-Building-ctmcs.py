@@ -46,18 +46,18 @@ show(ctmc)
 # %%
 from stormvogel import *
 
-init = bird.State(x="")
+init = bird.BirdState(x="")
 
 
-def delta(s: bird.State):
+def delta(s: bird.BirdState):
     if s == init:
-        return [(3, bird.State(x=["helium"]))]
+        return [(3, bird.BirdState(x=["helium"]))]
     elif "helium" in s.x:
-        return [(2, bird.State(x=["carbon"]))]
+        return [(2, bird.BirdState(x=["carbon"]))]
     elif "carbon" in s.x:
-        return [(7, bird.State(x=["iron"]))]
+        return [(7, bird.BirdState(x=["iron"]))]
     elif "iron" in s.x:
-        return [(12, bird.State(x=["Supernova"]))]
+        return [(12, bird.BirdState(x=["Supernova"]))]
 
 
 labels = lambda s: s.x

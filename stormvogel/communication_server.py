@@ -102,7 +102,7 @@ function return_id_result(url, id, data) {
         self.web_server: http.server.HTTPServer = http.server.HTTPServer(
             (localhost_address, self.server_port), InnerServer
         )
-        thr = threading.Thread(target=self.__run_server)
+        thr = threading.Thread(target=self.__run_server, daemon=True)
         thr.start()
 
     def __run_server(self):

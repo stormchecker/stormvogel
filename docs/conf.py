@@ -21,12 +21,33 @@ extensions = [
     "nbsphinx",
     "autoapi.extension",
     "sphinx.ext.autosummary",
+    "sphinx.ext.doctest",
+    "sphinx.ext.mathjax",
 ]
 autoapi_dirs = [Path("../stormvogel")]
+autoapi_options = [
+    "members",
+    "undoc-members",
+    "private-members",
+    "show-inheritance",
+    "show-module-summary",
+    "special-members",
+    # "imported-members" omitted: prevents duplicate object descriptions and
+    # sympy docstring leakage. TODO: fix properly with __all__ in model submodules.
+]
 autosummary_generate = True
 
+nbsphinx_custom_formats = {
+    ".py": ["jupytext.reads", {"fmt": "py:percent"}],
+}
+
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**/orchard/**", "conf.py"]
+
+# Suppress ambiguous cross-reference warnings caused by the intentional
+# three-level re-export chain (stormvogel.X / stormvogel.model.X / stormvogel.model.x.X).
+# TODO: fix properly by adding __all__ to model submodules and collapsing to one re-export level.
+suppress_warnings = ["ref.python"]
 
 
 # -- Options for HTML output -------------------------------------------------

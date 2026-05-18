@@ -63,7 +63,7 @@ def labels(s):
 
 
 # For rewards, you have to provide a dict. This enables multiple reward models if you use a non-singleton list.
-def rewards(s: bird.State):
+def rewards(s: bird.BirdState):
     if s == "pass test":
         return {"R": 100}
     elif s == "did not study":

@@ -1,10 +1,11 @@
 """Interactive layout editor for Stormvogel layouts using ipywidgets.
 
 Implemented using the DictEditor from dict_editor.py, some clarifications:
+
 - Layout stores and manages loading/saving of the layout file, and the schema file.
 - DictEditor creates an editor from a schema and a dict to be edited.
 - LayoutEditor creates a DictEditor using the schema stored in layouts/schema.json.
-    It also processes what should happen when the user edits something in the layout editor or presses the save/load/reload buttons.
+  It also processes what should happen when the user edits something in the layout editor or presses the save/load/reload buttons.
 """
 
 import stormvogel.communication_server

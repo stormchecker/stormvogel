@@ -1,11 +1,23 @@
+__all__ = [
+    "convert_scheduler_to_stormvogel",
+    "convert_model_checking_result",
+    "map_result_to_original_model",
+    "convert_pareto_result",
+]
+
+from typing import TYPE_CHECKING, Union
+
 import stormvogel.model
 import stormvogel.result
-from typing import Union
+from stormvogel import parametric
 
-try:
+if TYPE_CHECKING:
     import stormpy
-except ImportError:
-    stormpy = None
+else:
+    try:
+        import stormpy
+    except ImportError:
+        stormpy = None
 
 
 def convert_scheduler_to_stormvogel(
@@ -47,15 +59,18 @@ def convert_model_checking_result(
 
     # we distinguish between quantitative and qualitative results
     # (determines what kind of values our result contains)
-    if (
-        type(stormpy_result) == stormpy.ExplicitQuantitativeCheckResult
-        or type(stormpy_result) == stormpy.ExplicitParametricQuantitativeCheckResult
-    ):
+    if isinstance(stormpy_result, stormpy.ExplicitQuantitativeCheckResult):
         values = {
             model.states[index]: value
             for (index, value) in enumerate(stormpy_result.get_values())
         }
-    elif type(stormpy_result) == stormpy.ExplicitQualitativeCheckResult:
+    elif isinstance(stormpy_result, stormpy.ExplicitParametricQuantitativeCheckResult):
+        backend = parametric.get_default()
+        values = {
+            model.states[index]: backend.from_pycarl(value.rational_function())
+            for (index, value) in enumerate(stormpy_result.get_values())
+        }
+    elif isinstance(stormpy_result, stormpy.ExplicitQualitativeCheckResult):
         values = {
             model.states[i]: stormpy_result.at(i) for i in range(0, len(model.states))
         }
@@ -130,3 +145,30 @@ def map_result_to_original_model(
         )
 
     return stormvogel.result.Result(original_model, mapped_values, mapped_scheduler)
+
+
+def convert_pareto_result(
+    stormpy_result: "stormpy.ExplicitParetoCurveCheckResultDouble",
+    stormpy_property: "stormpy.Property",
+) -> stormvogel.result.ParetoResult:
+    """Convert a stormpy Pareto curve result to a :class:`~stormvogel.result.ParetoResult`.
+
+    :param stormpy_result: The stormpy Pareto curve check result.
+    :param stormpy_property: The parsed property, used to extract objective labels.
+    :returns: A :class:`~stormvogel.result.ParetoResult` with vertices and labels.
+    """
+    formula = stormpy_property.raw_formula
+    labels = [str(sf) for sf in formula.subformulas]
+
+    lower_points: list[list[float]] = list(
+        stormpy_result.get_underapproximation().vertices
+    )
+    upper_points: list[list[float]] = list(
+        stormpy_result.get_overapproximation().vertices
+    )
+
+    return stormvogel.result.ParetoResult(
+        lower_points=lower_points,
+        upper_points=upper_points,
+        property_labels=labels,
+    )

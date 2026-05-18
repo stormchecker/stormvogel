@@ -122,6 +122,30 @@ class State[ValueType: Value]:
         else:
             raise RuntimeError("The model this state belongs to does not have choices")
 
+    @property
+    def unique_branch(self) -> "Distribution[ValueType, State[ValueType]]":
+        """Return the single branch of this state.
+
+        :raises RuntimeError: If the state does not have exactly one choice.
+        """
+        _, branch = self.unique_choice
+        return branch
+
+    @property
+    def unique_choice(
+        self,
+    ) -> "tuple[Action, Distribution[ValueType, State[ValueType]]]":
+        """Return the single ``(action, branch)`` pair of this state.
+
+        :raises RuntimeError: If the state does not have exactly one choice.
+        """
+        choices = self.choices
+        if len(choices) != 1:
+            raise RuntimeError(
+                f"State {self!r} has {len(choices)} choices; expected exactly 1."
+            )
+        return next(iter(choices))
+
     def set_choices(self, choices: Choices | ChoicesShorthand):
         """Set the choices for this state.
 
@@ -240,6 +264,26 @@ class State[ValueType: Value]:
                 if transition[1] != self:
                     return False
         return True
+
+    def has_selfloop(self) -> bool:
+        """Check whether this state has a self-loop.
+
+        Returns ``True`` if any action has a transition back to this state with
+        positive probability. For interval models a transition counts as positive
+        when its upper bound is non-zero; for parametric models when the
+        expression is not syntactically zero.
+
+        :returns: ``True`` if a self-loop exists, ``False`` otherwise.
+        """
+        from stormvogel.model.value import is_zero
+
+        if self not in self.model.transitions:
+            return False
+        for _, branch in self.choices:
+            for prob, target in branch:
+                if target == self and not is_zero(prob):
+                    return True
+        return False
 
     def is_initial(self):
         """Check whether this state is the initial state."""

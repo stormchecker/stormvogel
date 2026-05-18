@@ -1,3 +1,5 @@
+import warnings
+
 import stormvogel.stormpy_utils.mapping as mapping
 import stormvogel.stormpy_utils.convert_results as convert_results
 import stormvogel.model
@@ -11,15 +13,19 @@ except ImportError:
 
 def model_checking(
     model: stormvogel.model.Model, prop: str | None = None, scheduler: bool = True
-) -> stormvogel.result.Result | None:
+) -> stormvogel.result.Result | stormvogel.result.ParetoResult | None:
     """Perform model checking on a stormvogel model using stormpy.
 
     Convert the model to stormpy, run model checking, and convert the result back.
     If no property string is provided, a widget for building one is displayed.
 
+    For multiobjective properties of the form ``multi(Pmax=? [...], ...)`` a
+    :class:`~stormvogel.result.ParetoResult` is returned instead of a
+    :class:`~stormvogel.result.Result`.
+
     :param model: The stormvogel model to check.
     :param prop: A property string to check, or ``None`` to display a property builder widget.
-    :param scheduler: Whether to extract a scheduler from the result.
+    :param scheduler: Whether to extract a scheduler from the result (ignored for multiobjective).
     :returns: The model checking result, or ``None`` if no property was provided.
     :raises RuntimeError: If the model is not stochastic.
     """
@@ -37,7 +43,32 @@ def model_checking(
         # we perform the model checking operation
         prop = stormpy.parse_properties(prop)
         assert prop is not None
-        if model.supports_actions() and scheduler:
+
+        if prop[0].raw_formula.is_multi_objective_formula:
+            stormpy_result = stormpy.model_checking(stormpy_model, prop[0])
+            return convert_results.convert_pareto_result(stormpy_result, prop[0])
+
+        if model.is_interval_model():
+            if model.model_type == stormvogel.model.ModelType.DTMC:
+                raise ValueError(
+                    "stormpy does not support check_interval_dtmc. "
+                    "To work around this, interpret your interval DTMC as an interval MDP "
+                    "by setting model.model_type = ModelType.MDP before calling model_checking."
+                )
+            if not model.has_fixed_graph():
+                warnings.warn(
+                    "Interval model has transitions with lower bound 0: the graph "
+                    "is not fixed and stormpy model checking may be ill-supported.",
+                    stacklevel=2,
+                )
+            task = stormpy.CheckTask(prop[0].raw_formula, True)
+            task.set_uncertainty_resolution_mode(
+                stormpy.UncertaintyResolutionMode.ROBUST
+            )
+            stormpy_result = stormpy.check_interval_mdp(
+                stormpy_model, task, stormpy.Environment()
+            )
+        elif model.supports_actions() and scheduler:
             stormpy_result = stormpy.model_checking(
                 stormpy_model, prop[0], extract_scheduler=True
             )
@@ -62,20 +93,7 @@ def model_checking(
         return stormvogel_result
     else:
         print(
-            "You have not proved a property string. You can create a simple one using this widget."
+            "No property string provided. You can create a simple one using this widget."
         )
         stormvogel.property_builder.build_property_string(model)
         return None
-
-
-if __name__ == "__main__":
-    import examples.monty_hall
-
-    mdp = examples.monty_hall.create_monty_hall_mdp()
-
-    rewardmodel = mdp.new_reward_model("rewardmodel")
-    rewardmodel.set_from_rewards_vector(list(range(67)))
-    rewardmodel2 = mdp.new_reward_model("rewardmodel2")
-    rewardmodel2.set_from_rewards_vector(list(range(67)))
-
-    print(model_checking(mdp))

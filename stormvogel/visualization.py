@@ -157,7 +157,7 @@ class VisualizationBase:
         Start with a newline. If results are not enabled, return the empty string."""
         if self.result is None or not self.layout.layout["results"]["show_results"]:
             return ""
-        result_of_state = self.result.get_result_of_state(s)
+        result_of_state = self.result.at(s)
         if result_of_state is None:
             return ""
         return (
@@ -258,14 +258,16 @@ class VisualizationBase:
         rewards = self._format_rewards(state, stormvogel.model.EmptyAction)
         group = self._group_state(state, "states")
         id_label_part = (
-            f"{state}\n" if self.layout.layout["state_properties"]["show_ids"] else ""
+            f"{state.state_id}\n"
+            if self.layout.layout["state_properties"]["show_ids"]
+            else ""
         )
 
         color = None
 
         result_colors = self.layout.layout["results"]["result_colors"]
         if result_colors and self.result is not None:
-            result = self.result.get_result_of_state(state)
+            result = self.result.at(state)
             max_result = self.result.maximum_result()
             if isinstance(result, (int, float, Fraction)) and isinstance(
                 max_result, (int, float, Fraction)
@@ -1076,7 +1078,7 @@ class MplVisualization(VisualizationBase):
             ``LineCollection`` of drawn edges.
         """
         import numpy as np
-        import networkx as nx
+        import networkx as nx  # type: ignore[import-untyped]
         from .graph import NodeType, node_key
 
         if node_kwargs is None:

@@ -8,7 +8,7 @@ def create_debugging_mdp():
             return ["mec", "probs"]
         return [""]
 
-    def delta(s: str, a: bird.Action):
+    def delta(s: str, a: bird.BirdAction):
         if a == "mec":
             return [(1, ("X", "mec"))]
         elif s == ("X", "mec"):

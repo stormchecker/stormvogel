@@ -1,6 +1,11 @@
 import stormvogel.model
 import random
+from dataclasses import dataclass
 from typing import Callable
+
+from deprecated import deprecated  # type: ignore[import]
+
+from stormvogel import parametric
 
 
 class Scheduler:
@@ -38,44 +43,59 @@ class Scheduler:
         else:
             raise RuntimeError("This state is not a part of the model")
 
-    def generate_induced_dtmc(self) -> stormvogel.model.Model | None:
+    def generate_induced_dtmc(
+        self, drop_unreachable: bool = True
+    ) -> stormvogel.model.Model:
         """Resolve the nondeterminacy of the MDP and return the scheduler-induced DTMC.
 
-        :returns: The induced DTMC, or ``None`` if the model is not an MDP.
+        Copies the MDP (preserving state UUIDs), changes the model type to DTMC,
+        and replaces each state's choices with only the scheduled action's branch.
+
+        :param drop_unreachable: When ``True`` (default), states not reachable from
+            the initial state under the scheduler are pruned from the result.
+            Set to ``False`` to keep the full state space.
+        :returns: The induced DTMC.
+        :raises ValueError: If the model is not an MDP or POMDP.
         """
-        if self.model.model_type == stormvogel.model.ModelType.MDP:
-            induced_dtmc = stormvogel.model.new_dtmc(create_initial_state=False)
+        if self.model.model_type not in (
+            stormvogel.model.ModelType.MDP,
+            stormvogel.model.ModelType.POMDP,
+        ):
+            raise ValueError(
+                f"generate_induced_dtmc requires an MDP or POMDP, "
+                f"got {self.model.model_type}."
+            )
+        induced = self.model.copy()
+        induced.model_type = stormvogel.model.ModelType.DTMC
 
-            # we initialize the reward models
-            for reward_model in self.model.rewards:
-                induced_dtmc.new_reward_model(reward_model.name)
+        for orig_state in self.model:
+            new_state = induced.get_state_by_id(orig_state.state_id)
+            action = self.get_action_at_state(orig_state)
+            transitions = orig_state.get_outgoing_transitions(action)
+            assert transitions is not None
+            # Replace the full Choices with just the scheduled branch.
+            # Targets are already the copied states (same UUIDs).
+            remapped = [
+                (prob, induced.get_state_by_id(target.state_id))
+                for prob, target in transitions
+            ]
+            induced.set_choices(new_state, remapped)
 
-            # build a mapping from old states to new states
-            state_map: dict[stormvogel.model.State, stormvogel.model.State] = {}
-            for state in self.model:
-                new_state = induced_dtmc.new_state(
-                    labels=list(state.labels), valuations=state.valuations
-                )
-                state_map[state] = new_state
+        if drop_unreachable:
+            reachable: set[stormvogel.model.State] = set()
+            queue = [induced.initial_state]
+            reachable.add(induced.initial_state)
+            while queue:
+                s = queue.pop()
+                for _, branch in induced.transitions[s]:
+                    for _, t in branch:
+                        if t not in reachable:
+                            reachable.add(t)
+                            queue.append(t)
+            if len(reachable) < len(induced.states):
+                induced = induced.get_sub_model(reachable)
 
-            # add transitions with remapped state references
-            for state in self.model:
-                new_state = state_map[state]
-                action = self.get_action_at_state(state)
-                transitions = state.get_outgoing_transitions(action)
-                assert transitions is not None
-                # remap branch targets from MDP states to induced DTMC states
-                remapped = [(prob, state_map[target]) for prob, target in transitions]
-                induced_dtmc.set_choices(new_state, remapped)
-
-                # we also add the rewards
-                for reward_model in self.model.rewards:
-                    induced_reward_model = induced_dtmc.get_rewards(reward_model.name)
-                    reward = reward_model.get_state_reward(state)
-                    if reward is not None:
-                        induced_reward_model.set_state_reward(new_state, reward)
-
-            return induced_dtmc
+        return induced
 
     def __str__(self) -> str:
         return "taken actions: " + str(self.taken_actions)
@@ -131,9 +151,7 @@ class Result:
         else:
             self.scheduler = None
 
-    def get_result_of_state(
-        self, state: stormvogel.model.State
-    ) -> stormvogel.model.Value | None:
+    def at(self, state: stormvogel.model.State) -> stormvogel.model.Value:
         """Return the model checking result for a given state.
 
         :param state: The state to look up.
@@ -144,6 +162,16 @@ class Result:
             return self.values[state]
         else:
             raise RuntimeError("This state is not a part of the model")
+
+    def at_init(self) -> stormvogel.model.Value:
+        """Return the model checking result for the initial state."""
+        return self.at(self.model.initial_state)
+
+    @deprecated(version="0.12.0", reason="use at() instead.")
+    def get_result_of_state(
+        self, state: stormvogel.model.State
+    ) -> stormvogel.model.Value:
+        return self.at(state)
 
     def filter(
         self, value_predicate: Callable[[stormvogel.model.Value], bool]
@@ -175,9 +203,7 @@ class Result:
         values = list(self.values.values())
         max_val = values[0]
         for v in values:
-            if isinstance(v, stormvogel.model.Interval) or isinstance(
-                v, stormvogel.parametric.Parametric
-            ):
+            if isinstance(v, stormvogel.model.Interval) or parametric.is_parametric(v):
                 raise RuntimeError(
                     "maximum result function does not work for interval/parametric models"
                 )
@@ -230,3 +256,110 @@ class Result:
 
     def __iter__(self):
         return iter(self.values.items())
+
+
+@dataclass
+class ParetoResult:
+    """Result of a multiobjective Pareto model checking query.
+
+    Holds the under- and over-approximation of the Pareto front as vertex lists.
+    Each point is a list of floats with one entry per objective. The number of
+    objectives is unrestricted, but plotting is limited to 2 objectives.
+
+    :param lower_points: Vertices of the under-approximation (known achievable region).
+    :param upper_points: Vertices of the over-approximation.
+    :param property_labels: One label per objective, auto-extracted from the formula.
+    """
+
+    lower_points: list[list[float]]
+    upper_points: list[list[float]]
+    property_labels: list[str] | None = None
+
+    def plot(self, ax=None, labels: tuple[str, str] | None = None):
+        """Plot the Pareto front. Only 2-objective results are supported.
+
+        :param ax: Target axes; creates a new figure if None.
+        :param labels: Override axis labels; defaults to :attr:`property_labels`.
+        :returns: The populated axes.
+        """
+        return plot_pareto_result(self, ax=ax, labels=labels)
+
+
+def plot_pareto_result(
+    result: "ParetoResult",
+    ax=None,
+    labels: "tuple[str, str] | None" = None,
+    bbox_pad: float = 0.2,
+):
+    """Plot the under- and over-approximation of a 2-objective Pareto model checking result.
+
+    Renders:
+    - Green filled polygon: under-approximation (known achievable region)
+    - Blue dashed outline: over-approximation (upper bound on achievable region)
+    - Black dots: vertices of the under-approximation
+
+    :param result: A :class:`ParetoResult` from multiobjective model checking.
+    :param ax: Target axes; creates a new figure if None.
+    :param labels: Override axis labels; defaults to :attr:`~ParetoResult.property_labels`.
+    :param bbox_pad: Fractional padding around the points for axis limits.
+    :returns: The populated axes.
+    :raises ValueError: If *result* does not contain exactly 2-dimensional points.
+    """
+    import numpy as np
+    import matplotlib.patches as mpatches
+    from stormvogel.teaching.pareto import _prepare_ax, _finalize_ax
+
+    all_points = result.lower_points + result.upper_points
+    if not all_points:
+        raise ValueError("ParetoResult contains no points.")
+    if len(all_points[0]) != 2:
+        raise ValueError(
+            f"plot_pareto_result only supports 2-objective results; "
+            f"got {len(all_points[0])} objectives."
+        )
+
+    if labels is not None:
+        l1, l2 = labels
+    elif result.property_labels is not None and len(result.property_labels) >= 2:
+        l1, l2 = result.property_labels[0], result.property_labels[1]
+    else:
+        l1, l2 = "Objective 1", "Objective 2"
+
+    resolved_ax, x_hi, y_hi = _prepare_ax(all_points, bbox_pad, ax)
+
+    if result.upper_points:
+        resolved_ax.add_patch(
+            mpatches.Polygon(
+                np.array(result.upper_points),
+                closed=True,
+                facecolor="none",
+                edgecolor="steelblue",
+                linestyle="--",
+                linewidth=1.2,
+                label="Over-approximation",
+            )
+        )
+
+    if result.lower_points:
+        resolved_ax.add_patch(
+            mpatches.Polygon(
+                np.array(result.lower_points),
+                closed=True,
+                facecolor="green",
+                edgecolor="darkgreen",
+                linewidth=0.5,
+                alpha=0.4,
+                label="Under-approximation",
+            )
+        )
+        resolved_ax.scatter(
+            [p[0] for p in result.lower_points],
+            [p[1] for p in result.lower_points],
+            color="black",
+            zorder=5,
+            s=30,
+            label="Achievable points",
+        )
+
+    _finalize_ax(resolved_ax, x_hi, y_hi, l1, l2)
+    return resolved_ax

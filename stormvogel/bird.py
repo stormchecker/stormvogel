@@ -5,11 +5,13 @@ from dataclasses import dataclass
 from typing import cast, Any, Callable, Sequence
 import inspect
 from collections import deque
+from collections.abc import Iterable
 from stormvogel.model import Variable
+from stormvogel import parametric
 
 
 @dataclass
-class State:
+class BirdState:
     """Represent a bird state as a dynamic attribute container."""
 
     def __init__(self, **kwargs):
@@ -23,20 +25,20 @@ class State:
         return hash(str(self.__dict__))
 
     def __eq__(self, other):
-        if isinstance(other, State):
+        if isinstance(other, BirdState):
             return self.__dict__ == other.__dict__
         return False
 
 
-type Action = str
+type BirdAction = str
 
 
 def _valid_input[ValueType: stormvogel.model.Value](
-    delta: Callable[[Any, Action], Any] | Callable[[Any], Any],
+    delta: Callable[[Any, BirdAction], Any] | Callable[[Any], Any],
     init: Any,
     rewards: Callable[[Any], dict[str, ValueType]] | None = None,
-    labels: Callable[[Any], list[str] | str | None] | None = None,
-    available_actions: Callable[[Any], list[Action]] | None = None,
+    labels: Callable[[Any], Sequence[str] | str | None] | None = None,
+    available_actions: Callable[[Any], list[BirdAction]] | None = None,
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
     rates: Callable[[Any], float] | None = None,
     valuations: Callable[[Any], dict[Variable, float | int | bool]] | None = None,
@@ -166,14 +168,16 @@ def _valid_input[ValueType: stormvogel.model.Value](
 
 def build_bird[ValueType: stormvogel.model.Value](
     delta: (
-        Callable[[Any, Action], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None]
+        Callable[
+            [Any, BirdAction], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None
+        ]
         | Callable[[Any], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None]
     ),
     init: Any,
     rewards: Callable[[Any], dict[str, ValueType]] | None = None,
-    labels: Callable[[Any], list[str] | str | None] | None = None,
+    labels: Callable[[Any], Sequence[str] | str | None] | None = None,
     friendly_names: Callable[[Any], str] | None = None,
-    available_actions: Callable[[Any], list[Action]] | None = None,
+    available_actions: Callable[[Any], list[BirdAction]] | None = None,
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
     rates: Callable[[Any], float] | None = None,
     valuations: Callable[[Any], dict[Variable, float | int | bool]] | None = None,
@@ -241,6 +245,11 @@ def build_bird[ValueType: stormvogel.model.Value](
                     raise ValueError(
                         f"Invalid transition tuple {tup}. Expected (probability, state) or (state)."
                     )
+
+                # Register any parametric symbols before they reach the model.
+                if parametric.is_parametric(val):
+                    for name in parametric.free_symbol_names(val):
+                        model.declare_parameter(name)
 
                 if s not in state_lookup:
                     obs_kwarg = {}
@@ -317,7 +326,7 @@ def build_bird[ValueType: stormvogel.model.Value](
                 )
 
             for action in actionslist:
-                # Actions must be strings
+                # BirdActions must be strings
                 if not isinstance(action, str):
                     raise ValueError(
                         f"On input {state}, the available actions function returns an action that is not a string: {action}"
@@ -522,24 +531,21 @@ def build_bird[ValueType: stormvogel.model.Value](
             if labellist is None:
                 continue
 
-            # we check for the labels when the function does not return a list object, or when
-            # the list does not consist of strings
-            if not isinstance(labellist, list):
-                if not isinstance(labellist, str):
-                    raise ValueError(
-                        f"On input {state}, the labels function does not return a string or a list of strings"
-                    )
-                # if we don't get a list, we assume there is just one label
+            if isinstance(labellist, str):
                 if labellist not in s.labels:
                     s.add_label(labellist)
-            else:
+            elif isinstance(labellist, Iterable):
                 for label in labellist:
                     if not isinstance(label, str):
                         raise ValueError(
-                            f"On input {state}, the labels function does not return a string or a list of strings"
+                            f"On input {state}, the labels function does not return a string or an iterable over strings"
                         )
                     if label not in s.labels:
                         s.add_label(label)
+            else:
+                raise ValueError(
+                    f"On input {state}, the labels function does not return a string or an iterable over strings"
+                )
 
     # friendly names
     if friendly_names is not None:
@@ -548,3 +554,21 @@ def build_bird[ValueType: stormvogel.model.Value](
             s.set_friendly_name(name)
 
     return model
+
+
+def __getattr__(name: str):
+    if name == "State":
+        warnings.warn(
+            "bird.State is deprecated, use bird.BirdState instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return BirdState
+    if name == "Action":
+        warnings.warn(
+            "bird.Action is deprecated, use bird.BirdAction instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return BirdAction
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

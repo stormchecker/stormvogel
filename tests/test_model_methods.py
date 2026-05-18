@@ -59,6 +59,32 @@ def test_is_absorbing():
     assert empty_state.is_absorbing()
 
 
+def test_has_selfloop():
+    dtmc = stormvogel.model.new_dtmc(create_initial_state=False)
+    s0 = dtmc.new_state(friendly_name="s0")
+    s1 = dtmc.new_state(friendly_name="s1")
+
+    # s0 → s1 only: no self-loop
+    s0.set_choices([(1.0, s1)])
+    assert not s0.has_selfloop()
+
+    # s1 → s1 (absorbing self-loop)
+    s1.set_choices([(1.0, s1)])
+    assert s1.has_selfloop()
+
+    # s0 gets a mixed transition: 0.4 back to itself, 0.6 to s1
+    s0.set_choices([(0.4, s0), (0.6, s1)])
+    assert s0.has_selfloop()
+
+    # state with no choices at all
+    s2 = dtmc.new_state(friendly_name="s2")
+    assert not s2.has_selfloop()
+
+    # mixed transition with a self-loop
+    s2.set_choices([(0.3, s2), (0.7, s1)])
+    assert s2.has_selfloop()
+
+
 def test_choices_from_shorthand():
     # First we test it for a model without actions
     dtmc = stormvogel.model.new_dtmc()
@@ -821,15 +847,15 @@ def test_model_get_rewards_raises_not_found():
 
 def test_model_normalize_raises_for_parametric():
     """Model.normalize raises RuntimeError for parametric models."""
-    from stormvogel.parametric import Polynomial
+    import sympy as sp
 
     dtmc = stormvogel.model.new_dtmc()
     s = dtmc.new_state()
-    p = Polynomial(["x"])  # x^1 — a non-zero polynomial
-    p.add_term((1,), 1.0)
+    p = sp.Symbol("x")
     d = stormvogel.model.Distribution({s: p})
     c = stormvogel.model.Choices({stormvogel.model.EmptyAction: d})
     dtmc.transitions[dtmc.initial_state] = c  # bypass set_choices zero-check
+    dtmc.declare_parameter("x")
     with pytest.raises(RuntimeError, match="normalize"):
         dtmc.normalize()
 
@@ -960,6 +986,66 @@ def test_model_is_stochastic_interval():
     s = dtmc.new_state()
     dtmc.set_choices(dtmc.initial_state, [(Interval(0.4, 0.6), s)])
     assert dtmc.is_stochastic()
+
+
+# ── is_affine_parametric ──────────────────────────────────────────────────────
+
+
+def _make_affine_pmc():
+    pmc = stormvogel.model.new_dtmc()
+    x = pmc.declare_parameter("x")
+    s0 = pmc.initial_state
+    sa = pmc.new_state()
+    sb = pmc.new_state()
+    pmc.set_choices(s0, [(x, sa), (1 - x, sb)])
+    pmc.set_choices(sa, [(1, sa)])
+    pmc.set_choices(sb, [(1, sb)])
+    return pmc, x
+
+
+def test_is_affine_parametric_true_for_affine():
+    pmc, _ = _make_affine_pmc()
+    assert pmc.is_affine_parametric()
+
+
+def test_is_affine_parametric_true_for_non_parametric():
+    dtmc = stormvogel.model.new_dtmc()
+    s = dtmc.new_state()
+    dtmc.set_choices(dtmc.initial_state, [(1.0, s)])
+    assert dtmc.is_affine_parametric()
+
+
+def test_is_affine_parametric_false_for_quadratic_transition():
+    pmc, x = _make_affine_pmc()
+    s0 = pmc.initial_state
+    sa, sb = [s for s in pmc.states if s is not s0][:2]
+    pmc.set_choices(s0, [(x**2, sa), (1 - x**2, sb)])
+    assert not pmc.is_affine_parametric()
+
+
+def test_is_affine_parametric_false_for_quadratic_state_reward():
+    pmc, x = _make_affine_pmc()
+    rm = pmc.new_reward_model("R")
+    rm.set_state_reward(pmc.initial_state, x**2)
+    assert not pmc.is_affine_parametric()
+
+
+def test_is_affine_parametric_true_for_linear_reward():
+    pmc, x = _make_affine_pmc()
+    rm = pmc.new_reward_model("R")
+    rm.set_state_reward(pmc.initial_state, x)
+    assert pmc.is_affine_parametric()
+
+
+def test_is_affine_parametric_false_for_quadratic_transition_reward():
+    pmc, x = _make_affine_pmc()
+    s0 = pmc.initial_state
+    sa, _ = [s for s in pmc.states if s is not s0][:2]
+    from stormvogel.model.action import EmptyAction
+
+    rm = pmc.new_reward_model("R")
+    rm.transition_rewards[(s0, EmptyAction, sa)] = x**2
+    assert not pmc.is_affine_parametric()
 
 
 # ── State edge cases ──────────────────────────────────────────────────────────
@@ -1294,3 +1380,99 @@ def test_observation_valuations_missing_raises_runtimeerror():
     del pomdp.observation_valuations[obs]
     with pytest.raises(RuntimeError, match="does not have valuations"):
         _ = obs.valuations
+
+
+# ---------------------------------------------------------------------------
+# copy() — back-reference integrity and remove_state safety
+# ---------------------------------------------------------------------------
+
+
+def _make_copy_test_dtmc():
+    m = stormvogel.model.new_dtmc(create_initial_state=False)
+    s0 = m.new_state(labels=["init"])
+    sa = m.new_state(labels=["A"])
+    sb = m.new_state(labels=["B"])
+    m.set_choices(s0, [(0.5, sa), (0.5, sb)])
+    m.set_choices(sa, [(1, sb)])
+    m.set_choices(sb, [(1, sb)])
+    return m
+
+
+def _make_copy_test_pomdp():
+    m = stormvogel.model.new_pomdp(create_initial_state=False)
+    obs_i = m.new_observation("obs_init")
+    obs_a = m.new_observation("obs_A")
+    obs_b = m.new_observation("obs_B")
+    s0 = m.new_state(labels=["init"], observation=obs_i)
+    sa = m.new_state(labels=["A"], observation=obs_a)
+    sb = m.new_state(labels=["B"], observation=obs_b)
+    m.set_choices(s0, [(0.5, sa), (0.5, sb)])
+    m.set_choices(sa, [(1, sb)])
+    m.set_choices(sb, [(1, sb)])
+    return m
+
+
+def test_copy_state_model_points_to_copy():
+    """Every state in the copy must reference the copy, not the original."""
+    m = _make_copy_test_dtmc()
+    c = m.copy()
+    for s in c.states:
+        assert s.model is c
+        assert s.model is not m
+
+
+def test_copy_observation_model_points_to_copy():
+    """Every observation in the copy must reference the copy, not the original."""
+    m = _make_copy_test_pomdp()
+    c = m.copy()
+    for obs in c.observation_aliases:
+        assert obs.model is c
+        assert obs.model is not m
+
+
+def test_copy_state_label_mutation_does_not_affect_original():
+    """Mutating a copy state's labels must not touch the original model."""
+    import warnings
+
+    m = _make_copy_test_dtmc()
+    c = m.copy()
+    copy_sa = next(iter(c.get_states_with_label("A")))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        copy_sa.set_labels({"A", "extra"})
+    assert not any("extra" in list(s.labels) for s in m.states)
+
+
+def test_copy_observation_alias_resolves_via_copy_model():
+    """obs.alias goes through obs.model.observation_aliases — must use copy's table."""
+    m = _make_copy_test_pomdp()
+    c = m.copy()
+    copy_s0 = next(iter(c.get_states_with_label("init")))
+    assert copy_s0.observation is not None
+    assert copy_s0.observation.alias == "obs_init"
+
+
+def test_remove_state_from_copy_does_not_affect_original():
+    m = _make_copy_test_dtmc()
+    c = m.copy()
+    c.remove_state(next(iter(c.get_states_with_label("A"))), suppress_warning=True)
+
+    assert len(m.states) == 3
+    assert len(c.states) == 2
+    assert len(list(m.get_states_with_label("A"))) == 1
+    assert len(list(c.get_states_with_label("A"))) == 0
+
+
+def test_remove_state_from_pomdp_copy_does_not_affect_original():
+    m = _make_copy_test_pomdp()
+    c = m.copy()
+    c.remove_state(next(iter(c.get_states_with_label("A"))), suppress_warning=True)
+
+    assert len(m.states) == 3
+    m_init_obs = next(iter(m.get_states_with_label("init"))).observation
+    assert m_init_obs is not None
+    assert m_init_obs.alias == "obs_init"
+    # remaining copy states still resolve their observations through the copy
+    c_B_obs = next(iter(c.get_states_with_label("B"))).observation
+    assert c_B_obs is not None
+    assert c_B_obs.alias == "obs_B"

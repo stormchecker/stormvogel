@@ -6,7 +6,7 @@ from uuid import UUID
 
 from copy import deepcopy
 
-from deprecated import deprecated
+from deprecated import deprecated  # type: ignore[import]
 
 from stormvogel.model.choices import Choices, ChoicesShorthand, choices_from_shorthand
 from stormvogel.model.action import Action, EmptyAction
@@ -14,6 +14,7 @@ from stormvogel.model.distribution import Distribution
 from stormvogel.model.observation import Observation
 from stormvogel.model.value import Value, Interval, Number
 from stormvogel.model.state import State
+from stormvogel import parametric
 from stormvogel.parametric import Parametric
 from stormvogel.model.reward_model import RewardModel
 from stormvogel.model.variable import Variable
@@ -88,9 +89,12 @@ class Model[ValueType: Value]:
         self.observation_valuations = dict()
         self.state_observations = dict()
         self.markovian_states = set()
-        self._is_parametric: bool | None = None
         self._is_interval: bool | None = None
         self._state_index_cache: dict[State, int] | None = None
+        # Ordered map from parameter name to backend-native symbol. Preserves
+        # insertion order so that downstream tools (e.g. the pycarl bridge)
+        # get a deterministic variable ordering.
+        self._parameters: dict[str, Parametric] = {}
 
         # Add the initial state if specified to do so
         if create_initial_state:
@@ -139,15 +143,71 @@ class Model[ValueType: Value]:
                         yield o
 
     @property
-    def parameters(self) -> set[str]:
-        """Return the set of parameters of this model."""
-        parameters = set()
-        for _, choice in self.transitions.items():
+    def parameters(self) -> tuple[str, ...]:
+        """Return the declared parameters of this model in insertion order.
+
+        The order is stable: it reflects the order in which parameters were
+        first declared (either explicitly via :meth:`declare_parameter` or
+        implicitly by appearing in a transition). Downstream tools such as the
+        pycarl/stormpy bridge depend on this ordering.
+        """
+        return tuple(self._parameters.keys())
+
+    def declare_parameter(self, name: str, **kwargs) -> Parametric:
+        """Declare a parameter of this model.
+
+        If a parameter with this name has already been declared the existing
+        backend-native symbol is returned unchanged; otherwise a new symbol is
+        created via the active parametric backend and registered on the
+        model. ``**kwargs`` are forwarded to the backend's ``symbol`` factory
+        (e.g. ``positive=True`` for sympy assumptions).
+
+        :param name: The parameter name.
+        :returns: The backend-native symbol representing the parameter.
+        """
+        if name in self._parameters:
+            return self._parameters[name]
+        sym = parametric.symbol(name, **kwargs)
+        self._parameters[name] = sym
+        return sym
+
+    @property
+    def parameter_symbols(self) -> tuple[Parametric, ...]:
+        """Return the declared parameters as backend-native symbols, in order.
+
+        Mirrors :attr:`parameters` but returns the actual backend objects
+        instead of their names. This is what backend bridges (e.g. the pycarl
+        converter) should consume, as it guarantees symbol identity is
+        preserved for assumption-carrying backends such as sympy.
+        """
+        return tuple(self._parameters.values())
+
+    def find_unused_parameters(self) -> set[str]:
+        """Return declared parameters that do not appear in any transition.
+
+        This walks all transitions and collects free symbol names; the set
+        difference with :attr:`parameters` is returned. Use
+        :meth:`prune_parameters` to actually remove them.
+        """
+        used: set[str] = set()
+        for choice in self.transitions.values():
             for _, branch in choice:
-                for transition in branch:
-                    if isinstance(transition[0], Parametric):
-                        parameters = parameters.union(transition[0].get_variables())
-        return parameters
+                for value, _ in branch:
+                    if parametric.is_parametric(value):
+                        used |= parametric.free_symbol_names(value)
+        return set(self._parameters.keys()) - used
+
+    def prune_parameters(self) -> set[str]:
+        """Drop declared parameters that (no longer) occur in any transition.
+
+        Returns the set of parameter names that were removed. This is an
+        explicit, on-demand operation: the model never prunes automatically on
+        mutation.
+        """
+        unused = self.find_unused_parameters()
+        for name in unused:
+            del self._parameters[name]
+        return unused
 
     @property
     def initial_state(self) -> State:
@@ -214,16 +274,56 @@ class Model[ValueType: Value]:
         return self._is_interval
 
     def is_parametric(self) -> bool:
-        """Return whether this model contains parametric transition values."""
-        if self._is_parametric is None:
-            for _, choice in self.transitions.items():
-                for _, branch in choice:
-                    for value, _ in branch:
-                        if issubclass(type(value), Parametric):
-                            self._is_parametric = True
-                            return self._is_parametric
-            self._is_parametric = False
-        return self._is_parametric
+        """Return whether this model has parameters declared."""
+        return bool(self._parameters)
+
+    def is_affine_parametric(self) -> bool:
+        """Return whether all parametric transition probabilities and rewards are affine.
+
+        A model is affine parametric if every symbolic value has total
+        polynomial degree ≤ 1.  Non-parametric (constant) values are trivially
+        affine.  A non-parametric model always returns ``True``.
+        """
+        for _, choice in self.transitions.items():
+            for _, branch in choice:
+                for value, _ in branch:
+                    if parametric.is_parametric(value) and parametric.degree(value) > 1:
+                        return False
+        for reward_model in self.rewards:
+            for value in reward_model.rewards.values():
+                if parametric.is_parametric(value) and parametric.degree(value) > 1:
+                    return False
+            for value in reward_model.transition_rewards.values():
+                if parametric.is_parametric(value) and parametric.degree(value) > 1:
+                    return False
+        return True
+
+    def has_fixed_graph(self) -> bool:
+        """Return whether the set of reachable transitions is fixed (graph-independent of choices).
+
+        - For constant (non-parametric, non-interval) models: always ``True``.
+        - For parametric models: raises :class:`ValueError` because the graph
+          depends on parameter values and cannot be determined symbolically.
+        - For interval models: ``True`` if every interval lower bound is
+          strictly positive (every edge always exists regardless of nature's
+          choice); ``False`` if any lower bound is zero (nature may remove
+          that edge entirely).
+
+        :raises ValueError: If the model is parametric.
+        """
+        if self.is_parametric():
+            raise ValueError(
+                "has_fixed_graph() is undefined for parametric models: "
+                "the graph depends on parameter instantiation."
+            )
+        if not self.is_interval_model():
+            return True
+        for choice in self.transitions.values():
+            for _, branch in choice:
+                for value, _ in branch:
+                    if isinstance(value, Interval) and value.lower <= 0:
+                        return False
+        return True
 
     def is_stochastic(self, epsilon=1e-6) -> bool | None:
         """Check whether the model is stochastic.
@@ -240,6 +340,7 @@ class Model[ValueType: Value]:
 
         # if the model is parametric or an interval model, it should be trivially true, as the probabilities do
         # not even sum to a constant.
+        # TODO this can be refined.
         if self.is_parametric() or self.is_interval_model():
             return True
         if not self.supports_rates():
@@ -264,6 +365,7 @@ class Model[ValueType: Value]:
         labels: list[str] | str | None = None,
         valuations: dict[Variable, Any] | None = None,
         observation: Observation | Distribution[ValueType, Observation] | None = None,
+        friendly_name: str | None = None,
     ) -> State:
         """Create a new state and return it.
 
@@ -271,6 +373,7 @@ class Model[ValueType: Value]:
         :param valuations: Variable-value pairs to assign as valuations.
         :param observation: Observation to assign (required for models that
             support observations).
+        :param friendly_name: Optional human-readable name for the state.
         :returns: The newly created state.
         :raises RuntimeError: If the model supports observations but none is
             provided, or if an observation is provided but not supported.
@@ -285,7 +388,6 @@ class Model[ValueType: Value]:
             )
 
         self._is_interval = None
-        self._is_parametric = None
         self._state_index_cache = None
         state = State(self)
 
@@ -308,6 +410,9 @@ class Model[ValueType: Value]:
         if observation is not None:
             state.observation = observation
 
+        if friendly_name is not None:
+            state.set_friendly_name(friendly_name)
+
         return state
 
     def remove_state(
@@ -328,7 +433,6 @@ class Model[ValueType: Value]:
         :raises RuntimeError: If the state is not part of this model.
         """
         self._is_interval = None
-        self._is_parametric = None
         self._state_index_cache = None
         if not suppress_warning:
             import warnings
@@ -429,6 +533,21 @@ class Model[ValueType: Value]:
                 return state
         raise RuntimeError(f"State with id {state_id} not found.")
 
+    def compute_predecessors(self) -> "dict[State, list[State]]":
+        """Build and return the full predecessor map for every state.
+
+        This is an O(states × transitions) operation; call it once and reuse
+        the result rather than calling it in a loop.
+
+        :returns: A dict mapping each state to the list of states that have a
+            direct transition to it.
+        """
+        pred: dict[State, list[State]] = {s: [] for s in self.states}
+        for src in self.states:
+            for succ in self.get_successor_states(src):
+                pred[succ].append(src)
+        return pred
+
     # Observation management
 
     def new_observation(
@@ -473,6 +592,27 @@ class Model[ValueType: Value]:
             if obs_alias == alias:
                 return obs
         raise KeyError(f"Observation with alias {alias} not found.")
+
+    def compute_states_per_observation(self) -> "dict[Observation, set[State]]":
+        """Build and return a mapping from every observation to its set of states.
+
+        This is an O(states) operation; call it once and reuse the result
+        rather than calling it in a loop.
+
+        :returns: A dict mapping each :class:`Observation` to the set of states
+            assigned to it.
+        :raises RuntimeError: If the model does not support observations.
+        """
+        if not self.supports_observations():
+            raise RuntimeError(
+                "Called compute_states_per_observation on a model that does not support observations"
+            )
+        result: dict[Observation, set[State]] = {
+            obs: set() for obs in self.observation_aliases.keys()
+        }
+        for s, obs in self.state_observations.items():
+            result[obs].add(s)  # type: ignore[index]  # obs is Observation for deterministic models
+        return result
 
     def observation(self, alias: str) -> Observation:
         """Makes a new observation if the given alias does not exist and returns it, otherwise returns the existing observation with the given alias."""
@@ -539,6 +679,28 @@ class Model[ValueType: Value]:
                 for label in state.labels:
                     self.state_labels[label].remove(state)
 
+    def make_fully_observable(self) -> "Model":
+        """Remove observations and convert this model to its fully-observable counterpart.
+
+        POMDP → MDP and HMM → DTMC.  All observation data
+        (``state_observations``, ``observation_aliases``,
+        ``observation_valuations``) is cleared.  The model is mutated in place
+        and returned for chaining.
+
+        :returns: ``self``, with model type updated and observations removed.
+        :raises ValueError: If the model is not a POMDP or HMM.
+        """
+        _map = {ModelType.POMDP: ModelType.MDP, ModelType.HMM: ModelType.DTMC}
+        if self.model_type not in _map:
+            raise ValueError(
+                f"make_fully_observable requires a POMDP or HMM; got {self.model_type}."
+            )
+        self.model_type = _map[self.model_type]
+        self.state_observations.clear()
+        self.observation_aliases.clear()
+        self.observation_valuations.clear()
+        return self
+
     # Action management
 
     def new_action(self, label: str) -> Action:
@@ -574,13 +736,13 @@ class Model[ValueType: Value]:
         :raises RuntimeError: If any transition probability is zero.
         """
         self._is_interval = None
-        self._is_parametric = None
         if not isinstance(choices, Choices):
             choices = choices_from_shorthand(choices)
 
         if choices.has_zero_transition():
             raise RuntimeError("All transition probabilities should be nonzero.")
 
+        self._validate_parametric_choices(choices)
         self.transitions[s] = choices
 
     def add_choices(self, s: State, choices: Choices | ChoicesShorthand) -> None:
@@ -594,12 +756,40 @@ class Model[ValueType: Value]:
         :raises RuntimeError: If any transition probability is zero.
         """
         self._is_interval = None
-        self._is_parametric = None
+        if not isinstance(choices, Choices):
+            choices = choices_from_shorthand(choices)
+        if choices.has_zero_transition():
+            raise RuntimeError("All transition probabilities should be nonzero.")
+
+        self._validate_parametric_choices(choices)
         if s not in self.transitions:
             self.transitions[s] = Choices(dict())
         self.transitions[s].add(choices)
 
-    def add_self_loops(self):
+    def _validate_parametric_choices(self, choices: Choices) -> bool:
+        """Check that all free symbols in parametric transitions are declared.
+
+        Returns True if any parametric value was found and False otherwise
+
+        :raises ValueError: If a transition references a symbol not in
+            :attr:`parameters`. Call :meth:`declare_parameter` first.
+        """
+        found_parametric = False
+        for _action, branch in choices:
+            for value, _target in branch:
+                if parametric.is_parametric(value):
+                    found_parametric = True
+                    unknown = parametric.free_symbol_names(value) - set(
+                        self._parameters
+                    )
+                    if unknown:
+                        raise ValueError(
+                            f"Transition references undeclared parameter(s) {unknown}. "
+                            f"Call model.declare_parameter(name) before adding transitions."
+                        )
+        return found_parametric
+
+    def add_self_loops(self) -> None:
         """Add self-loops to all states that do not have an outgoing transition."""
         if self.supports_rates():
             return
@@ -738,6 +928,21 @@ class Model[ValueType: Value]:
             # for ctmcs and mas we currently only add self loops
             self.add_self_loops()
 
+    def copy(self) -> "Model":
+        """Return a deep copy of this model, preserving all state UUIDs.
+
+        Each state in the copy shares the same ``state_id`` as its original,
+        so callers can cross-reference states via
+        ``new_model.get_state_by_id(s.state_id)``.
+
+        Implemented via :func:`copy.deepcopy`, so all current and future
+        fields are included automatically.  Sympy expressions (parametric
+        transition probabilities) are immutable and shared by reference.
+
+        :returns: A new :class:`Model` with identical structure.
+        """
+        return deepcopy(self)
+
     def get_sub_model(self, states: Iterable[State], normalize: bool = True) -> "Model":
         """Return a submodel containing only the given states.
 
@@ -746,7 +951,7 @@ class Model[ValueType: Value]:
         :returns: A new model containing only the specified states.
         """
         keep_ids = {s.state_id for s in states}
-        sub_model = deepcopy(self)
+        sub_model = self.copy()
         remove = [state for state in sub_model if state.state_id not in keep_ids]
         for state in remove:
             sub_model.remove_state(state, normalize=False, suppress_warning=True)
@@ -756,21 +961,31 @@ class Model[ValueType: Value]:
         return sub_model
 
     def get_instantiated_model(self, values: dict[str, Number]) -> "Model":
-        """Evaluate all parametric transitions with the given values and return the instantiated model.
+        """Substitute parameter values in all transitions and return a new model.
+
+        Partial substitutions are supported: parameters absent from *values*
+        remain free and the resulting model is still parametric. When every
+        declared parameter is substituted the returned model is effectively
+        a regular Markov model with concrete probabilities.
 
         :param values: Mapping from parameter names to their numeric values.
-        :returns: A new model with all parametric transitions evaluated.
+            Keys that do not correspond to a declared parameter are ignored.
+        :returns: A new model with the listed parameters substituted.
         """
         evaluated_model = deepcopy(self)
         for state, transition in evaluated_model.transitions.items():
             for action, branch in transition:
                 new_distr = Distribution()
                 for val, target in branch:
-                    if isinstance(val, Parametric):
-                        new_distr[target] = val.evaluate(values)
+                    if parametric.is_parametric(val):
+                        new_distr[target] = parametric.evaluate(val, values)
                     else:
                         new_distr[target] = val
                 evaluated_model.transitions[state][action] = new_distr
+        # Only drop the parameters that were actually substituted; any
+        # untouched parameters may still appear in the remaining transitions.
+        for name in values:
+            evaluated_model._parameters.pop(name, None)
         return evaluated_model
 
     def add_valuation_at_remaining_states(
