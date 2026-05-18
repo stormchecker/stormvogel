@@ -1,1 +1,0 @@
-In order to make the docs render the GIFs properly, this folder is copied to the docs/_build folder using a cp command in the pipeline.

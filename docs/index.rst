@@ -55,18 +55,10 @@ Stormvogel provides easy and user-friendly APIs for creating, visualizing, and d
 
 .. toctree::
    :maxdepth: 2
-   :caption: Stormvogel Goes To The Gym
+   :caption: Experimental
    :glob:
 
-   4-Stormvogel-And-Gym/*
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Advanced Features
-   :glob:
-
-   5-Advanced/*
+   5-Experimental/*
 
 
 Version info:
