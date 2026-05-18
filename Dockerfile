@@ -13,8 +13,8 @@ WORKDIR /app
 ARG EXPERIMENTAL=0
 RUN if [ "$EXPERIMENTAL" = "1" ]; then \
         pip install --no-cache-dir . stormpy paynt pyscipopt && \
-        pip install --no-cache-dir --no-deps --force-reinstall stormpy_wheel/*cp312*.whl && \
-        pip install --no-cache-dir --no-deps --force-reinstall paynt_wheel/*cp312*.whl; \
+        pip install --no-cache-dir --no-deps --force-reinstall stormpy_wheel/*cp313*.whl && \
+        pip install --no-cache-dir --no-deps --force-reinstall paynt_wheel/*cp313*.whl; \
     else \
         pip install --no-cache-dir . stormpy paynt pyscipopt; \
     fi
