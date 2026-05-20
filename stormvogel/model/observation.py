@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from uuid import UUID, uuid4
 from typing import Any, TYPE_CHECKING
 
-from stormvogel.model.variable import Variable
+from stormvogel.model.variable import VariableKey
 
 if TYPE_CHECKING:
     from stormvogel.model import Model
@@ -21,8 +21,8 @@ class Observation:
     observation_id: UUID = field(default_factory=uuid4)
 
     @property
-    def valuations(self) -> dict[Variable, Any]:
-        """Return the variable-value pairs observed in this observation."""
+    def valuations(self) -> dict[VariableKey, Any]:
+        """Return the variable- and predicate-value pairs observed in this observation."""
         if self not in self.model.observation_valuations:
             raise RuntimeError(
                 f"Observation {self.observation_id} does not have valuations in the model."

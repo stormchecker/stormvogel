@@ -17,7 +17,7 @@ from stormvogel.model.state import State
 from stormvogel import parametric
 from stormvogel.parametric import Parametric
 from stormvogel.model.reward_model import RewardModel
-from stormvogel.model.variable import Variable
+from stormvogel.model.variable import Variable, VariableKey, _check_valuation
 
 
 class ModelType(Enum):
@@ -67,7 +67,7 @@ class Model[ValueType: Value]:
 
     observation_aliases: dict[Observation, str]
 
-    observation_valuations: dict[Observation, dict[Variable, Any]]
+    observation_valuations: dict[Observation, dict[VariableKey, Any]]
 
     state_observations: dict[
         State[ValueType], Observation | Distribution[ValueType, Observation]
@@ -551,15 +551,18 @@ class Model[ValueType: Value]:
     # Observation management
 
     def new_observation(
-        self, alias: str, valuations: dict[Variable, Any] | None = None
+        self, alias: str, valuations: dict[VariableKey, Any] | None = None
     ) -> Observation:
         """Create a new observation and return it.
 
         :param alias: The alias for the new observation.
-        :param valuations: Variable-value pairs to assign as valuations.
+        :param valuations: Variable- or predicate-value pairs to assign as valuations.
+            Domain constraints are enforced: ``Variable`` keys with a declared domain
+            and all ``Predicate`` keys are checked and raise ``ValueError`` on violation.
         :returns: The newly created observation.
         :raises RuntimeError: If the model does not support observations, or if
             an observation with the given alias already exists.
+        :raises ValueError: If a value violates the domain of its key.
         """
         if not self.supports_observations():
             raise RuntimeError(
@@ -569,11 +572,12 @@ class Model[ValueType: Value]:
             raise RuntimeError(
                 f"An observation with alias {alias} already exists in this model."
             )
+        if valuations is not None:
+            for key, value in valuations.items():
+                _check_valuation(key, value)
         obs = Observation(self)
         self.observation_aliases[obs] = alias
-        self.observation_valuations[obs] = (
-            valuations if valuations is not None else dict()
-        )
+        self.observation_valuations[obs] = valuations if valuations is not None else {}
         return obs
 
     def get_observation(self, alias: str) -> Observation:

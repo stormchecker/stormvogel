@@ -12,7 +12,7 @@ from stormvogel.model.distribution import Distribution
 from stormvogel.model.observation import Observation
 from stormvogel.model.value import Value
 from stormvogel.model.action import Action, EmptyAction
-from stormvogel.model.variable import Variable
+from stormvogel.model.variable import Variable, _check_valuation
 
 
 @dataclass(order=False, eq=False)
@@ -182,6 +182,8 @@ class State[ValueType: Value]:
 
     @valuations.setter
     def valuations(self, value: dict[Variable, Any]):
+        for var, val in value.items():
+            _check_valuation(var, val)
         self.model.state_valuations[self] = value
 
     def add_valuation(self, variable: Variable, value: Any):
@@ -190,6 +192,7 @@ class State[ValueType: Value]:
         :param variable: The variable name.
         :param value: The value for the variable.
         """
+        _check_valuation(variable, value)
         self.valuations[variable] = value
 
     def get_valuation(self, variable: Variable) -> Any:

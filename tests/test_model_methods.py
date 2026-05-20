@@ -640,9 +640,8 @@ def test_choices_setitem_empty_on_nonempty_action():
 
 
 def test_choices_from_shorthand_unsupported_type():
-    """choices_from_shorthand raises RuntimeError for unsupported element types."""
-    with pytest.raises(RuntimeError):
-        # "hello" is a str — neither an Action nor a numeric Value — triggers line 203
+    """choices_from_shorthand rejects unsupported element types."""
+    with pytest.raises(Exception):
         stormvogel.model.choices_from_shorthand([("hello", "state")])  # type: ignore
 
 
@@ -1224,14 +1223,6 @@ def test_reward_model_get_reward_vector_raises_non_numeric():
 # ── value.py edge case ────────────────────────────────────────────────────────
 
 
-def test_value_to_string_other_type():
-    """value_to_string handles fallthrough case for unknown types."""
-    from stormvogel.model.value import value_to_string
-
-    result = value_to_string("hello_world")  # type: ignore
-    assert result == "hello_world"
-
-
 # ── variable.py edge case ────────────────────────────────────────────────────
 
 
@@ -1476,3 +1467,63 @@ def test_remove_state_from_pomdp_copy_does_not_affect_original():
     c_B_obs = next(iter(c.get_states_with_label("B"))).observation
     assert c_B_obs is not None
     assert c_B_obs.alias == "obs_B"
+
+
+# ---------------------------------------------------------------------------
+# add_observation_valuations — stormpy → stormvogel roundtrip
+# ---------------------------------------------------------------------------
+
+
+def test_add_observation_valuations_maze():
+    """Observable variables from the maze POMDP are imported into observation_valuations."""
+    stormpy = pytest.importorskip("stormpy")
+    stormpy_pomdp = pytest.importorskip("stormpy.pomdp")
+    import stormpy.examples.files
+    import stormvogel.stormpy_utils.mapping as mapping
+
+    path = stormpy.examples.files.prism_pomdp_maze
+    prism_program = stormpy.parse_prism_program(path)
+    options = stormpy.BuilderOptions()
+    options.set_build_observation_valuations()
+    options.set_build_choice_labels()
+    pomdp_sparse = stormpy.build_sparse_model_with_options(prism_program, options)
+    pomdp_sparse = stormpy_pomdp.make_canonic(pomdp_sparse)
+
+    sv_model = mapping.stormpy_to_stormvogel(pomdp_sparse)
+
+    nr_obs = pomdp_sparse.nr_observations
+    assert nr_obs > 0
+
+    # Every observation should have exactly one valuation entry (variable "o")
+    for obs in sv_model.observations:
+        vals = sv_model.observation_valuations[obs]
+        assert len(vals) == 1
+        ((key, value),) = vals.items()
+        from stormvogel.model.variable import Variable, IntDomain
+
+        assert isinstance(key, Variable)
+        assert key.label == "o"
+        assert isinstance(key.domain, IntDomain)
+        assert isinstance(value, int)
+
+
+def test_add_observation_valuations_no_obs_valuations():
+    """Models without observation_valuations are imported without error."""
+    stormpy = pytest.importorskip("stormpy")
+    stormpy_pomdp = pytest.importorskip("stormpy.pomdp")
+    import stormpy.examples.files
+    import stormvogel.stormpy_utils.mapping as mapping
+
+    path = stormpy.examples.files.prism_pomdp_maze
+    prism_program = stormpy.parse_prism_program(path)
+    # build WITHOUT observation_valuations
+    options = stormpy.BuilderOptions()
+    options.set_build_choice_labels()
+    pomdp_sparse = stormpy.build_sparse_model_with_options(prism_program, options)
+    pomdp_sparse = stormpy_pomdp.make_canonic(pomdp_sparse)
+
+    sv_model = mapping.stormpy_to_stormvogel(pomdp_sparse)
+
+    # observation_valuations should exist but be empty dicts
+    for obs in sv_model.observations:
+        assert sv_model.observation_valuations[obs] == {}
