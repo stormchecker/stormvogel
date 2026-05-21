@@ -1,235 +1,452 @@
 import logging
-import umbi
+from fractions import Fraction
+
 import umbi.ats
-import stormvogel
-from umbi.ats.annotations import AnnotationAppliesTo
+import umbi.datatypes
+from umbi.ats.simple_ats import SimpleAts
+from umbi.ats.entity_space import EntityClass
 
-# TODO support reward models (Requires refactoring of reward models on stormvogel side)
-# TODO support Markov automata.
-# TODO support state valuations (Requires refactoring of state valuations on stormvogel side)
+from stormvogel.model.model import Model, ModelType, new_model
+from stormvogel.model.action import Action, EmptyAction
+from stormvogel.model.observation import Observation
+from stormvogel.model.value import Interval
+from stormvogel.model.variable import (
+    Variable as SvVariable,
+    Predicate,
+    VariableKey,
+    IntDomain,
+    BoolDomain,
+    CategoricalDomain,
+)
 
-logger = logging.getLogger("stormvogel.translate")
+logger = logging.getLogger("stormvogel.umbi")
+
 
 def none_to_empty_string(x: str | None) -> str:
     return x if x is not None else ""
 
 
-def emtpy_string_to_none(x: str) -> str | None:
+def empty_string_to_none(x: str) -> str | None:
     return x if x != "" else None
 
 
-def to_nr_players(model_type: stormvogel.ModelType) -> int:
-    if model_type in [stormvogel.ModelType.DTMC, stormvogel.ModelType.CTMC]:
+def to_nr_players(model_type: ModelType) -> int:
+    if model_type in (ModelType.DTMC, ModelType.CTMC):
         return 0
-    else:
-        return 1
+    return 1
 
-def to_umbi_interval(interval: stormvogel.Interval) -> umbi.datatypes.Interval:
-    # TODO update once stormvogel interval is updated.
-    return umbi.datatypes.Interval(left=interval.bottom, right=interval.top)
 
-def to_time_type(model_type: stormvogel.ModelType) -> umbi.ats.TimeType:
-    if model_type in [stormvogel.ModelType.CTMC, stormvogel.ModelType.MA]:
+def to_time_type(model_type: ModelType) -> umbi.ats.TimeType:
+    if model_type in (ModelType.CTMC, ModelType.MA):
         return umbi.ats.TimeType.STOCHASTIC
-    else:
-        return umbi.ats.TimeType.DISCRETE
+    return umbi.ats.TimeType.DISCRETE
 
 
-def translate_to_umbi(model: stormvogel.Model) -> umbi.ats.ExplicitAts:
-    """
-    Create an Annotated Transition System in the UMBI library.
+def to_umbi_interval(interval: Interval) -> umbi.datatypes.Interval:
+    return umbi.datatypes.Interval(left=interval.lower, right=interval.upper)
+
+
+def from_umbi_interval(interval: umbi.datatypes.Interval) -> Interval:
+    return Interval(lower=interval.left, upper=interval.right)
+
+
+def _domain_from_umbi_var(
+    v: umbi.ats.Variable,
+) -> IntDomain | BoolDomain | CategoricalDomain | None:
+    """Infer a stormvogel domain from a UMBI variable's observed value set."""
+    if not v.has_domain:
+        return None
+    from umbi.datatypes.primitive import PrimitiveType
+    from umbi.datatypes.numeric_primitive import NumericPrimitiveType
+
+    pt = v.promotion_type
+    if pt == PrimitiveType.BOOL:
+        return BoolDomain()
+    if pt in (NumericPrimitiveType.INT, NumericPrimitiveType.UINT):
+        return IntDomain(int(v.lower), int(v.upper))  # type: ignore[arg-type]
+    return CategoricalDomain(tuple(v.domain.sorted_domain))
+
+
+def get_model_type(
+    time: umbi.ats.TimeType, players: int, has_observations: bool
+) -> ModelType:
+    if time == umbi.ats.TimeType.DISCRETE:
+        if players == 0:
+            if has_observations:
+                raise ValueError("Stormvogel does not support MCs with observations")
+            return ModelType.DTMC
+        if players == 1:
+            if has_observations:
+                return ModelType.POMDP
+            return ModelType.MDP
+    elif time == umbi.ats.TimeType.STOCHASTIC:
+        if players == 0:
+            if has_observations:
+                raise ValueError("Stormvogel does not support CTMCs with observations")
+            return ModelType.CTMC
+    raise NotImplementedError(
+        f"The combination {time}, {players}, {has_observations} is not supported."
+    )
+
+
+def translate_to_umbi(
+    model: Model, ignore_unsupported_rewards: bool = False
+) -> SimpleAts:
+    """Export a stormvogel Model to a UMBI SimpleAts.
 
     Args:
-        model: a stormvogel.Model
+        model: a stormvogel Model (DTMC, CTMC, MDP, or POMDP)
+        ignore_unsupported_rewards: if True, silently skip transition reward models
+            instead of raising an error.
 
-    Returns: the umbi.ats.ExplicitAts
+    Returns: a umbi.ats.SimpleAts
     """
-    ats = umbi.ats.ExplicitAts()
-    ats.time = to_time_type(model.type)
-    ats.num_players = to_nr_players(model.type)
-    ats.num_initial_states = 1  # Note this is a constant for stormvogel currently.
-    ats.num_states = model.nr_states
-    ats.state_is_initial = [s.is_initial() for s in model.states.values()]
-    # TODO do we already enforce that state ids are consecutive.
-    if model.type in [stormvogel.ModelType.MDP, stormvogel.ModelType.POMDP]:
-        assert model.actions is not None, "MDPs must have actions."
-        actions_to_ids = {a: state_id for state_id, a in enumerate(model.actions)}
-        ats.num_actions = len(model.actions)  # TODO change once stormvogel is updated
-        ats.action_strings = [
-            none_to_empty_string(a.label) for a in model.actions
-        ]
-    else:
-        actions_to_ids = {}
-    ats.num_choices = model.nr_choices
-    if ats.num_players > 0:
-        ats.state_to_choice = []
-        ats.choice_to_action = []
-    ats.choice_to_branch = []
-    ats.branch_to_target = []
-    ats.branch_probabilities = []
-    has_interval = False
-    # TODO support exact
-    if model.supports_rates():
-        ats.state_is_markovian: [True] * model.nr_states
-        ats.state_exit_rate = []
-
-    for state in model.states.values():
-        if ats.num_players > 0:
-            assert ats.state_to_choice is not None, "If players exist, states must have choices."
-            ats.state_to_choice.append(len(ats.choice_to_action))
-        if ats.state_exit_rate is not None:
-            # Model has rates.
-            ats.state_exit_rate.append(model.get_rate(state))
-            assert model.get_rate(state) > 0 or len(model.get_successor_states(state)) == 0, f"States need positive exit rates, but state {state.id} has exit rate {model.get_rate(state)}"
-        for action, choice in state.get_choices():
-            if ats.num_players > 0:
-                ats.choice_to_action.append(actions_to_ids[action])
-            ats.choice_to_branch.append(len(ats.branch_to_target))
-            for branch in choice:
-                value, target = branch  # Unpacking.
-                if type(value) == stormvogel.Interval:
-                    value = to_umbi_interval(value)
-                print(value)
-                ats.branch_to_target.append(target.id)
-                if ats.state_exit_rate is not None:
-                    # Stormvogel stores rates, UMB stores probabilities.
-                    ats.branch_probabilities.append(value/ats.state_exit_rate[-1])
-                else:
-                    ats.branch_probabilities.append(value)
-    if ats.num_players > 0:
-        assert ats.state_to_choice is not None, "If players exist, states must have choices."
-        ats.state_to_choice.append(len(ats.choice_to_action))
-    ats.choice_to_branch.append(len(ats.branch_to_target))
-    ats.num_branches = len(ats.branch_to_target)
-
-    for label in model.get_labels():
-        labeled_states = {s.id for s in model.get_states_with_label(label)}
-        ats.add_ap_annotation(umbi.ats.AtomicPropositionAnnotation(
-            name=label,
-            alias=label,
-            description=label,
-            state_to_value=[True if s_id in labeled_states else False for s_id in range(ats.num_states)]
-        ))
-    if model.observations is not None:
-        # TODO we do not enforce consecutive numbers right now. Should we?
-        ats.observation_annotation = umbi.ats.ObservationAnnotation(
-            num_observations=max([obs.observation for obs in model.observations])+1, state_to_value= [s.get_observation().observation for s in model.states.values()]
+    if model.is_parametric():
+        raise ValueError(
+            "Parametric models cannot be translated to UMBI. "
+            "Evaluate all parameters before calling translate_to_umbi."
+        )
+    if model.model_type == ModelType.MA:
+        raise NotImplementedError(
+            "Markov automata are not yet supported by the UMBI translator."
         )
 
-        print(ats.num_states)
-        print(len(ats.observation_annotation.state_to_value))
+    ats = SimpleAts()
+    ats.time = to_time_type(model.model_type)
+    ats.num_players = to_nr_players(model.model_type)
 
-    # Now create reward structures:
-    # for reward_model in model.rewards:
-    #
-    #     reward_model.
-    # umbi.ats.RewardAnnotation(
-    #     name="steps",
-    #     type=umbi.ats.CommonType.DOUBLE,
-    #     alias="step cost",
-    #     description="Cost incurred at each step.",
-    #     choice_to_value=[1 for c in range(ats.num_choices)]
-    # )
-    # ats.add_reward_annotation()
+    ats.new_states(model.nr_states)
+    state_to_id: dict = {s: i for i, s in enumerate(model.states)}
+
+    ats.initial_states = [state_to_id[model.initial_state]]
+
+    # CTMC exit rates: sum of all outgoing rates per state
+    if model.supports_rates():
+        for state in model.states:
+            s_id = state_to_id[state]
+            if state.has_choices():
+                exit_rate = sum(
+                    rate for _, branch in state.choices for rate, _ in branch
+                )
+            else:
+                exit_rate = 0.0
+            ats.state_to_exit_rate[s_id] = exit_rate
+
+    # MDP/POMDP choice actions
+    action_to_ca: dict[Action, int] = {}
+    if model.supports_actions():
+        all_actions = list(model.actions)
+        ats.num_choice_actions = len(all_actions)
+        ats.new_choice_action_to_name()
+        for ca_id, action in enumerate(all_actions):
+            action_to_ca[action] = ca_id
+            ats.choice_action_to_name[ca_id] = none_to_empty_string(action.label)
+
+    # Transitions
+    for state in model.states:
+        s_id = state_to_id[state]
+        if not state.has_choices():
+            continue
+        exit_rate = ats.state_to_exit_rate[s_id] if model.supports_rates() else None
+        for action, branch in state.choices:
+            choice = ats.new_state_choice(s_id)
+            if action_to_ca:
+                ats.choice_to_choice_action[choice] = action_to_ca[action]
+            for value, target in branch:
+                t_id = state_to_id[target]
+                if isinstance(value, Interval):
+                    prob = to_umbi_interval(value)
+                elif exit_rate is not None and exit_rate > 0:
+                    prob = value / exit_rate
+                else:
+                    prob = value
+                ats.new_choice_branch(choice, t_id, prob)
+
+    # AP labels
+    for label, labeled_states in model.state_labels.items():
+        ann = ats.new_ap_annotation(name=label)
+        ids = {state_to_id[s] for s in labeled_states}
+        ann.state_values = [i in ids for i in range(ats.num_states)]
+
+    # Observations (POMDP) — build obs_to_id here so valuations section can use it
+    obs_to_id: dict[object, int] = {}
+    if model.supports_observations():
+        state_obs_ids: list[int] = []
+        for state in model.states:
+            obs = model.state_observations.get(state)
+            if obs is None:
+                raise RuntimeError(
+                    f"State {state} has no observation in an observation model."
+                )
+            if obs not in obs_to_id:
+                obs_to_id[obs] = len(obs_to_id)
+            state_obs_ids.append(obs_to_id[obs])
+        ats.num_observations = len(obs_to_id)
+        ats.observation_annotation.state_values = state_obs_ids
+
+    # State rewards (transition rewards are not supported)
+    for reward_model in model.rewards:
+        if reward_model.has_transition_rewards():
+            if ignore_unsupported_rewards:
+                continue
+            raise ValueError(
+                f"Reward model '{reward_model.name}' has transition rewards, which are not "
+                f"supported. Use ignore_unsupported_rewards=True to skip."
+            )
+        ann = ats.new_reward_annotation(name=reward_model.name)
+        ann.add_state_values()
+        for i, state in enumerate(model.states):
+            r = reward_model.get_state_reward(state)
+            ann.state_values[i] = r if r is not None else 0
+
+    # State and observation valuations share a single EntityClassValuations container
+    has_state_vals = any(model.state_valuations.values())
+    obs_valuations: dict[Observation, dict[VariableKey, object]] = (
+        {obs: v for obs, v in model.observation_valuations.items() if v}
+        if model.supports_observations()
+        else {}
+    )
+    has_obs_vals = bool(obs_valuations)
+
+    if has_state_vals or has_obs_vals:
+        var_valuations = ats.add_variable_valuations()
+
+        if has_state_vals:
+            sv_ent = var_valuations.add_state_valuations()
+            all_sv_vars: list[SvVariable] = sorted(
+                {var for vals in model.state_valuations.values() for var in vals},
+                key=lambda v: v.label,
+            )
+            sv_var_to_umbi: dict[SvVariable, umbi.ats.Variable] = {
+                var: sv_ent.new_variable(var.label) for var in all_sv_vars
+            }
+            for i, state in enumerate(model.states):
+                if model.state_valuations[state]:
+                    sv_ent.set_entity_valuation(
+                        i,
+                        {
+                            sv_var_to_umbi[var]: val
+                            for var, val in model.state_valuations[state].items()
+                        },
+                    )
+
+        if has_obs_vals:
+            ov_ent = var_valuations.add_observation_valuations()
+            all_ov_vars: list[VariableKey] = sorted(
+                {
+                    var
+                    for vals in obs_valuations.values()
+                    for var in vals
+                    if isinstance(var, (SvVariable, Predicate))
+                },
+                key=lambda v: v.label,
+            )
+            ov_var_to_umbi: dict[VariableKey, umbi.ats.Variable] = {
+                var: ov_ent.new_variable(var.label) for var in all_ov_vars
+            }
+            for obs, vals in obs_valuations.items():
+                sv_vals = {
+                    var: val
+                    for var, val in vals.items()
+                    if isinstance(var, (SvVariable, Predicate))
+                }
+                if sv_vals:
+                    ov_ent.set_entity_valuation(
+                        obs_to_id[obs],
+                        {  # type: ignore[arg-type]
+                            ov_var_to_umbi[var]: val for var, val in sv_vals.items()
+                        },
+                    )
 
     ats.validate()
     return ats
 
 
-def get_model_type(
-    time: umbi.ats.TimeType, players: int, has_observations: bool
-) -> stormvogel.ModelType:
-    if time == umbi.ats.TimeType.DISCRETE:
-        if players == 0:
-            if has_observations:
-                raise ValueError("Stormvogel does not support MCs with observations")
-            return stormvogel.ModelType.DTMC
-        if players == 1:
-            if has_observations:
-                return stormvogel.ModelType.POMDP
-            else:
-                return stormvogel.ModelType.MDP
-    elif time == umbi.ats.TimeType.STOCHASTIC:
-        if players == 0:
-            if has_observations:
-                raise ValueError("Stormvogel does not support CTMCs with observations")
-            return stormvogel.ModelType.CTMC
-    raise NotImplementedError(
-        f"The combination {time}, {players}, {has_observations} is not supported by this translation."
-    )
+def translate_to_stormvogel(
+    ats: SimpleAts,
+    ignore_unsupported_rewards: bool = False,
+    ignore_choice_annotations: bool = False,
+    ignore_branch_annotations: bool = False,
+) -> Model:
+    """Import a UMBI SimpleAts as a stormvogel Model.
 
-def translate_to_stormvogel(ats: umbi.ats.ExplicitAts) -> stormvogel.Model:
-    modeltype = get_model_type(ats.time, ats.num_players, ats.has_observations)
-    logger.debug(f"modeltype: {modeltype}")
-    model = stormvogel.new_model(
-        modeltype=modeltype,
-        create_initial_state=False
+    Args:
+        ats: a umbi.ats.SimpleAts
+        ignore_unsupported_rewards: if True, silently skip reward annotations that have
+            only choice- or branch-level values (not supported by stormvogel state rewards)
+            instead of raising an error.
+        ignore_choice_annotations: if True, silently skip choice-level variable valuations
+            instead of raising an error.
+        ignore_branch_annotations: if True, silently skip branch-level variable valuations
+            instead of raising an error.
+
+    Returns: a stormvogel Model
+    """
+    if ats.time == umbi.ats.TimeType.URGENT_STOCHASTIC:
+        raise NotImplementedError(
+            "Markov automata are not yet supported by the UMBI translator."
+        )
+    model_type = get_model_type(
+        ats.time, ats.num_players, ats.has_observation_annotation
     )
-    # TODO handle the case where action strings do not exist.
-    if model.supports_rates() and ats.state_exit_rate is None:
-        raise RuntimeError("Translating a CTMC requires state-exit-rates.")
-    stormvogel_actions = {}
-    if ats.action_strings is not None:
-        stormvogel_actions = {
-            action_id: model.new_action(emtpy_string_to_none(action))
-            for action_id, action in enumerate(ats.action_strings)
-        }
-    initial_state_found = False
+    model = new_model(model_type, create_initial_state=False)
+
+    # Create stormvogel Observations first, so they can be passed to new_state
+    umbi_obs_to_sv_obs: dict[int, Observation] = {}
+    obs_values: list[int] = []
+    if ats.has_observation_annotation:
+        obs_values = [int(v) for v in ats.observation_annotation.state_values]  # type: ignore[arg-type]
+        for obs_id in obs_values:
+            if obs_id not in umbi_obs_to_sv_obs:
+                umbi_obs_to_sv_obs[obs_id] = model.new_observation(alias=str(obs_id))
+
     for s_id in range(ats.num_states):
-        state = model.new_state()
-        if ats.state_is_initial[s_id]:
-            if initial_state_found:
-                raise RuntimeError(
-                    "Stormvogel supports models with at most one initial state."
-                )
-            initial_state_found = True
-            state.add_label("init")
-    for name, ap_structure in ats.ap_annotations.items():
+        obs: Observation | None = (
+            umbi_obs_to_sv_obs[obs_values[s_id]]
+            if ats.has_observation_annotation
+            else None
+        )
+        model.new_state(observation=obs)
+
+    if len(ats.initial_states) != 1:
+        raise RuntimeError(
+            f"Stormvogel supports models with exactly one initial state, "
+            f"but this ATS has {len(ats.initial_states)}."
+        )
+    model.states[ats.initial_states[0]].add_label("init")
+
+    # AP labels (skip "init", handled above)
+    for name, ann in ats.ap_annotations.items():
         if name == "init":
-            # We handle the init label separately.
             continue
-        if ap_structure.has_choice_values:
-            raise RuntimeError("Choice labels are not supported by Stormvogel.")
-        if ap_structure.has_branch_values:
-            raise RuntimeError("Branch labels are not supported by Stormvogel.")
-
+        if not ann.has_state_values:
+            continue
         for s_id in range(ats.num_states):
-            if ap_structure.get_values_for(AnnotationAppliesTo.STATES)[s_id]:
-                model.get_state_by_id(s_id).add_label(ap_structure.name)
-            # We currently ignore the description and the alias.
-    if not initial_state_found:
-        raise RuntimeError("Stormvogel requires models to have an initial state.")
+            if ann.state_values[s_id]:
+                model.states[s_id].add_label(name)
 
+    # Build action map for MDPs
+    ca_to_action: dict[int, Action] = {}
+    if ats.has_choice_actions:
+        for ca_id in range(ats.num_choice_actions):
+            label = (
+                empty_string_to_none(ats.choice_action_to_name[ca_id])
+                if ats.has_choice_action_to_name
+                else None
+            )
+            ca_to_action[ca_id] = Action(label)
+
+    # Exit rates for CTMCs
+    exit_rates = None
+    if model.supports_rates():
+        if not ats.has_state_to_exit_rate:
+            raise RuntimeError("Translating a CTMC requires state exit rates.")
+        exit_rates = ats.state_to_exit_rate
+
+    # Transitions
     for s_id in range(ats.num_states):
-        state = model.get_state_by_id(s_id)
-        state_choices = {}
-        for c_id in ats.state_choice_range(s_id):
-            choice_branches = []
-            for b_id in ats.choice_branch_range(c_id):
-                branch_value = ats.get_branch_probability(b_id)
-                if model.type == stormvogel.ModelType.CTMC:
-                    # Note that in stormvogel, CTMCs are represented with the transition rates.
-                    branch_value *= ats.state_exit_rate[s_id]
-                print(branch_value)
-                choice_branches.append(
-                    (branch_value, ats.get_branch_target(b_id))
+        state = model.states[s_id]
+        choices_shorthand: dict[Action, list] = {}
+        for c_id in ats.get_state_choices(s_id):
+            action = (
+                ca_to_action[ats.choice_to_choice_action[c_id]]
+                if ats.has_choice_to_choice_action
+                else EmptyAction
+            )
+            branches = []
+            for b_id in ats.get_choice_branches(c_id):
+                raw_prob = ats.branch_to_probability[b_id]
+                target = model.states[ats.branch_to_target[b_id]]
+                if isinstance(raw_prob, umbi.datatypes.Interval):
+                    sv_interval = from_umbi_interval(raw_prob)
+                    if exit_rates is not None:
+                        # Scale probability interval by exit rate to recover rate interval
+                        rate = float(exit_rates[s_id])  # type: ignore[arg-type]
+                        value = Interval(
+                            lower=sv_interval.lower * rate,
+                            upper=sv_interval.upper * rate,
+                        )
+                    else:
+                        value = sv_interval
+                elif isinstance(raw_prob, (int, float, Fraction)):
+                    if exit_rates is not None:
+                        value = raw_prob * exit_rates[s_id]  # type: ignore[arg-type]
+                    else:
+                        value = raw_prob
+                else:
+                    value = raw_prob
+                branches.append((value, target))
+            choices_shorthand[action] = branches
+        if choices_shorthand:
+            state.set_choices(choices_shorthand)
+
+    # State rewards
+    for name, ann in ats.reward_annotations.items():
+        if not ann.has_state_values:
+            if ann.has_choice_values or ann.has_branch_values:
+                if ignore_unsupported_rewards:
+                    continue
+                raise ValueError(
+                    f"Reward annotation '{name}' has choice- or branch-level values, which "
+                    f"stormvogel does not support. Use ignore_unsupported_rewards=True to skip."
                 )
-            state_choices[
-                stormvogel_actions.get(ats.get_choice_action(c_id)) if ats.choice_to_action is not None else stormvogel.EmptyAction
-            ] = choice_branches
-        model.add_choice(state, state_choices)
-    if ats.has_observations:
-        if ats.observation_annotation.has_choice_values:
-            raise RuntimeError("Observation choice labels are not supported by Stormvogel.")
-        if ats.observation_annotation.has_branch_values:
-            raise RuntimeError("Observation branch labels are not supported by Stormvogel.")
-        observation_dict = {}
+            continue
+        reward_model = model.new_reward_model(name)
         for s_id in range(ats.num_states):
-            obs_id = ats.observation_annotation.state_to_value[s_id]
-            if obs_id not in observation_dict:
-                obs = model.new_observation(None, obs_id)
-                observation_dict[obs_id] = obs
-            else:
-                obs = observation_dict[obs_id]
-            model.get_state_by_id(s_id).set_observation(obs)
+            val = ann.state_values[s_id]
+            if (
+                val is not None
+                and val != 0
+                and not isinstance(val, umbi.datatypes.Interval)
+            ):
+                reward_model.set_state_reward(model.states[s_id], float(val))
+
+    # State and observation valuations
+    if ats.has_variable_valuations:
+        vv = ats.variable_valuations
+
+        if vv.has_values_for(EntityClass.CHOICES):
+            if not ignore_choice_annotations:
+                raise ValueError(
+                    "This ATS has choice-level variable valuations, which stormvogel does not "
+                    "support. Use ignore_choice_annotations=True to skip."
+                )
+
+        if vv.has_values_for(EntityClass.BRANCHES):
+            if not ignore_branch_annotations:
+                raise ValueError(
+                    "This ATS has branch-level variable valuations, which stormvogel does not "
+                    "support. Use ignore_branch_annotations=True to skip."
+                )
+
+        if vv.has_values_for(EntityClass.STATES):
+            sv = vv.state_valuations
+            sv_vars = {
+                v.name: SvVariable(label=v.name, domain=_domain_from_umbi_var(v))
+                for v in sv.variables
+            }
+            for s_id in range(ats.num_states):
+                umbi_val = sv.get_entity_valuation(s_id)
+                if umbi_val:
+                    model.state_valuations[model.states[s_id]] = {
+                        sv_vars[v.name]: val
+                        for v, val in umbi_val.items()
+                        if val is not None
+                    }
+
+        if vv.has_values_for(EntityClass.OBSERVATIONS):
+            ov = vv.observation_valuations
+            ov_vars = {
+                v.name: SvVariable(label=v.name, domain=_domain_from_umbi_var(v))
+                for v in ov.variables
+            }
+            for obs_id, sv_obs in umbi_obs_to_sv_obs.items():
+                umbi_val = ov.get_entity_valuation(obs_id)
+                if umbi_val:
+                    model.observation_valuations[sv_obs] = {
+                        ov_vars[v.name]: val
+                        for v, val in umbi_val.items()
+                        if val is not None
+                    }
+
     return model
