@@ -26,7 +26,6 @@ jupyter = "^1.1.1"
 bidict = "^0.23.1"
 gymnasium = "^1.1.1"
 imageio = "^2.37.0"
-pygame = "^2.6.1"
 svgpathtools = "^1.6.1"
 nbdime = "^4.0.2"
 networkx = "^3.4.2"
@@ -59,6 +58,7 @@ pytest-cov = "^7.1.0"
 
 [tool.poetry.group.optional.dependencies]
 cairosvg = "^2.8.2"
+pygame = "^2.6.1"
 
 [tool.ruff]
 src = ["stormvogel", "examples"]
