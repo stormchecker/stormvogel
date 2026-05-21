@@ -1,6 +1,6 @@
 """Generate an interactive editor from a specified schema using ipywidgets.
 This is used to create the layout editing menu.
-Exmample usage can be found in property_builder.py."""
+Example usage can be found in property_builder.py."""
 
 import stormvogel.displayable
 import stormvogel.rdict
@@ -12,7 +12,7 @@ import copy
 
 
 class WidgetWrapper:
-    """Creates a widget specified in the arguments."""
+    """Create a widget specified in the arguments."""
 
     convert_dict = {
         "IntSlider": widgets.IntSlider,
@@ -36,17 +36,16 @@ class WidgetWrapper:
         on_update: Callable[[], None],
         **kwargs,
     ):
-        """Creates a widget which automatically updates a dictonary value.
+        """Create a widget which automatically updates a dictionary value.
 
-        Args:
-            description (str): 'description' of the widget. Will be shown in the UI.
-            widget (str): A str name for a widget.
-            path (list[str]): path to the value in update_dict to be changed if the user changes this widget.
-            initial_value (Any): initial value of the widget (aka. 'value')
-            update_dict (dict): The dict that should be updated.
-                When the user sets the value of the widget to X, the value at update_dict[path] is set to X.
-            on_update (Callable[[], None]): A function that is called whenever a value is updated.
-                When the user sets the value of the widget to something, on_update() is called.
+        :param description: Description of the widget. Will be shown in the UI.
+        :param widget: A string name for a widget.
+        :param path: Path to the value in *update_dict* to be changed if the user changes this widget.
+        :param initial_value: Initial value of the widget.
+        :param update_dict: The dict that should be updated.
+            When the user sets the value of the widget to X, the value at
+            ``update_dict[path]`` is set to X.
+        :param on_update: A function that is called whenever a value is updated.
         """
         self.update_dict: dict = update_dict
         self.path: list[str] = path
@@ -63,14 +62,16 @@ class WidgetWrapper:
             )
 
     def on_edit(self, x: Any) -> None:
-        """This method is called when the user sets the value of a widget to x.
-        It updates self.update_dict[self.path], and calls the on_update function."""
+        """Update ``self.update_dict[self.path]`` and call the on_update function.
+
+        :param x: The new value set by the user.
+        """
         stormvogel.rdict.rset(self.update_dict, self.path, x)
         self.on_update()
 
 
 class DictEditor(stormvogel.displayable.Displayable):
-    """Create an interactive json editor from a schema using ipy widgets."""
+    """Create an interactive JSON editor from a schema using ipywidgets."""
 
     def __init__(
         self,
@@ -81,19 +82,21 @@ class DictEditor(stormvogel.displayable.Displayable):
         do_display: bool = True,
         debug_output: widgets.Output = widgets.Output(),
     ) -> None:
-        """Create an interactive json editor from a schema using ipy widgets. Display it using the show() method.
+        """Create an interactive JSON editor from a schema using ipywidgets.
 
-        Args:
-            schema (dict): The dict that specifies the schema.
-                Quite closely follows the structure of the actual dict. Supports macros.
-                Macros are defined as a dict with the key "__macros" and the value is the name of the macro.
-                A macro can be used in the schema by using the key "__use_macro" and the value is the name of the macro.
-                See layouts/schema.json for an example.
-            update_dict (dict): The dict that will be updated.
-            on_update (Callable[[], None]): Function that is called whenever the dict is updated.
-            output (widgets.Output | None, optional): The output widget to use.
-            do_display (bool, optional): Whether to display the widget immediately.
-            debug_output (widgets.Output, optional): Output widget for debug information.
+        Display it using the :meth:`show` method.
+
+        :param schema: The dict that specifies the schema.
+            Quite closely follows the structure of the actual dict. Supports macros.
+            Macros are defined as a dict with the key ``__macros`` and the value is
+            the name of the macro. A macro can be used in the schema by using the
+            key ``__use_macro`` and the value is the name of the macro.
+            See ``layouts/schema.json`` for an example.
+        :param update_dict: The dict that will be updated.
+        :param on_update: Function that is called whenever the dict is updated.
+        :param output: The output widget to use.
+        :param do_display: Whether to display the widget immediately.
+        :param debug_output: Output widget for debug information.
         """
         super().__init__(output, do_display, debug_output)
         self.on_update: Callable = on_update

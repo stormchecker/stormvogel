@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "stormvogel"
-version = "0.10.1"
+version = "0.11.0"
 description = "Probabilistic Model Checking for almost everyone"
 authors = ["The stormvogel team"]
 license = "GPLv3"
@@ -18,7 +18,6 @@ numpy = "^2.0.1"
 pandas = "^2.2.2"
 nbval = "^0.11.0"
 sphinx-autoapi = "^3.3.1"
-pytest-mock = "^3.14.0"
 matplotlib = "^3.9.2"
 anyio = "^4.6.0"
 nbmake = "^1.5.4"
@@ -29,19 +28,25 @@ gymnasium = "^1.1.1"
 imageio = "^2.37.0"
 pygame = "^2.6.1"
 svgpathtools = "^1.6.1"
-lxml = "^5.3.2"
 nbdime = "^4.0.2"
 networkx = "^3.4.2"
 deprecated = "^1.2.18"
+pillow = "^12.1.1"
+sympy = "^1.14.0"
+z3-solver = "^4.0"
+pydot = "^4.0.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.2.2"
 pytest_tagging = "^1.6.0"
+pytest-cov = "^7.1.0"
+pytest-mock = "^3.14.0"
+hypothesis = "^6.151.12"
 
 [tool.poetry.group.lint.dependencies]
 pre-commit = "^3.7.1"
 ruff = "^0.4.6"
-pyright = "^1.1.368"
+pyright = "^1.1.408"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.4"
@@ -50,6 +55,7 @@ sphinx = "^7.3.7"
 furo = "^2024.5.6"
 nbsphinx = "^0.9.4"
 jupytext = "^1.17.2"
+pytest-cov = "^7.1.0"
 
 [tool.poetry.group.optional.dependencies]
 cairosvg = "^2.8.2"
@@ -60,6 +66,11 @@ line-length = 88
 target-version = "py311"
 fix = true
 
+# pyright configuration is in pyrightconfig.json; settings here are ignored when that file exists.
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
+
+
+[tool.pytest.ini_options]
+pythonpath = ["tests"]

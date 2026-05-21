@@ -5,29 +5,32 @@ from stormvogel.layout import PACKAGE_ROOT_DIR
 
 # An html template on which a Network is based.
 def generate_html(
-    nodes_js: str, edges_js: str, options_js: str, name: str, width: int, height: int
+    nodes_js: str, edges_js: str, options_js: str, name: str, height: int | str
 ) -> str:
     """Generate HTML that renders the network.
 
-    Args:
-        nodes_js (str): JS code that generates the nodes DataSet.
-        edges_js (str): JS code that generates the edges DataSet.
-        options_js (str): JS code that generates the options object.
-        name (str): The name of the network. Used to create a unique variable name.
-        width (int): Width of the network div in pixels.
-        height (int): Height of the network div in pixels.
-
-    We generate two scripts:
+    Two scripts are generated:
         1. One that defines the NetworkWrapper class.
         2. One that initializes a NetworkWrapper object with the specified nodes, edges, and options.
-           This NetworkWrapper object is  stored as a global variable nw_{name}.
-           nw_{name}.network is the visjs network.
+           This NetworkWrapper object is stored as a global variable ``nw_{name}``.
+           ``nw_{name}.network`` is the vis.js network.
+
+    :param nodes_js: JS code that generates the nodes DataSet.
+    :param edges_js: JS code that generates the edges DataSet.
+    :param options_js: JS code that generates the options object.
+    :param name: The name of the network. Used to create a unique variable name.
+    :param height: Height of the network div. Either an integer (pixels) or a CSS string like ``"100%"``.
+    :returns: An HTML string that renders the network.
     """
 
     with open(PACKAGE_ROOT_DIR + "/vis-network-9.1.9-patched.js") as f:
         visjs_library = f.read()
     with open(PACKAGE_ROOT_DIR + "/svgcanvas.js") as f:
         svg_canvas_library = f.read()
+
+    height_css = f"{height}px" if isinstance(height, int) else height
+    fill_css = "html, body { margin: 0; height: 100%; }" if height_css == "100%" else ""
+
     # Note that double brackets {{ }} are used to escape characters '{' and '}'
     return f"""
 <!DOCTYPE html>
@@ -37,10 +40,19 @@ def generate_html(
     <script>{visjs_library}</script>
     <script>{svg_canvas_library}</script>
     <style type="text/css">
+      @media (prefers-color-scheme: dark) {{
+        :root {{
+          --vis-edge-color: #aaaaaa;
+          --vis-label-color: #eeeeee;
+          --vis-stroke-color: #1e1e2e;
+        }}
+        body {{ background-color: #1e1e2e; }}
+        #{name} {{ border-color: #444; }}
+      }}
+      {fill_css}
       #{name} {{
-        width: {width}px;
-        height: {height}px;
         border: 1px solid lightgray;
+        height: {height_css};
       }}
     </style>
   </head>
@@ -52,19 +64,54 @@ def generate_html(
     <script type="text/javascript">
         {generate_init_js(nodes_js, edges_js, options_js, name)}
     </script>
+    <script type="text/javascript">
+        {generate_dark_mode_js(name)}
+    </script>
   </body>
 </html>
 """
 
 
-def generate_init_js(nodes_js: str, edges_js: str, options_js: str, name: str) -> str:
-    """Generate JS code that initializes a NetworkWrapper object, and stores it in nw_{name}.
+def generate_dark_mode_js(name: str) -> str:
+    """Generate JS code that reads CSS custom properties and applies them to the vis.js network.
 
-    Args:
-        nodes_js (str): JS code that generates the nodes DataSet.
-        edges_js (str): JS code that generates the edges DataSet.
-        options_js (str): JS code that generates the options object.
-        name (str): The name of the network. Used to create a unique variable name."""
+    vis.js renders on a canvas so colors cannot be set via CSS alone; this reads
+    the CSS custom properties (which handle light/dark via media queries) and
+    forwards them to vis.js via ``network.setOptions()``.
+
+    :param name: The name of the NetworkWrapper variable (``nw_{name}``).
+    :returns: A JS code string that syncs vis.js colors with the CSS custom properties.
+    """
+    return f"""//js
+    function _applyColorScheme() {{
+        var nw = nw_{name};
+        if (!nw || !nw.network) return;
+        var s = getComputedStyle(document.documentElement);
+        var edgeColor = s.getPropertyValue('--vis-edge-color').trim();
+        var labelColor = s.getPropertyValue('--vis-label-color').trim();
+        var strokeColor = s.getPropertyValue('--vis-stroke-color').trim();
+        // Only override if CSS vars are set (dark mode); otherwise let vis.js use its defaults.
+        if (edgeColor) {{
+            nw.network.setOptions({{
+                edges: {{ color: {{ color: edgeColor, inherit: false }}, font: {{ color: labelColor, strokeColor: strokeColor }} }},
+                nodes: {{ font: {{ color: labelColor, strokeColor: strokeColor }} }}
+            }});
+        }}
+    }}
+    _applyColorScheme();
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', _applyColorScheme);
+    """
+
+
+def generate_init_js(nodes_js: str, edges_js: str, options_js: str, name: str) -> str:
+    """Generate JS code that initializes a NetworkWrapper object, and store it in ``nw_{name}``.
+
+    :param nodes_js: JS code that generates the nodes DataSet.
+    :param edges_js: JS code that generates the edges DataSet.
+    :param options_js: JS code that generates the options object.
+    :param name: The name of the network. Used to create a unique variable name.
+    :returns: A JS code string that initializes a NetworkWrapper object.
+    """
     return f"""//js
     var nodes_local = new vis.DataSet([{nodes_js}]);
     var edges_local = new vis.DataSet([{edges_js}]);
@@ -75,7 +122,10 @@ def generate_init_js(nodes_js: str, edges_js: str, options_js: str, name: str) -
 
 
 def generate_network_wrapper_js() -> str:
-    """Generate JS code that defines the NetworkWrapper class."""
+    """Generate JS code that defines the NetworkWrapper class.
+
+    :returns: A JS code string defining the NetworkWrapper class.
+    """
     return """//js
 class NetworkWrapper {
   constructor(nodes, edges, options, container) {

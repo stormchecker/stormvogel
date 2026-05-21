@@ -1,7 +1,8 @@
-from stormvogel.layout import Layout
+from stormvogel.layout import Layout, EXPLORE, SV, LTS
 import numpy as np
 import os
 import json
+import pytest
 
 from stormvogel.rdict import merge_dict
 
@@ -49,9 +50,74 @@ def test_layout_saving():
 
 
 def test_nx_pos():
-    pos = {0: np.array([0, 0]), 1: np.array([1, 1])}
+    import stormvogel.model as model
+    from stormvogel.graph import ModelGraph, node_key
+
+    m = model.new_dtmc()
+    s0 = m.initial_state
+    s1 = m.new_state(labels=["end"])
+    m.set_choices(s0, [(1, s1)])
+    m.add_self_loops()
+
+    G = ModelGraph.from_model(m)
+    nodes = list(G.nodes)
+    pos = {nodes[0]: np.array([0, 0]), nodes[1]: np.array([1, 1])}
     layout = Layout("tests/test_layout.json").set_nx_pos(pos, scale=1)
     assert layout.layout["positions"] == {
-        0: {"x": 0.0, "y": 0.0},
-        1: {"x": 1.0, "y": 1.0},
+        node_key(nodes[0]): {"x": 0.0, "y": 0.0},
+        node_key(nodes[1]): {"x": 1.0, "y": 1.0},
     }
+
+
+def test_layout_from_dict():
+    layout = Layout(layout_dict={"misc": {"enable_physics": False}})
+    assert layout.layout["misc"]["enable_physics"] is False
+
+
+def test_add_and_remove_active_group():
+    layout = Layout()
+    layout.add_active_group("group_a")
+    assert "group_a" in layout.layout["edit_groups"]["groups"]
+    # Adding again should be idempotent
+    layout.add_active_group("group_a")
+    assert layout.layout["edit_groups"]["groups"].count("group_a") == 1
+
+    layout.remove_active_group("group_a")
+    assert "group_a" not in layout.layout["edit_groups"]["groups"]
+    # Removing non-existent should not raise
+    layout.remove_active_group("group_a")
+
+
+def test_set_value_creates_new_keys():
+    layout = Layout()
+    layout.set_value(["custom", "nested", "key"], 42)
+    assert layout.layout["custom"]["nested"]["key"] == 42
+
+
+def test_copy_settings_propagates_physics():
+    layout = Layout()
+    layout.layout["misc"]["enable_physics"] = False
+    layout.copy_settings()
+    assert layout.layout["physics"] is False
+
+
+def test_save_raises_for_wrong_extension(tmp_path):
+    layout = Layout()
+    with pytest.raises(RuntimeError, match=".json"):
+        layout.save(str(tmp_path / "bad_name.txt"), path_relative=False)
+
+
+def test_explore_layout():
+    layout = EXPLORE()
+    assert layout.layout["misc"]["explore"] is True
+
+
+def test_sv_layout():
+    layout = SV()
+    assert layout is not None
+    assert "misc" in layout.layout
+
+
+def test_lts_layout():
+    layout = LTS()
+    assert layout.layout["numbers"]["visible"] is False

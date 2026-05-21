@@ -12,7 +12,14 @@ except ImportError:
 
 
 def parse_program(line, cell, parser_function, name):
-    """Parse a program using stormpy."""
+    """Parse a program using stormpy.
+
+    :param line: The IPython magic line argument (variable name to store result).
+    :param cell: The cell content containing the program source.
+    :param parser_function: The stormpy parser function to use.
+    :param name: The magic command name (for error messages).
+    :returns: The parsed program.
+    """
     store_to_var = True
     # The line should be one word, which is the variable we write the result into
     if len(line.split()) != 1:
@@ -35,13 +42,23 @@ def parse_program(line, cell, parser_function, name):
 
 @register_cell_magic
 def prism(line, cell):
-    """Prism cell magic."""
+    """Parse a PRISM program from a notebook cell.
+
+    :param line: The variable name to store the parsed program.
+    :param cell: The cell content containing PRISM code.
+    :returns: The parsed PRISM program.
+    """
     assert stormpy is not None
     return parse_program(line, cell, stormpy.parse_prism_program, "prism")
 
 
 @register_cell_magic
 def jani(line, cell):
-    """JANI cell magic."""
+    """Parse a JANI model from a notebook cell.
+
+    :param line: The variable name to store the parsed model.
+    :param cell: The cell content containing JANI code.
+    :returns: The parsed JANI model.
+    """
     assert stormpy is not None
     return parse_program(line, cell, stormpy.parse_jani_model, "jani")

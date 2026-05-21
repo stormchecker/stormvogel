@@ -18,9 +18,9 @@
 #
 # This notebook provides an introduction to the stormvogel project, a first example, and pointers to further material. We recommend to also look at
 #
-# - The source code, hosted at [Github](https://github.com/moves-rwth/stormvogel)
+# - The source code, hosted at [Github](https://github.com/stormchecker/stormvogel)
 # - The python packages, hosted at [Pypi](https://pypi.org/project/stormvogel/)
-# - User documentation, which includes this notebook [Docs](https://moves-rwth.github.io/stormvogel/)
+# - User documentation, which includes this notebook [Docs](https://stormchecker.github.io/stormvogel/)
 # - Reach out to us at our [Discord Server](https://discord.gg/byeKSasJY6)
 #
 
@@ -55,9 +55,7 @@
 # %% jupyter={"is_executing": true}
 from stormvogel import *
 
-vis = show(
-    examples.create_car_mdp(), layout=stormvogel.layout.Layout("layouts/car.json")
-)
+show(examples.create_car_mdp())
 
 # %% [markdown]
 # ### Probabilistic Model Checking
@@ -73,7 +71,7 @@ vis = show(
 #
 # ### Storm, Stormpy and Stormvogel
 # * [Storm](https://www.stormchecker.org/) is a probabilistic model checker, written in C++, whose primary goal is to provide the fastest algorithms for standard probabilistic model checking queries. This goal comes at a cost of a steep learning curve.
-# * [Stormpy](https://moves-rwth.github.io/stormpy/) is an low-level API with Python bindings for Storm that allows developers working with Storm to quickly prototype new algorithms.  It is structured mostly similarly to Storm itself.
+# * [Stormpy](https://stormchecker.github.io/stormpy/) is an low-level API with Python bindings for Storm that allows developers working with Storm to quickly prototype new algorithms.  It is structured mostly similarly to Storm itself.
 # * Stormvogel is a collection of Python APIs and visualization tools with ease-of-use as top priority: The goal of Stormvogel is to provide an accessible way to do probabilistic model checking and to provide educational tools about model checking. It can be easily interfaced with Stormpy to profit from high-performance model checking.
 #
 # ## What does Stormvogel provide?
@@ -96,7 +94,7 @@ vis = show(
 # Details about these can be found in the remaining notebooks.
 #
 # ## Questions/help, bugs & contributing
-# To suggest a feature or report a bug, simply create an issue on [Github](https://github.com/moves-rwth/stormvogel). If you would like to contribute to the project yourself, you can always create a pull request or join our [public Discord server](https://discord.gg/byeKSasJY6).
+# To suggest a feature or report a bug, simply create an issue on [Github](https://github.com/stormchecker/stormvogel). If you would like to contribute to the project yourself, you can always create a pull request or join our [public Discord server](https://discord.gg/byeKSasJY6).
 #
 # Stormvogel was developed at the Radboud University in 2024-2025 by Linus Heck, Pim Leerkes and Ivo Melse under the supervision of Sebastian Junges (Radboud) and Matthias Volk (Eindhoven University of Technology). We would like to thank the Dutch Research Council (NWO) for providing funding for the project via the NWO Open Science Fund Grant StormAE.
 #

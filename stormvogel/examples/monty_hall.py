@@ -1,23 +1,31 @@
 import stormvogel.model
+from stormvogel.model.variable import Variable, IntDomain
+
+# Positions range over {0, 1, 2}; -1 is used as a sentinel for "not yet assigned".
+_POS_DOMAIN = IntDomain(-1, 2)
 
 
 def create_monty_hall_mdp():
     mdp = stormvogel.model.new_mdp()
 
-    init = mdp.get_initial_state()
+    car_pos = Variable("car_pos", _POS_DOMAIN)
+    chosen_pos = Variable("chosen_pos", _POS_DOMAIN)
+    reveal_pos = Variable("reveal_pos", _POS_DOMAIN)
+
+    init = mdp.initial_state
 
     # first choose car position
-    init.set_choice(
-        [(1 / 3, mdp.new_state("carchosen", {"car_pos": i})) for i in range(3)]
+    init.set_choices(
+        [(1 / 3, mdp.new_state("carchosen", {car_pos: i})) for i in range(3)]
     )
 
     # we choose a door in each case
     for s in mdp.get_states_with_label("carchosen"):
-        s.set_choice(
+        s.set_choices(
             [
                 (
                     mdp.action(f"open{i}"),
-                    mdp.new_state("open", s.valuations | {"chosen_pos": i}),
+                    mdp.new_state("open", s.valuations | {chosen_pos: i}),
                 )
                 for i in range(3)
             ]
@@ -25,15 +33,15 @@ def create_monty_hall_mdp():
 
     # the other goat is revealed
     for s in mdp.get_states_with_label("open"):
-        car_pos = s.valuations["car_pos"]
-        chosen_pos = s.valuations["chosen_pos"]
-        assert isinstance(car_pos, int) and isinstance(chosen_pos, int)
-        other_pos = {0, 1, 2} - {car_pos, chosen_pos}
-        s.set_choice(
+        cp = s.valuations[car_pos]
+        chp = s.valuations[chosen_pos]
+        assert isinstance(cp, int) and isinstance(chp, int)
+        other_pos = {0, 1, 2} - {cp, chp}
+        s.set_choices(
             [
                 (
                     1 / len(other_pos),
-                    mdp.new_state("goatrevealed", s.valuations | {"reveal_pos": i}),
+                    mdp.new_state("goatrevealed", s.valuations | {reveal_pos: i}),
                 )
                 for i in other_pos
             ]
@@ -41,25 +49,25 @@ def create_monty_hall_mdp():
 
     # we must choose whether we want to switch
     for s in mdp.get_states_with_label("goatrevealed"):
-        car_pos = s.valuations["car_pos"]
-        chosen_pos = s.valuations["chosen_pos"]
-        reveal_pos = s.valuations["reveal_pos"]
-        assert isinstance(reveal_pos, int) and isinstance(chosen_pos, int)
-        other_pos = list({0, 1, 2} - {reveal_pos, chosen_pos})[0]
-        s.set_choice(
+        cp = s.valuations[car_pos]
+        chp = s.valuations[chosen_pos]
+        rp = s.valuations[reveal_pos]
+        assert isinstance(rp, int) and isinstance(chp, int)
+        other = list({0, 1, 2} - {rp, chp})[0]
+        s.set_choices(
             [
                 (
                     mdp.action("stay"),
                     mdp.new_state(
-                        ["done"] + (["target"] if chosen_pos == car_pos else ["lost"]),
-                        s.valuations | {"chosen_pos": chosen_pos},
+                        ["done"] + (["target"] if chp == cp else ["lost"]),
+                        s.valuations | {chosen_pos: chp},
                     ),
                 ),
                 (
                     mdp.action("switch"),
                     mdp.new_state(
-                        ["done"] + (["target"] if other_pos == car_pos else ["lost"]),
-                        s.valuations | {"chosen_pos": other_pos},
+                        ["done"] + (["target"] if other == cp else ["lost"]),
+                        s.valuations | {chosen_pos: other},
                     ),
                 ),
             ]

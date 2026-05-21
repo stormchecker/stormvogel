@@ -9,6 +9,7 @@ from stormvogel.model import *  # NOQA
 from stormvogel.property_builder import build_property_string  # NOQA
 from stormvogel.result import *  # NOQA
 from stormvogel.show import *  # NOQA
+from stormvogel.show import show  # NOQA
 from stormvogel.simulator import *  # NOQA
 from stormvogel import bird  # NOQA
 from stormvogel import examples  # NOQA
@@ -45,3 +46,12 @@ def is_in_notebook():
 if is_in_notebook():
     # Import and init magic
     from stormvogel.stormpy_utils import magic as magic
+
+try:
+    # Running stormvogel in the playground imports the playground's overwrite for show
+    import playground
+
+    _show = show  # Save original show so playground.py can call it without recursion
+    show = playground.show  # type: ignore[assignment]
+except ImportError:
+    pass

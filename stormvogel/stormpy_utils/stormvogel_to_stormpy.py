@@ -1,0 +1,780 @@
+from typing import TYPE_CHECKING
+
+from stormvogel import parametric
+from stormvogel.model.action import EmptyAction
+from stormvogel.model.distribution import Distribution
+from stormvogel.model.model import Model, ModelType
+from stormvogel.model.value import Number, Value, Interval
+from stormvogel.model.variable import Variable, BoolDomain, CategoricalDomain
+
+if TYPE_CHECKING:
+    import stormpy
+else:
+    try:
+        import stormpy
+    except ImportError:
+        stormpy = None
+
+
+def value_to_stormpy(
+    value: Value,
+    variables: list["stormpy.pycarl.Variable"],
+    model: Model,
+) -> "stormpy.pycarl.cln.FactorizedRationalFunction | stormpy.pycarl.Interval | Value":
+    """Convert a stormvogel transition value to a stormpy value.
+
+    Parametric values are delegated to the active parametric backend's
+    :func:`to_pycarl` hook; the pycarl variables are passed in as a mapping
+    from parameter name to ``pycarl.Variable`` so that the backend does not
+    have to (re-)create them.
+
+    :param value: The stormvogel value to convert.
+    :param variables: The list of pycarl variables for parametric models,
+        aligned with ``model.parameter_symbols()`` by index.
+    :param model: The stormvogel model providing context.
+    :returns: The converted stormpy value.
+    """
+
+    assert stormpy is not None
+
+    if model.is_parametric():
+        # we have a special case for numbers as they are not just a specific case of a polynomial in stormvogel
+        if isinstance(value, Number):
+            rational = stormpy.pycarl.cln.Rational(float(value))
+            polynomial = stormpy.pycarl.cln.Polynomial(rational)
+            factorized_polynomial = stormpy.pycarl.cln.FactorizedPolynomial(
+                polynomial, stormpy.pycarl.cln.factorization_cache
+            )
+            factorized_rational = stormpy.pycarl.cln.FactorizedRationalFunction(
+                factorized_polynomial
+            )
+            return factorized_rational
+
+        # Parametric values are handled by the active backend. We pass in
+        # pycarl variables keyed by parameter name (in the model's declared
+        # order) so the backend can build the pycarl polynomial deterministically.
+        name_to_var = dict(zip(model.parameters, variables))
+        backend = parametric.backend_for(value)
+        return backend.to_pycarl(value, name_to_var)
+    elif model.is_interval_model():
+        # in the case of interval models, we convert intervals, and regular values are converted
+        # to intervals where the lower and upper value are the same
+        if isinstance(value, Interval):
+            interval = stormpy.pycarl.Interval(value.lower, value.upper)
+        else:
+            interval = stormpy.pycarl.Interval(value, value)
+
+        return interval
+    else:
+        return value
+
+
+def build_matrix(
+    model: Model,
+    choice_labeling,
+    variables: list,
+) -> "stormpy.storage.SparseMatrix":
+    """Build a stormpy sparse matrix from a stormvogel model.
+
+    Also populate the choice labeling by reference.
+
+    :param model: The stormvogel model.
+    :param choice_labeling: The choice labeling object to populate (mutated in place).
+    :param variables: The list of pycarl variables for parametric models.
+    :returns: The constructed stormpy sparse matrix.
+    """
+
+    assert stormpy is not None
+
+    # we precompute the following two values
+    nondeterministic = model.supports_actions()
+    is_parametric = model.is_parametric()
+    is_interval = model.is_interval_model()
+
+    # we distinguish between parametric, interval and regular models
+    if is_parametric:
+        builder = stormpy.ParametricSparseMatrixBuilder(
+            rows=0,
+            columns=0,
+            entries=0,
+            force_dimensions=False,
+            has_custom_row_grouping=nondeterministic,
+            row_groups=0,
+        )
+    elif is_interval:
+        builder = stormpy.IntervalSparseMatrixBuilder(
+            rows=0,
+            columns=0,
+            entries=0,
+            force_dimensions=False,
+            has_custom_row_grouping=nondeterministic,
+            row_groups=0,
+        )
+    else:
+        builder = stormpy.SparseMatrixBuilder(
+            rows=0,
+            columns=0,
+            entries=0,
+            force_dimensions=False,
+            has_custom_row_grouping=nondeterministic,
+            row_groups=0,
+        )
+
+    # we build the matrix
+    row_index = 0
+    for state in model.states:
+        transition = model.transitions.get(state)
+        if transition is None:
+            if not nondeterministic:
+                row_index += 1
+            continue
+
+        if nondeterministic:
+            builder.new_row_group(row_index)
+
+        has_action = False
+        for action in transition:
+            has_action = True
+            branches = list(action[1])
+            branches.sort(key=lambda t: t[1].model.get_state_index(t[1]))
+            for branch in branches:
+                val = value_to_stormpy(branch[0], variables, model)
+                builder.add_next_value(
+                    row=row_index,
+                    column=model.stormpy_id[branch[1]],
+                    value=val,
+                )
+
+            # if there is an action then add the label to the choice
+            if not action[0] == EmptyAction and choice_labeling is not None:
+                if action[0].label is not None:
+                    choice_labeling.add_label_to_choice(action[0].label, row_index)
+            row_index += 1
+
+        # Keep matrix row count aligned with state count, even for dead-end deterministic states.
+        if not has_action and not nondeterministic:
+            if model.supports_rates():
+                builder.add_next_value(
+                    row=row_index,
+                    column=model.stormpy_id[state],
+                    value=value_to_stormpy(0, variables, model),
+                )
+            row_index += 1
+    return builder.build()
+
+
+def build_choice_labeling(model: Model):
+    """Build a stormpy choice labeling object from a stormvogel model.
+
+    :param model: The stormvogel model.
+    :returns: The constructed choice labeling.
+    """
+    labels: set[str] = set()
+    for action in model.actions:
+        if action.label is not None:
+            labels.add(action.label)
+
+    choice_count = sum(len(choices) for choices in model.transitions.values())
+
+    assert stormpy is not None
+
+    # we add the labels to the choice labeling object
+    choice_labeling = stormpy.storage.ChoiceLabeling(choice_count)
+    for label in labels:
+        choice_labeling.add_label(label)
+
+    return choice_labeling
+
+
+def build_state_labeling(model: Model) -> "stormpy.storage.StateLabeling":
+    """Build a stormpy state labeling object from a stormvogel model.
+
+    :param model: The stormvogel model.
+    :returns: The constructed state labeling.
+    """
+    assert stormpy is not None
+
+    # we first initialize all labels
+    state_labeling = stormpy.storage.StateLabeling(len(model.states))
+    for label in model.state_labels:
+        state_labeling.add_label(label)
+
+    # then we assign the labels to the correct states
+    for state in model:
+        for label in state.labels:
+            state_labeling.add_label_to_state(label, model.stormpy_id[state])
+
+    return state_labeling
+
+
+def build_reward_models(
+    model: Model,
+) -> "dict[str, stormpy.SparseRewardModel]":
+    """Build stormpy reward models from a stormvogel model.
+
+    :param model: The stormvogel model.
+    :returns: A dictionary mapping reward model names to stormpy reward models.
+    """
+    assert stormpy is not None
+
+    reward_models = {}
+    for rewardmodel in model.rewards:
+        if model.supports_actions():
+            reward_models[rewardmodel.name] = stormpy.SparseRewardModel(
+                optional_state_action_reward_vector=rewardmodel.get_reward_vector()
+            )
+        else:
+            reward_models[rewardmodel.name] = stormpy.SparseRewardModel(
+                optional_state_reward_vector=rewardmodel.get_reward_vector()
+            )
+    return reward_models
+
+
+def build_state_valuations(model: Model) -> "stormpy.storage.StateValuation | None":
+    """Build a stormpy state valuations object from a stormvogel model.
+
+    Only variables with a declared domain are exported. Variables without a
+    domain are skipped. Returns ``None`` when no domain-bearing variables exist,
+    in which case the caller should omit ``components.state_valuations``.
+
+    ``CategoricalDomain`` variables are encoded as integers (index into
+    ``domain.values``); the categorical labels are not preserved in stormpy.
+
+    :param model: The stormvogel model.
+    :returns: The constructed state valuations, or ``None``.
+    :raises ValueError: If a state is missing a value for a domain-bearing
+        variable, or if a variable has a ``None`` value (not supported by stormpy).
+    """
+    assert stormpy is not None
+
+    # Collect domain-bearing variables in stable sorted-label order.
+    seen: set[str] = set()
+    bool_vars: list[Variable] = []
+    int_vars: list[Variable] = []
+    for state in model.states:
+        for var in sorted(
+            (
+                v
+                for v in state.valuations
+                if isinstance(v, Variable) and v.domain is not None
+            ),
+            key=lambda v: v.label,
+        ):
+            if var.label not in seen:
+                seen.add(var.label)
+                if isinstance(var.domain, BoolDomain):
+                    bool_vars.append(var)
+                else:
+                    int_vars.append(var)
+
+    if not bool_vars and not int_vars:
+        return None
+
+    manager = stormpy.ExpressionManager()
+    builder = stormpy.storage.StateValuationsBuilder()
+
+    for var in bool_vars:
+        builder.add_variable(manager.create_boolean_variable(var.label))
+    for var in int_vars:
+        builder.add_variable(manager.create_integer_variable(var.label))
+
+    for state in model.states:
+        vals = state.valuations
+        bool_values = []
+        for var in bool_vars:
+            v = vals.get(var)
+            if v is None:
+                raise ValueError(
+                    f"State {state!r} has no value for variable {var!r}. "
+                    "Stormpy requires total valuations."
+                )
+            bool_values.append(bool(v))
+        int_values = []
+        for var in int_vars:
+            v = vals.get(var)
+            if v is None:
+                raise ValueError(
+                    f"State {state!r} has no value for variable {var!r}. "
+                    "Stormpy requires total valuations."
+                )
+            if isinstance(var.domain, CategoricalDomain):
+                int_values.append(var.domain.values.index(v))
+            else:
+                int_values.append(int(v))
+        builder.add_state(
+            model.stormpy_id[state],
+            boolean_values=bool_values,
+            integer_values=int_values,
+        )
+
+    return builder.build()
+
+
+def _apply_state_valuations(components, state_valuations) -> None:
+    """Assign state valuations to a stormpy component, if present."""
+    if state_valuations is not None:
+        components.state_valuations = state_valuations
+
+
+def build_observations(model: Model) -> list[int]:
+    """Build the observation class mapping for a POMDP.
+
+    :param model: The stormvogel POMDP model.
+    :returns: A list of observation class indices per state.
+    :raises RuntimeError: If any state lacks an observation.
+    :raises NotImplementedError: If probabilistic observations are used.
+    """
+    observations = []
+    known_aliases = []
+    for state in model.states:
+        obs = state.observation
+        if obs is None:
+            raise RuntimeError(
+                f"State {state} does not have an observation. Please assign an observation to each state."
+            )
+        if isinstance(obs, Distribution):
+            raise NotImplementedError(
+                "Stormpy does not support probabilistic observations in POMDPs."
+            )
+        if obs.alias not in known_aliases:
+            known_aliases.append(obs.alias)
+
+    # If the aliases happen to be integer strings (like from a prism file or map_pomdp)
+    # we want to ensure we order known_aliases by that integer to preserve exact POMDP structure
+    all_ints = True
+    for a in known_aliases:
+        try:
+            int(a)
+        except ValueError:
+            all_ints = False
+            break
+    if all_ints:
+        max_int = max(int(a) for a in known_aliases)
+        # Fill missing intermediate ones to be safe
+        known_aliases = [str(i) for i in range(max_int + 1)]
+
+    for state in model.states:
+        obs = state.observation
+        assert obs is not None and not isinstance(obs, Distribution)
+        observations.append(known_aliases.index(obs.alias))
+
+    return observations
+
+
+def build_markovian_states_bitvector(model: Model) -> "stormpy.BitVector":
+    """Build a bitvector indicating which states are Markovian.
+
+    :param model: The stormvogel MA model.
+    :returns: A stormpy bitvector of Markovian state indices.
+    :raises RuntimeError: If the model has no Markovian states defined.
+    """
+    assert stormpy is not None
+
+    if model.markovian_states is None:
+        raise RuntimeError("Model does not have markovian states defined.")
+
+    markovian_state_ids = [model.stormpy_id[state] for state in model.markovian_states]
+    if isinstance(markovian_state_ids, list):
+        markovian_states_bitvector = stormpy.storage.BitVector(
+            max(markovian_state_ids) + 1,
+            markovian_state_ids,
+        )
+    else:
+        markovian_states_bitvector = stormpy.storage.BitVector(0)
+
+    return markovian_states_bitvector
+
+
+def build_dtmc(model: Model, matrix, state_labeling, reward_models, state_valuations):
+    """Build a stormpy sparse DTMC from components.
+
+    :param model: The stormvogel model.
+    :param matrix: The sparse transition matrix.
+    :param state_labeling: The state labeling.
+    :param reward_models: The reward models dictionary.
+    :param state_valuations: The state valuations.
+    :returns: The constructed stormpy DTMC.
+    """
+    assert stormpy is not None
+
+    if model.is_parametric():
+        components = stormpy.SparseParametricModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+        )
+        _apply_state_valuations(components, state_valuations)
+        dtmc = stormpy.storage.SparseParametricDtmc(components)
+    elif model.is_interval_model():
+        components = stormpy.SparseIntervalModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+        )
+        _apply_state_valuations(components, state_valuations)
+        dtmc = stormpy.storage.SparseIntervalDtmc(components)
+    else:
+        components = stormpy.SparseModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+        )
+        _apply_state_valuations(components, state_valuations)
+        dtmc = stormpy.storage.SparseDtmc(components)
+
+    return dtmc
+
+
+def build_mdp(
+    model: Model,
+    matrix,
+    choice_labeling,
+    state_labeling,
+    reward_models,
+    state_valuations,
+):
+    """Build a stormpy sparse MDP from components.
+
+    :param model: The stormvogel model.
+    :param matrix: The sparse transition matrix.
+    :param choice_labeling: The choice labeling.
+    :param state_labeling: The state labeling.
+    :param reward_models: The reward models dictionary.
+    :param state_valuations: The state valuations.
+    :returns: The constructed stormpy MDP.
+    """
+    assert stormpy is not None
+
+    if model.is_parametric():
+        components = stormpy.SparseParametricModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+        )
+        _apply_state_valuations(components, state_valuations)
+        components.choice_labeling = choice_labeling
+        mdp = stormpy.storage.SparseParametricMdp(components)
+    elif model.is_interval_model():
+        components = stormpy.SparseIntervalModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+        )
+        _apply_state_valuations(components, state_valuations)
+        components.choice_labeling = choice_labeling
+        mdp = stormpy.storage.SparseIntervalMdp(components)
+    else:
+        components = stormpy.SparseModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+        )
+        _apply_state_valuations(components, state_valuations)
+        components.choice_labeling = choice_labeling
+        mdp = stormpy.storage.SparseMdp(components)
+
+    return mdp
+
+
+def build_ctmc(model: Model, matrix, state_labeling, reward_models, state_valuations):
+    """Build a stormpy sparse CTMC from components.
+
+    :param model: The stormvogel model.
+    :param matrix: The sparse transition matrix.
+    :param state_labeling: The state labeling.
+    :param reward_models: The reward models dictionary.
+    :param state_valuations: The state valuations.
+    :returns: The constructed stormpy CTMC.
+    """
+    assert stormpy is not None
+
+    if model.is_parametric():
+        components = stormpy.SparseParametricModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+            rate_choices=True,
+        )
+        _apply_state_valuations(components, state_valuations)
+        ctmc = stormpy.storage.SparseParametricCtmc(components)
+    elif model.is_interval_model():
+        components = stormpy.SparseIntervalModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+            rate_transitions=True,
+        )
+        _apply_state_valuations(components, state_valuations)
+        ctmc = stormpy.storage.SparseIntervalCtmc(components)
+    else:
+        components = stormpy.SparseModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+            rate_transitions=True,
+        )
+        _apply_state_valuations(components, state_valuations)
+        ctmc = stormpy.storage.SparseCtmc(components)
+
+    return ctmc
+
+
+def build_pomdp(
+    model: Model,
+    matrix,
+    choice_labeling,
+    state_labeling,
+    observations,
+    reward_models,
+    state_valuations,
+):
+    """Build a stormpy sparse POMDP from components.
+
+    :param model: The stormvogel model.
+    :param matrix: The sparse transition matrix.
+    :param choice_labeling: The choice labeling.
+    :param state_labeling: The state labeling.
+    :param observations: The observation class indices per state.
+    :param reward_models: The reward models dictionary.
+    :param state_valuations: The state valuations.
+    :returns: The constructed stormpy POMDP.
+    """
+    assert stormpy is not None
+
+    if model.is_parametric():
+        components = stormpy.SparseParametricModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+        )
+        _apply_state_valuations(components, state_valuations)
+        components.observability_classes = observations
+        components.choice_labeling = choice_labeling
+        pomdp = stormpy.storage.SparseParametricPomdp(components)
+    elif model.is_interval_model():
+        components = stormpy.SparseIntervalModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+        )
+        _apply_state_valuations(components, state_valuations)
+        components.observability_classes = observations
+        components.choice_labeling = choice_labeling
+        pomdp = stormpy.storage.SparseIntervalPomdp(components)
+    else:
+        components = stormpy.SparseModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+        )
+        _apply_state_valuations(components, state_valuations)
+        components.observability_classes = observations
+        components.choice_labeling = choice_labeling
+        pomdp = stormpy.storage.SparsePomdp(components)
+
+    return pomdp
+
+
+def build_ma(
+    model: Model,
+    matrix,
+    choice_labeling,
+    state_labeling,
+    markovian_states_bitvector,
+    reward_models,
+    state_valuations,
+):
+    """Build a stormpy sparse MA from components.
+
+    :param model: The stormvogel model.
+    :param matrix: The sparse transition matrix.
+    :param choice_labeling: The choice labeling.
+    :param state_labeling: The state labeling.
+    :param markovian_states_bitvector: The bitvector of Markovian states.
+    :param reward_models: The reward models dictionary.
+    :param state_valuations: The state valuations.
+    :returns: The constructed stormpy MA.
+    """
+    assert stormpy is not None
+
+    # For MA, exit rates are needed for markovian states. We compute them dynamically.
+    exit_rates = []
+    for state in model.states:
+        assert model.markovian_states is not None
+        if state in model.markovian_states:
+            rate_sum = 0.0
+            if state in model.transitions:
+                for _, branch in model.transitions[state]:
+                    for val, _ in branch:
+                        rate_sum += float(val)
+            exit_rates.append(rate_sum)
+        else:
+            exit_rates.append(0.0)
+
+    if model.is_parametric():
+        components = stormpy.SparseParametricModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+            markovian_states=markovian_states_bitvector,
+        )
+        components.exit_rates = exit_rates
+        _apply_state_valuations(components, state_valuations)
+        components.choice_labeling = choice_labeling
+        ma = stormpy.storage.SparseParametricMA(components)
+    elif model.is_interval_model():
+        components = stormpy.SparseIntervalModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+            markovian_states=markovian_states_bitvector,
+        )
+        components.exit_rates = exit_rates
+        _apply_state_valuations(components, state_valuations)
+        components.choice_labeling = choice_labeling
+        ma = stormpy.storage.SparseIntervalMA(components)
+    else:
+        components = stormpy.SparseModelComponents(
+            transition_matrix=matrix,
+            state_labeling=state_labeling,
+            reward_models=reward_models,
+            markovian_states=markovian_states_bitvector,
+        )
+        components.exit_rates = exit_rates
+        _apply_state_valuations(components, state_valuations)
+        components.choice_labeling = choice_labeling
+        ma = stormpy.storage.SparseMA(components)
+
+    return ma
+
+
+def _all_non_init_states_incoming_transition(model) -> bool:
+    """Check whether all non-initial states have an incoming transition.
+
+    :param model: The stormvogel model to check.
+    :returns: ``True`` if every non-initial state has at least one incoming transition.
+    """
+    remaining_states = set(model.states)
+    for transition in model.iterate_transitions():
+        remaining_states.discard(transition[1])
+    for s in remaining_states:
+        if not s.is_initial():
+            return False
+    return True
+
+
+def _all_states_outgoing_transition(model) -> bool:
+    """Check whether all states have at least one choice."""
+    for state in model.states:
+        if not state.has_choices():
+            return False
+    return True
+
+
+def stormvogel_to_stormpy(
+    model: Model,
+):
+    """Convert a stormvogel model to a stormpy sparse model.
+
+    :param model: The stormvogel model to convert.
+    :returns: The equivalent stormpy sparse model.
+    :raises RuntimeError: If the model has states without outgoing transitions,
+        unassigned variables, multiple states without incoming transitions,
+        or zero-probability transitions.
+    :raises NotImplementedError: If the model type is not supported.
+    """
+    assert stormpy is not None
+
+    # we throw the neccessary errors first
+    if not model.supports_rates() and not _all_states_outgoing_transition(model):
+        raise RuntimeError(
+            "This model has states with no outgoing transitions.\nUse the add_self_loops() function to add self loops to all states with no outgoing transition."
+        )
+
+    if next(model.unassigned_variables(), None) is not None:
+        raise RuntimeError("Each state should have a value for each variable")
+
+    if not _all_non_init_states_incoming_transition(model):
+        raise RuntimeError(
+            "There is more than one state in this model without incoming transitions."
+        )
+
+    if model.has_zero_transition() and not model.supports_rates():
+        raise RuntimeError(
+            "This model has transitions with probability=0. Stormpy assumes that these do not explicitly exist."
+        )
+
+    # we make a mapping between stormvogel and stormpy ids in case they are out of order.
+    stormpy_id = {}
+    for index, state in enumerate(model.states):
+        stormpy_id[state] = index
+    model.stormpy_id = stormpy_id
+
+    # we store the pycarl parameters of a model. We iterate over the model's
+    # declared parameter names (deterministic, insertion-ordered) rather than
+    # re-scanning transitions, so the resulting pycarl variable list matches
+    # model.parameter_symbols() index-for-index.
+    stormpy.pycarl.clear_variable_pool()
+    variables = []
+    for p in model.parameters:
+        var = stormpy.pycarl.Variable(p)
+        variables.append(var)
+
+    if model.supports_actions():
+        choice_labeling = build_choice_labeling(model)
+    else:
+        choice_labeling = None
+
+    if model.supports_observations():
+        observations = build_observations(model)
+    else:
+        observations = None
+
+    matrix = build_matrix(model, choice_labeling, variables)
+    state_labeling = build_state_labeling(model)
+    reward_models = build_reward_models(model)
+    state_valuations = build_state_valuations(model)
+
+    # we check the type to handle the model correctly
+    if model.model_type == ModelType.DTMC:
+        return build_dtmc(
+            model, matrix, state_labeling, reward_models, state_valuations
+        )
+    elif model.model_type == ModelType.MDP:
+        return build_mdp(
+            model,
+            matrix,
+            choice_labeling,
+            state_labeling,
+            reward_models,
+            state_valuations,
+        )
+    elif model.model_type == ModelType.CTMC:
+        return build_ctmc(
+            model, matrix, state_labeling, reward_models, state_valuations
+        )
+    elif model.model_type == ModelType.POMDP:
+        return build_pomdp(
+            model,
+            matrix,
+            choice_labeling,
+            state_labeling,
+            observations,
+            reward_models,
+            state_valuations,
+        )
+    elif model.model_type == ModelType.MA:
+        markovian_states_bitvector = build_markovian_states_bitvector(model)
+        return build_ma(
+            model,
+            matrix,
+            choice_labeling,
+            state_labeling,
+            markovian_states_bitvector,
+            reward_models,
+            state_valuations,
+        )
+    else:
+        raise NotImplementedError(
+            "Converting this type of model to stormpy is not yet supported"
+        )

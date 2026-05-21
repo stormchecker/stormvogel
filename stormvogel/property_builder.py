@@ -2,7 +2,10 @@ import stormvogel.model
 
 
 def build_property_string(model: stormvogel.model.Model):
-    """Lets the user build a property string using a widget."""
+    """Let the user build a property string using a widget.
+
+    :param model: The model to build a property string for.
+    """
     import IPython.display as ipd
     import ipywidgets as widgets
     from stormvogel.dict_editor import DictEditor
@@ -120,7 +123,11 @@ def build_property_string(model: stormvogel.model.Model):
     }
 
     def values_to_path_reward_property(v: dict) -> str:
-        """Convert the dictionary of values to a property string for path or reward properties."""
+        """Convert the dictionary of values to a property string for path or reward properties.
+
+        :param v: Dictionary of property values.
+        :returns: The constructed property string.
+        """
         op1 = v["operand1"].replace(" ", "")
         if v["operator"] == "U":
             op2 = v["operand2"].replace(" ", "")
@@ -133,7 +140,12 @@ def build_property_string(model: stormvogel.model.Model):
             return f"[{v['operator']}{v['time_bound']} {op1}]"
 
     def values_to_first_part_property(v: dict, reward_model="") -> str:
-        """Convert the dictionary of values to a property string for the first part."""
+        """Convert the dictionary of values to a property string for the first part.
+
+        :param v: Dictionary of property values.
+        :param reward_model: Name of the reward model.
+        :returns: The constructed property string.
+        """
         type_ = v["r"]["type"]
         opt_ = ""
         if model.supports_actions():

@@ -1,0 +1,311 @@
+"""Policy iteration for MDPs, using exact sympy-based DTMC evaluation.
+
+Each step induces a DTMC from the current scheduler, evaluates it exactly via
+:mod:`stormvogel.teaching.dtmc_evaluation`, then improves the scheduler
+greedily. Results are exact sympy rationals throughout.
+"""
+
+from typing import Iterable, Mapping
+
+import sympy as sp
+
+import stormvogel.model as model
+import stormvogel.result as result
+from stormvogel.teaching.dtmc_evaluation import (
+    solve_expected_reward,
+    solve_reachability,
+)
+from stormvogel.teaching.qualitative_mdp import compute_spos, compute_sposmin
+
+
+def initial_scheduler(
+    mdp: model.Model,
+    target_label: str,
+    minimize: bool,
+) -> result.Scheduler:
+    """Return a suitable starting scheduler for policy iteration.
+
+    Uses a one-step Bellman lookahead from the zero vector (target states fixed
+    to 1, all others 0) to bias the initial scheduler:
+
+    * **minimize** — picks the action with the *lowest* one-step expected
+      value, giving a pessimistic start that avoids the target.
+    * **maximize** — picks the action with the *highest* one-step expected
+      value, giving an optimistic start that heads towards the target.
+
+    :param mdp: The MDP.
+    :param target_label: Label identifying the target states.
+    :param minimize: If True, build a pessimistic scheduler; otherwise
+        an optimistic one.
+    :returns: A :class:`~stormvogel.result.Scheduler` for *mdp*.
+    """
+    target_states = list(mdp.state_labels[target_label])
+    one_ids = {s.state_id for s in target_states}
+
+    # States whose optimal reachability is 0: route them to actions that stay
+    # within the zero set so the induced DTMC is proper from the first step.
+    if minimize:
+        zero_ids = frozenset(
+            s.state_id
+            for s in mdp.states
+            if s not in compute_sposmin(mdp, target_states)
+        )
+    else:
+        zero_ids = frozenset(
+            s.state_id for s in mdp.states if s not in compute_spos(mdp, target_states)
+        )
+
+    v0 = {
+        s: sp.Integer(1) if s.state_id in one_ids else sp.Integer(0) for s in mdp.states
+    }
+    opt = min if minimize else max
+    taken: dict[model.State, model.Action] = {}
+    for s in mdp.states:
+        if s.state_id in zero_ids:
+            # Pick any action whose successors all stay in the zero set.
+            for action, branch in s.choices:
+                if all(t.state_id in zero_ids for _, t in branch):
+                    taken[s] = action
+                    break
+            else:
+                taken[s] = next(iter(s.choices))[
+                    0
+                ]  # unreachable given zero_ids definition
+        else:
+            best_action, _ = opt(
+                s.choices,
+                key=lambda ab: sum(
+                    sp.nsimplify(prob) * v0[s_next] for prob, s_next in ab[1]
+                ),
+            )
+            taken[s] = best_action
+    return result.Scheduler(mdp, taken)
+
+
+def policy_evaluation(
+    mdp: model.Model,
+    one_states: Iterable[model.State],
+    scheduler: result.Scheduler,
+    reward_model: model.RewardModel | None = None,
+    discount: sp.Expr = sp.Integer(1),
+) -> dict[model.State, sp.Expr]:
+    """Evaluate *scheduler* exactly and return per-state values for *mdp*.
+
+    Induces a DTMC from *scheduler*, solves it via sympy, then lifts the
+    values back to MDP states by matching UUIDs.
+
+    :param mdp: The MDP.
+    :param one_states: Target (absorbing) states fixed to value 1.
+    :param scheduler: The scheduler to evaluate.
+    :param reward_model: If provided, solve for expected reward instead of reachability.
+    :param discount: Discount factor (default 1, i.e. undiscounted).
+    :returns: Exact sympy values for every state in *mdp*.
+    :raises ValueError: If the model is not an MDP or POMDP.
+    """
+    one_states = list(one_states)
+    dtmc = scheduler.generate_induced_dtmc(drop_unreachable=False)
+
+    if reward_model is not None:
+        dtmc_rewards = model.RewardModel(
+            reward_model.name,
+            dtmc,
+            {
+                dtmc.get_state_by_id(s.state_id): v
+                for s, v in reward_model.rewards.items()
+            },
+        )
+        dtmc_values = solve_expected_reward(dtmc, dtmc_rewards, one_states, discount)
+    else:
+        dtmc_ones = [dtmc.get_state_by_id(s.state_id) for s in one_states]
+        dtmc_values = solve_reachability(dtmc, dtmc_ones)
+
+    id_to_value = {s.state_id: v for s, v in dtmc_values.items()}
+    return {s: id_to_value[s.state_id] for s in mdp.states}
+
+
+def policy_improvement(
+    mdp: model.Model,
+    values: Mapping[model.State, sp.Expr],
+    one_states: Iterable[model.State],
+    minimize: bool,
+    current_scheduler: result.Scheduler,
+) -> result.Scheduler:
+    """Return the improved scheduler for *values*.
+
+    For each state, pick the action that minimises (or maximises) the expected
+    value under the current value function.  If the current action is already
+    optimal (ties included), it is kept — only a *strict* improvement causes a
+    switch.  This tie-breaking rule guarantees that PI terminates: every
+    iteration that changes the scheduler strictly improves the objective.
+
+    :param mdp: The MDP.
+    :param values: Current value for each state (from DTMC evaluation).
+    :param one_states: States fixed to value 1; any action is kept for them.
+    :param minimize: If True, minimize; otherwise maximize.
+    :param current_scheduler: The scheduler used to produce *values*.
+    :returns: A new :class:`~stormvogel.result.Scheduler`.
+    """
+    one = set(one_states)
+    opt = min if minimize else max
+    taken: dict[model.State, model.Action] = {}
+
+    def _expected(branch) -> sp.Expr:
+        return sum(sp.nsimplify(prob) * values[s_next] for prob, s_next in branch)  # type: ignore[return-value]
+
+    for s in mdp.states:
+        taken[s] = current_scheduler.get_action_at_state(s)
+        if s in one:
+            continue
+
+        best_action, best_val = opt(  # type: ignore[operator]
+            ((a, _expected(b)) for a, b in s.choices), key=lambda av: av[1]
+        )
+
+        if (minimize and best_val < values[s]) or (
+            not minimize and best_val > values[s]
+        ):
+            taken[s] = best_action
+
+    return result.Scheduler(mdp, taken)
+
+
+class PI:
+    """Policy iteration for reachability probabilities on an MDP.
+
+    Usage::
+
+        pi = PI(mdp, "target", minimize=False)
+        while not pi.has_converged():
+            scheduler, values = pi.step()
+
+    :param mdp: The MDP to optimise.
+    :param target_label: Label identifying the target (one) states.
+    :param minimize: If True, minimize reachability; otherwise maximize.
+    :param scheduler: Starting scheduler.  If *None* (default),
+        :func:`initial_scheduler` is called with the same *minimize* flag.
+    """
+
+    def __init__(
+        self,
+        mdp: model.Model,
+        target_label: str,
+        minimize: bool,
+        scheduler: result.Scheduler | None = None,
+        reward_model: model.RewardModel | None = None,
+        discount: sp.Expr = sp.Integer(1),
+    ):
+        self._mdp = mdp
+        self._one_states = list(mdp.state_labels[target_label])
+        self._minimize = minimize
+        self._scheduler = (
+            scheduler
+            if scheduler is not None
+            else initial_scheduler(mdp, target_label, minimize)
+        )
+        self._reward_model = reward_model
+        self._discount = sp.nsimplify(discount)
+        self._values: dict[model.State, sp.Expr] | None = None
+        self._converged = False
+        if reward_model is not None and self._discount == sp.Integer(1):
+            # Undiscounted expected reward: ill-defined when terminal is
+            # unreachable.  Catch the bad cases early with a clear message.
+            if minimize:
+                bad = frozenset(mdp.states) - compute_spos(mdp, self._one_states)
+            else:
+                bad = frozenset(mdp.states) - compute_sposmin(mdp, self._one_states)
+            if bad:
+                names = sorted(s.friendly_name or str(s.state_id) for s in bad)
+                raise ValueError(
+                    f"Undiscounted expected reward is ill-defined: states {names} "
+                    f"{'cannot reach' if minimize else 'can avoid'} the terminal "
+                    f"set under {'some' if not minimize else 'every'} policy."
+                )
+
+    @property
+    def current_scheduler(self) -> result.Scheduler:
+        return self._scheduler
+
+    @property
+    def current_values(self) -> dict[model.State, sp.Expr] | None:
+        """Values from the last evaluation step, or None before the first step."""
+        return self._values
+
+    def has_converged(self) -> bool:
+        """True after a step where the scheduler did not change."""
+        return self._converged
+
+    def step(self) -> tuple[result.Scheduler, dict[model.State, sp.Expr]]:
+        """Run one policy-iteration step: evaluate then improve.
+
+        :returns: The new scheduler and the exact values under the old one.
+        :raises RuntimeError: If the scheduler cannot induce a DTMC.
+        """
+        mdp_values = policy_evaluation(
+            self._mdp,
+            self._one_states,
+            self._scheduler,
+            self._reward_model,
+            self._discount,
+        )
+
+        new_scheduler = policy_improvement(
+            self._mdp,
+            mdp_values,
+            self._one_states,
+            self._minimize,
+            self._scheduler,
+        )
+
+        self._converged = new_scheduler.taken_actions == self._scheduler.taken_actions
+        self._scheduler = new_scheduler
+        self._values = mdp_values
+        return self._scheduler, self._values
+
+
+def visualise_pi_iterations(pi: "PI", max_steps: int = 50):
+    """Run *pi* to convergence and return a pandas DataFrame of each step.
+
+    Each column group ``step k`` shows the scheduler evaluated at that step
+    and the exact values it produced — so the action and value in the same
+    column are always consistent.
+
+    Rows are states; columns are a two-level MultiIndex
+    ``(step k, "value")`` / ``(step k, "action")``.
+
+    :param pi: A :class:`PI` instance (not yet converged).
+    :param max_steps: Safety limit on the number of steps.
+    :returns: A :class:`pandas.DataFrame` indexed by state friendly name.
+    """
+    import pandas as pd  # optional dependency — only needed for display
+
+    snapshots: list[tuple[result.Scheduler, dict[model.State, sp.Expr]]] = []
+    step = 0
+    while not pi.has_converged() and step < max_steps:
+        sched_k = pi.current_scheduler
+        _, values_k = pi.step()
+        snapshots.append((sched_k, values_k))
+        step += 1
+
+    if not snapshots:
+        return pd.DataFrame()
+
+    states = sorted(snapshots[0][1].keys(), key=lambda st: st.friendly_name or "")
+    columns = pd.MultiIndex.from_tuples(
+        [
+            (f"step {i}", col)
+            for i, _ in enumerate(snapshots)
+            for col in ("value", "action")
+        ]
+    )
+    rows = []
+    for s in states:
+        row = []
+        for sched, values in snapshots:
+            row.append(str(values[s]))
+            row.append(sched.get_action_at_state(s).label)
+        rows.append(row)
+
+    df = pd.DataFrame(rows, columns=columns)
+    df.index = [s.friendly_name for s in states]
+    df.index.name = "state"
+    return df

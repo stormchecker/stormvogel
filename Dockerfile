@@ -1,30 +1,23 @@
-FROM movesrwth/stormpy:stable
+FROM python:3.13-slim
 
 # Install dependencies
 RUN apt-get update && \
-    apt-get -y install curl git vim nano libcairo2-dev
-
-# Set environment variables for Python and Poetry versions
-ARG PYTHON_VERSION
-ARG POETRY_VERSION
-
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/etc/poetry python3 -
-
-# Set up Poetry configuration
-ENV PATH="/etc/poetry/bin:$PATH"
-RUN poetry config virtualenvs.create true && \
-    poetry config virtualenvs.in-project true
+    apt-get -y install curl git vim nano libcairo2-dev graphviz
 
 # Copy the project files into the container
 COPY . /app
 WORKDIR /app
 
-# Load existing virtual environment
-RUN poetry env use /opt/venv/bin/python
-
-# Install project dependencies
-RUN poetry install
+# Install all dependencies directly into system Python
+# When EXPERIMENTAL=1, install stormpy and paynt from local wheels (experimental builds).
+ARG EXPERIMENTAL=0
+RUN if [ "$EXPERIMENTAL" = "1" ]; then \
+        pip install --no-cache-dir . stormpy paynt pyscipopt && \
+        pip install --no-cache-dir --no-deps --force-reinstall stormpy_wheel/*cp313*.whl && \
+        pip install --no-cache-dir --no-deps --force-reinstall paynt_wheel/*cp313*.whl; \
+    else \
+        pip install --no-cache-dir . stormpy paynt pyscipopt; \
+    fi
 
 # create /root/.jupyter directory
 RUN mkdir -p /root/.jupyter
@@ -64,4 +57,4 @@ RUN echo "echo -e '\033[44;37mJupyter Lab will be running at http://localhost:80
 RUN echo "echo -e \"\033[44;37mTo restart this container, run docker start -i \$(hostname)\033[0m\"" >> /root/.bashrc
 
 # Start a bash shell, but run Jupyter Lab inside Poetry in the background on port 8080
-CMD ["bash", "-c", "setsid poetry run jupyter lab --ip 0.0.0.0 --port=8080 --no-browser --allow-root 0</dev/null > /app/jupyter_lab.log 2>&1 & exec bash"]
+CMD ["bash", "-c", "setsid jupyter lab --ip 0.0.0.0 --port=8080 --no-browser --allow-root 0</dev/null > /app/jupyter_lab.log 2>&1 & exec bash"]
