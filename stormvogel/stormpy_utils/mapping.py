@@ -193,13 +193,37 @@ def stormpy_to_stormvogel(
         if not storm_vars:
             return
 
+        # TODO: stormpy's state_valuations API is under active development.
+        # sv.manager.get_variables() returns *all* expression-manager variables
+        # (constants, auxiliary variables, etc.), not only those stored in the
+        # state valuation table.  Calling get_*_values_states on a variable
+        # that is absent triggers a fatal SIGABRT inside the C++ layer, so we
+        # cannot catch it.  As a workaround we parse the string representation
+        # of state 0 to discover which variables are actually stored.
+        # Format example: '[!start\t& ax=0\t& ay=0]'
+        # Update this once the stormpy API exposes a reliable variable list.
+        stored_names: set[str] = set()
+        if sparsemodel.nr_states > 0:
+            raw = sv.get_string(0).strip("[]")
+            for token in raw.split("\t& "):
+                token = token.strip()
+                if "=" in token:
+                    stored_names.add(token.split("=")[0])
+                elif token.startswith("!"):
+                    stored_names.add(token[1:])
+                elif token:
+                    stored_names.add(token)
+
         var_info: list[tuple[Variable, list]] = []
         for storm_var in storm_vars:
+            if storm_var.name not in stored_names:
+                continue
             if storm_var.has_boolean_type():
-                values = [bool(v) for v in sv._get_boolean_values_states(storm_var)]
+                true_states = set(sv.get_boolean_values_states(storm_var))
+                values = [i in true_states for i in range(sparsemodel.nr_states)]
                 domain: BoolDomain | IntDomain = BoolDomain()
             elif storm_var.has_integer_type():
-                values = list(sv._get_integer_values_states(storm_var))
+                values = list(sv.get_integer_values_states(storm_var))
                 domain = IntDomain(min(values), max(values))
             else:
                 continue
@@ -419,6 +443,9 @@ def stormpy_to_stormvogel(
         :param sparsepomdp: The stormpy sparse POMDP to convert.
         :returns: The equivalent stormvogel model.
         """
+        import stormpy.pomdp
+
+        sparsepomdp = stormpy.pomdp.make_canonic(sparsepomdp)
         model = new_pomdp(create_initial_state=False)
         if len(sparsepomdp.states) > 0:
             max_obs = max(
