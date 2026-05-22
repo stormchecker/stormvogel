@@ -1,6 +1,16 @@
-from pathlib import Path
+from __future__ import annotations
 
-from umbi.ats.ats_to_umb import write as _write_umb, read as _read_umb
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+try:
+    from umbi.ats.ats_to_umb import write as _write_umb, read as _read_umb
+
+    _UMBI_AVAILABLE = True
+except ImportError:
+    _UMBI_AVAILABLE = False
+    if TYPE_CHECKING:
+        from umbi.ats.ats_to_umb import write as _write_umb, read as _read_umb
 
 from stormvogel.umbi.translate import translate_to_umbi, translate_to_stormvogel  # noqa: F401
 from stormvogel.model.model import Model
@@ -12,6 +22,10 @@ def write_to_umb(
     ignore_unsupported_rewards: bool = False,
 ) -> None:
     """Translate a stormvogel Model and write it to a .umb file."""
+    if not _UMBI_AVAILABLE:
+        raise ImportError(
+            "umbi is required for .umb file I/O. Install it with: pip install umbi"
+        )
     _write_umb(translate_to_umbi(model, ignore_unsupported_rewards), path)
 
 
@@ -22,6 +36,10 @@ def read_from_umb(
     ignore_branch_annotations: bool = False,
 ) -> Model:
     """Read a .umb file and return it as a stormvogel Model."""
+    if not _UMBI_AVAILABLE:
+        raise ImportError(
+            "umbi is required for .umb file I/O. Install it with: pip install umbi"
+        )
     return translate_to_stormvogel(
         _read_umb(path),
         ignore_unsupported_rewards,

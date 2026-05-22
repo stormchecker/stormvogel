@@ -59,6 +59,7 @@ pytest-cov = "^7.1.0"
 
 [tool.poetry.group.optional.dependencies]
 cairosvg = "^2.8.2"
+umbi = "*"
 
 [tool.ruff]
 src = ["stormvogel", "examples"]

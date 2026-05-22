@@ -1,13 +1,27 @@
+from __future__ import annotations
+
 import logging
 from fractions import Fraction
+from typing import TYPE_CHECKING
 
-import umbi.ats
-import umbi.datatypes
-from umbi.ats.simple_ats import SimpleAts
-from umbi.ats.entity_space import EntityClass
+try:
+    import umbi.ats
+    import umbi.datatypes
+    from umbi.ats.simple_ats import SimpleAts
+    from umbi.ats.entity_space import EntityClass
+
+    _UMBI_AVAILABLE = True
+except ImportError:
+    _UMBI_AVAILABLE = False
+    if TYPE_CHECKING:
+        import umbi.ats
+        import umbi.datatypes
+        from umbi.ats.simple_ats import SimpleAts
+        from umbi.ats.entity_space import EntityClass
 
 from stormvogel.model.model import Model, ModelType, new_model
 from stormvogel.model.action import Action, EmptyAction
+from stormvogel.model.distribution import Distribution
 from stormvogel.model.observation import Observation
 from stormvogel.model.value import Interval
 from stormvogel.model.variable import (
@@ -101,6 +115,10 @@ def translate_to_umbi(
 
     Returns: a umbi.ats.SimpleAts
     """
+    if not _UMBI_AVAILABLE:
+        raise ImportError(
+            "umbi is required for UMBI translation. Install it with: pip install umbi"
+        )
     if model.is_parametric():
         raise ValueError(
             "Parametric models cannot be translated to UMBI. "
@@ -177,6 +195,10 @@ def translate_to_umbi(
             if obs is None:
                 raise RuntimeError(
                     f"State {state} has no observation in an observation model."
+                )
+            if isinstance(obs, Distribution):
+                raise NotImplementedError(
+                    f"State {state} has a distribution over observations, which UMBI does not support. "
                 )
             if obs not in obs_to_id:
                 obs_to_id[obs] = len(obs_to_id)
@@ -282,6 +304,10 @@ def translate_to_stormvogel(
 
     Returns: a stormvogel Model
     """
+    if not _UMBI_AVAILABLE:
+        raise ImportError(
+            "umbi is required for UMBI translation. Install it with: pip install umbi"
+        )
     if ats.time == umbi.ats.TimeType.URGENT_STOCHASTIC:
         raise NotImplementedError(
             "Markov automata are not yet supported by the UMBI translator."
