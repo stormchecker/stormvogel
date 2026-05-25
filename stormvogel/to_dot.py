@@ -108,6 +108,8 @@ def _auto_action_positions(
     model: stormvogel.model.Model,
     positions: dict,
     self_loop_radius: float = 0.7,
+    collision_threshold: float = 0.05,
+    perp_offset: float = 0.3,
 ) -> dict:
     """Compute positions for action nodes whose state source has a known position.
 
@@ -118,13 +120,48 @@ def _auto_action_positions(
     For self-loop actions the action node is placed at ``self_loop_radius`` inches
     from the state, cycling through compass angles (below, lower-left, lower-right,
     …) so that multiple self-loops on the same state do not overlap.
+
+    After initial placement, action nodes that land within ``collision_threshold``
+    inches of each other are spread symmetrically perpendicular to the line
+    connecting their source states, separated by ``perp_offset`` inches.
     """
-    # Angles used for successive self-loop action nodes on the same state (degrees,
-    # measured from positive-x axis in Graphviz/neato coordinate space).
-    _self_loop_angles = [270, 225, 315, 180, 0, 90, 135, 45]
+    # Candidate angles for self-loop placement (degrees, CCW from east).
+    # Cardinals first; diagonals as fallback.
+    _self_loop_angles = [90, 270, 0, 180, 135, 225, 315, 45]
+    _cardinal_angles = {0, 90, 180, 270}
+    _cardinal_bonus = 0.3  # added to score so cardinals win unless clearly blocked
+
+    # All state positions as a flat list for obstruction scoring.
+    _all_state_positions = list(positions.values())
+
+    def _best_self_loop_angle(src_pos: tuple, used: set) -> int:
+        """Return the least obstructed candidate angle not already used.
+
+        Cardinal angles (0/90/180/270) receive a bonus so they are preferred
+        over diagonals unless a neighbouring state clearly blocks them.
+        """
+        available = [a for a in _self_loop_angles if a not in used] or list(
+            _self_loop_angles
+        )
+        best, best_score = available[0], -math.inf
+        for angle_deg in available:
+            rad = math.radians(angle_deg)
+            ax, ay = math.cos(rad), math.sin(rad)
+            score = _cardinal_bonus if angle_deg in _cardinal_angles else 0.0
+            for p in _all_state_positions:
+                dx, dy = p[0] - src_pos[0], p[1] - src_pos[1]
+                dist = math.sqrt(dx * dx + dy * dy) or 1.0
+                if dist < 1e-9:
+                    continue  # skip the source state itself
+                alignment = (dx * ax + dy * ay) / dist  # cosine similarity
+                score -= max(0.0, alignment) / dist  # penalise nearby obstructions
+            if score > best_score:
+                best_score, best = score, angle_deg
+        return best
 
     auto: dict = {}
-    loop_count: dict = {}  # state → number of self-loop action nodes already placed
+    used_angles: dict = {}  # state → set of angle_deg already used for self-loops
+    loop_count: dict = {}  # state → count of fallback self-loop action nodes placed
 
     for state, choice in model.transitions.items():
         if state not in positions:
@@ -139,16 +176,33 @@ def _auto_action_positions(
             is_self_loop = all(t is state for t in targets)
 
             if is_self_loop:
-                idx = loop_count.get(state, 0)
-                loop_count[state] = idx + 1
-                angle = math.radians(_self_loop_angles[idx % len(_self_loop_angles)])
+                used = used_angles.setdefault(state, set())
+                angle_deg = _best_self_loop_angle(src, used)
+                used.add(angle_deg)
+                angle = math.radians(angle_deg)
                 auto[(state, action)] = (
                     src[0] + self_loop_radius * math.cos(angle),
                     src[1] + self_loop_radius * math.sin(angle),
                 )
             else:
-                known = [(prob, positions[t]) for prob, t in branch if t in positions]
+                # Exclude self-transitions: they carry no directional information
+                # and would pull the action node back toward the source state.
+                known = [
+                    (prob, positions[t])
+                    for prob, t in branch
+                    if t is not state and t in positions
+                ]
                 if not known:
+                    # All targets are the source or unpositioned — treat as self-loop.
+                    idx = loop_count.get(state, 0)
+                    loop_count[state] = idx + 1
+                    angle = math.radians(
+                        _self_loop_angles[idx % len(_self_loop_angles)]
+                    )
+                    auto[(state, action)] = (
+                        src[0] + self_loop_radius * math.cos(angle),
+                        src[1] + self_loop_radius * math.sin(angle),
+                    )
                     continue
                 total = sum(p for p, _ in known)
                 avg_x = sum(p * pos[0] for p, pos in known) / total
@@ -158,6 +212,38 @@ def _auto_action_positions(
                     (src[1] + avg_y) / 2,
                 )
 
+    # Spread action nodes that collide (within collision_threshold) symmetrically
+    # perpendicular to the line between their source states.
+    keys = list(auto.keys())
+    resolved: set = set()
+    for i, ki in enumerate(keys):
+        if ki in resolved:
+            continue
+        cluster = [ki]
+        for kj in keys[i + 1 :]:
+            if kj in resolved:
+                continue
+            dx = auto[ki][0] - auto[kj][0]
+            dy = auto[ki][1] - auto[kj][1]
+            if math.sqrt(dx * dx + dy * dy) < collision_threshold:
+                cluster.append(kj)
+        if len(cluster) < 2:
+            continue
+        for k in cluster:
+            resolved.add(k)
+        cx, cy = auto[cluster[0]]
+        # Perpendicular direction: use line between the first two source states.
+        s1_pos = positions[cluster[0][0]]
+        s2_pos = positions[cluster[1][0]]
+        ldx = s2_pos[0] - s1_pos[0]
+        ldy = s2_pos[1] - s1_pos[1]
+        length = math.sqrt(ldx * ldx + ldy * ldy) or 1.0
+        px, py = ldy / length, -ldx / length  # unit perpendicular (CW rotation)
+        n = len(cluster)
+        for idx, k in enumerate(cluster):
+            t = idx - (n - 1) / 2  # symmetric: e.g. -0.5, +0.5 for n=2
+            auto[k] = (cx + t * perp_offset * px, cy + t * perp_offset * py)
+
     return auto
 
 
@@ -165,6 +251,9 @@ def suggest_positions(
     model: stormvogel.model.Model,
     rankdir: str = "LR",
     width: float = 0.8,
+    size: "str | None" = None,
+    ranksep: "float | None" = None,
+    nodesep: "float | None" = None,
 ) -> dict:
     """Run the graphviz layout engine on *model* and return the computed state positions.
 
@@ -176,8 +265,20 @@ def suggest_positions(
     :param model: The model to lay out.
     :param rankdir: Layout direction ("LR", "TB", etc.).
     :param width: Diameter of state circles in inches (affects spacing).
+    :param size: Optional Graphviz ``size`` attribute, e.g. ``"5,3"`` to cap
+        the layout at 5 × 3 inches.  Dot scales the positions down to fit.
+    :param ranksep: Graphviz ``ranksep`` — minimum distance between ranks
+        (columns in LR layout).  Larger values spread the graph horizontally.
+    :param nodesep: Graphviz ``nodesep`` — minimum distance between nodes in
+        the same rank (rows in LR layout).  Larger values spread vertically.
     """
     graph = pydot.Dot(graph_type="digraph", rankdir=rankdir)
+    if size is not None:
+        graph.set_size(f'"{size}"')
+    if ranksep is not None:
+        graph.set_ranksep(ranksep)
+    if nodesep is not None:
+        graph.set_nodesep(nodesep)
     node_id = {s: str(i) for i, s in enumerate(model.states)}
 
     for s in model.states:
@@ -208,14 +309,22 @@ def suggest_positions(
                 graph.add_edge(pydot.Edge(src_id, node_id[target]))
 
     graph.set_prog("dot")
-    plain = graph.create("plain").decode("utf-8")
+    plain = graph.create(format="plain").decode("utf-8")
 
+    # The plain format encodes a scale factor on the "graph" line.
+    # All node x/y values must be multiplied by it to obtain actual inches.
+    scale = 1.0
     id_to_state = {v: k for k, v in node_id.items()}
     positions = {}
     for line in plain.splitlines():
         parts = line.split()
-        if len(parts) >= 5 and parts[0] == "node" and parts[1] in id_to_state:
-            positions[id_to_state[parts[1]]] = (float(parts[2]), float(parts[3]))
+        if parts and parts[0] == "graph" and len(parts) >= 4:
+            scale = float(parts[1])
+        elif len(parts) >= 5 and parts[0] == "node" and parts[1] in id_to_state:
+            positions[id_to_state[parts[1]]] = (
+                float(parts[2]) * scale,
+                float(parts[3]) * scale,
+            )
     return positions
 
 

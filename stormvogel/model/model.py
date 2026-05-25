@@ -18,6 +18,7 @@ from stormvogel import parametric
 from stormvogel.parametric import Parametric
 from stormvogel.model.reward_model import RewardModel
 from stormvogel.model.variable import Variable
+from stormvogel.model.validation import ValidationResult, validate as _validate
 
 
 class ModelType(Enum):
@@ -324,6 +325,20 @@ class Model[ValueType: Value]:
                     if isinstance(value, Interval) and value.lower <= 0:
                         return False
         return True
+
+    def validate(self) -> "ValidationResult":
+        """Check the model for structural validity and return a :class:`~stormvogel.model.validation.ValidationResult`.
+
+        Shared checks (exactly one initial state, transition targets exist in the
+        model, distributions sum to 1, no zero-probability transitions) are run
+        for every model type.  MDP-specific checks (deadlock states, unreachable
+        states) are added for MDP models.
+
+        :returns: A :class:`~stormvogel.model.validation.ValidationResult`
+            whose :attr:`~stormvogel.model.validation.ValidationResult.is_valid`
+            property is ``False`` if any ``ERROR``-level issue was found.
+        """
+        return _validate(self)
 
     def is_stochastic(self, epsilon=1e-6) -> bool | None:
         """Check whether the model is stochastic.
