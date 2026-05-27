@@ -85,6 +85,14 @@ class Variable:
             return NotImplemented
         return str(self.label) < str(other.label)
 
+    def check_valuation(self, value: Any) -> None:
+        """Raise ``ValueError`` if ``value`` is outside this variable's declared domain."""
+        if self.domain is not None and not self.domain.contains(value):
+            raise ValueError(
+                f"Value {value!r} is not in domain {self.domain!r} "
+                f"for variable {self!r}."
+            )
+
     def __repr__(self):
         if self.domain is not None:
             return f"Variable({self.label!r}, {self.domain!r})"
@@ -111,6 +119,14 @@ class Predicate:
         default=None, compare=False, hash=False
     )
 
+    def check_valuation(self, value: Any) -> None:
+        """Raise ``ValueError`` if ``value`` is outside this predicate's domain."""
+        if not self.domain.contains(value):
+            raise ValueError(
+                f"Value {value!r} is not in domain {self.domain!r} "
+                f"for predicate {self!r}."
+            )
+
     def __repr__(self):
         return f"Predicate({self.label!r}, {self.domain!r})"
 
@@ -118,19 +134,3 @@ class Predicate:
 
 
 VariableKey = Variable | Predicate
-
-
-def _check_valuation(key: VariableKey, value: Any) -> None:
-    """Raise ``ValueError`` if ``value`` is outside the declared domain of ``key``."""
-    if isinstance(key, Predicate):
-        if not key.domain.contains(value):
-            raise ValueError(
-                f"Value {value!r} is not in domain {key.domain!r} "
-                f"for predicate {key!r}."
-            )
-    elif isinstance(key, Variable) and key.domain is not None:
-        if not key.domain.contains(value):
-            raise ValueError(
-                f"Value {value!r} is not in domain {key.domain!r} "
-                f"for variable {key!r}."
-            )

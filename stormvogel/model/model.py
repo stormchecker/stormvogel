@@ -17,7 +17,7 @@ from stormvogel.model.state import State
 from stormvogel import parametric
 from stormvogel.parametric import Parametric
 from stormvogel.model.reward_model import RewardModel
-from stormvogel.model.variable import Variable, VariableKey, _check_valuation
+from stormvogel.model.variable import Variable, VariableKey
 
 
 class ModelType(Enum):
@@ -574,7 +574,7 @@ class Model[ValueType: Value]:
             )
         if valuations is not None:
             for key, value in valuations.items():
-                _check_valuation(key, value)
+                key.check_valuation(value)
         obs = Observation(self)
         self.observation_aliases[obs] = alias
         self.observation_valuations[obs] = valuations if valuations is not None else {}
