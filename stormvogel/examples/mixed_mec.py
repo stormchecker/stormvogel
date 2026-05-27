@@ -1,3 +1,5 @@
+from fractions import Fraction
+
 import stormvogel.bird as bird
 from stormvogel.model import ModelType
 
@@ -29,11 +31,15 @@ def create_mixed_mec_mdp():
     def _delta(s, act):
         match s:
             case 0:  # s0
-                return [(1 / 3, S1), (1 / 3, S3), (1 / 3, S5)]
+                return [
+                    (Fraction(1, 3), S1),
+                    (Fraction(1, 3), S3),
+                    (Fraction(1, 3), S5),
+                ]
             case 1:  # s1
-                return [(0.7, S2), (0.3, S5)]
+                return [(Fraction(7, 10), S2), (Fraction(3, 10), S5)]
             case 2:  # s2 (target)
-                return [(0.7, S1), (0.3, S5)]
+                return [(Fraction(7, 10), S1), (Fraction(3, 10), S5)]
             case 3:  # s3
                 if act == "escape":
                     return [(1.0, S1)]

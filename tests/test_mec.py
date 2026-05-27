@@ -118,6 +118,45 @@ def test_eliminate_mecs_absorbing_sink_unchanged(mixed_mec_mdp):
     assert state_map[old_s5].nr_choices == 1
 
 
+def test_eliminate_mecs_exit_action_label(mixed_mec_mdp):
+    """Exit choice from (s3, escape) is labelled 'escape_s3' on the representative."""
+    pytest.importorskip("stormpy")
+    _, state_map = eliminate_mecs(mixed_mec_mdp, remove_representative_selfloops=True)
+    old_s3 = next(s for s in mixed_mec_mdp.states if s.friendly_name == "s3")
+    rep = state_map[old_s3]
+    action_labels = {a.label for a, _ in rep.choices}
+    assert "escape_s3" in action_labels
+
+
+def test_eliminate_mecs_selfloop_label(mixed_mec_mdp):
+    """Self-loop added by stormpy to the representative is labelled 'stay'."""
+    pytest.importorskip("stormpy")
+    _, state_map = eliminate_mecs(mixed_mec_mdp)
+    old_s3 = next(s for s in mixed_mec_mdp.states if s.friendly_name == "s3")
+    rep = state_map[old_s3]
+    self_loop_labels = {
+        a.label for a, dist in rep.choices if all(succ is rep for _, succ in dist)
+    }
+    assert "stay" in self_loop_labels
+
+
+def test_eliminate_mecs_passthrough_action_labels(mixed_mec_mdp):
+    """Pass-through state (s0) keeps its original action label."""
+    pytest.importorskip("stormpy")
+    _, state_map = eliminate_mecs(mixed_mec_mdp)
+    old_s0 = next(s for s in mixed_mec_mdp.states if s.friendly_name == "s0")
+    s0_new = state_map[old_s0]
+    action_labels = {a.label for a, _ in s0_new.choices}
+    assert "loop" in action_labels
+
+
+def test_eliminate_mecs_no_friendly_names(ec_mdp):
+    """eliminate_mecs must not crash when states have no friendly names."""
+    pytest.importorskip("stormpy")
+    sv_new, _ = eliminate_mecs(ec_mdp)
+    assert len(sv_new.states) == 2
+
+
 def test_eliminate_mecs_mutually_exclusive(mixed_mec_mdp):
     pytest.importorskip("stormpy")
     with pytest.raises(ValueError):
