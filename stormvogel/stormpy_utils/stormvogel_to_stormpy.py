@@ -1,3 +1,4 @@
+from fractions import Fraction
 from typing import TYPE_CHECKING
 
 from stormvogel import parametric
@@ -39,7 +40,7 @@ def value_to_stormpy(
     if model.is_parametric():
         # we have a special case for numbers as they are not just a specific case of a polynomial in stormvogel
         if isinstance(value, Number):
-            rational = stormpy.pycarl.cln.Rational(float(value))
+            rational = stormpy.pycarl.cln.Rational(Fraction(value))
             polynomial = stormpy.pycarl.cln.Polynomial(rational)
             factorized_polynomial = stormpy.pycarl.cln.FactorizedPolynomial(
                 polynomial, stormpy.pycarl.cln.factorization_cache

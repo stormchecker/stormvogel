@@ -1,13 +1,21 @@
 """Lovejoy grid MDP: finite upper-bounding MDP for POMDPs.
 
 Constructs the Lovejoy grid MDP for POMDPs where every observation class has
-at most two states.  For each such class the belief simplex is a line segment
-``[0, 1]``, and a uniform grid of step ``1/k`` covers it exactly.  Off-grid
-successor beliefs are replaced by a convex (linear) interpolation over the two
-adjacent grid points, preserving the over-approximation guarantee.
+at most three states.
 
-The result is a stormvogel MDP whose maximal reachability probability is an
-upper bound on the true POMDP value at the initial belief.
+* **Two-state class** — the belief simplex is a line segment ``[0, 1]``; a
+  uniform grid of step ``1/k`` covers it, and off-grid successors are replaced
+  by linear interpolation over the two adjacent grid points.
+
+* **Three-state class** — the belief simplex is a triangle (2-simplex); a
+  uniform triangulation at resolution ``k`` covers it with
+  ``(k+1)(k+2)//2`` grid points, and off-grid successors are replaced by
+  barycentric interpolation over the three vertices of the enclosing
+  sub-triangle.
+
+In both cases the interpolated value is an over-approximation because ``V*``
+is convex, so the result is a stormvogel MDP whose maximal reachability
+probability is an upper bound on the true POMDP value at the initial belief.
 """
 
 from __future__ import annotations
@@ -42,16 +50,17 @@ def lovejoy_grid_mdp(
     Its maximal reachability probability (under label *target*) is an upper
     bound on ``V*(initial_belief)``.
 
-    :param pomdp: A POMDP where every observation class has at most 2 states.
+    :param pomdp: A POMDP where every observation class has at most 3 states.
     :param initial_belief: Distribution over POMDP states summing to 1.  Its
         support must lie within a single observation class and every probability
         must be an exact multiple of ``1/k``.
     :param k: Grid resolution.  Grid points for each 2-state observation class
-        are at ``{0, 1/k, 2/k, …, 1}``.
+        are at ``{0, 1/k, 2/k, …, 1}``; for each 3-state class they form a
+        uniform triangulation of the 2-simplex at step ``1/k``.
     :returns: A stormvogel MDP whose optimal reachability value upper-bounds
         ``V*(initial_belief)``.
     :raises ValueError: If *pomdp* is not a POMDP, any observation class has
-        more than 2 states, *initial_belief* does not sum to 1, its support
+        more than 3 states, *initial_belief* does not sum to 1, its support
         spans more than one observation class, or any probability is not an
         exact multiple of ``1/k``.
     """
@@ -72,10 +81,10 @@ def lovejoy_grid_mdp(
         obs_groups.setdefault(obs_of[s], []).append(s)
 
     for obs_key, states in obs_groups.items():
-        if len(states) > 2:
+        if len(states) > 3:
             raise ValueError(
                 f"Observation {obs_key!r} has {len(states)} states; "
-                "lovejoy_grid_mdp only supports at most 2 states per observation."
+                "lovejoy_grid_mdp only supports at most 3 states per observation."
             )
         states.sort(key=lambda s: s.state_id)  # canonical s_L / s_R ordering
 
@@ -144,6 +153,50 @@ def lovejoy_grid_mdp(
             (alpha, _make_grid_belief(s_L, s_R, j + 1)),
         ]
 
+    def _make_grid_belief_3(
+        s0: "State", s1: "State", s2: "State", gi: int, gj: int
+    ) -> Belief:
+        """Grid point (gi/k, gj/k, (k-gi-gj)/k) for a 3-state observation."""
+        dist: dict["State", Fraction] = {}
+        if gi > 0:
+            dist[s0] = Fraction(gi, k)
+        if gj > 0:
+            dist[s1] = Fraction(gj, k)
+        m = k - gi - gj
+        if m > 0:
+            dist[s2] = Fraction(m, k)
+        return Belief(dist)
+
+    def _interpolate_3(
+        s0: "State", s1: "State", s2: "State", p0: Fraction, p1: Fraction
+    ) -> list[tuple[Fraction, Belief]]:
+        """Barycentric interpolation of (p0, p1, 1-p0-p1) onto the triangular grid.
+
+        The 2-simplex is triangulated uniformly at resolution k.  Any belief
+        falls in either the 'lower' or 'upper' sub-triangle of its grid cell,
+        determined by whether r+s <= 1 (where r,s are the fractional offsets).
+        """
+        u, v = p0 * k, p1 * k
+        i, j = int(u), int(v)  # floor; valid since p0, p1 >= 0
+        r, s = u - i, v - j
+
+        if r + s <= 1:
+            raw: list[tuple[Fraction, tuple[int, int]]] = [
+                (Fraction(1) - r - s, (i, j)),
+                (r, (i + 1, j)),
+                (s, (i, j + 1)),
+            ]
+        else:
+            raw = [
+                (Fraction(1) - s, (i + 1, j)),
+                (Fraction(1) - r, (i, j + 1)),
+                (r + s - Fraction(1), (i + 1, j + 1)),
+            ]
+
+        return [
+            (w, _make_grid_belief_3(s0, s1, s2, gi, gj)) for w, (gi, gj) in raw if w > 0
+        ]
+
     # --- Bird callbacks ------------------------------------------------------
 
     def available_actions(b: Belief) -> list[str]:
@@ -179,10 +232,16 @@ def lovejoy_grid_mdp(
             group_states = obs_groups[obs_key]  # sorted by state_id
             if len(group_states) == 1:
                 result.append((obs_prob, Belief({group_states[0]: Fraction(1)})))
-            else:
+            elif len(group_states) == 2:
                 s_L, s_R = group_states
                 p_L = group.get(s_L, Fraction(0)) / obs_prob
                 for w, succ_b in _interpolate(s_L, s_R, p_L):
+                    result.append((obs_prob * w, succ_b))
+            else:
+                s0_, s1_, s2_ = group_states
+                p0 = group.get(s0_, Fraction(0)) / obs_prob
+                p1 = group.get(s1_, Fraction(0)) / obs_prob
+                for w, succ_b in _interpolate_3(s0_, s1_, s2_, p0, p1):
                     result.append((obs_prob * w, succ_b))
 
         return result
@@ -214,10 +273,17 @@ def lovejoy_grid_mdp(
         if len(b.dist) == 1:
             s = next(iter(b.dist))
             return s.friendly_name or str(s.state_id)
-        s_L, _ = sorted(b.dist, key=lambda s: s.state_id)
-        obs_name = getattr(obs_of[s_L], "alias", repr(obs_of[s_L]))
-        p_L = b.dist.get(s_L, Fraction(0))
-        return f"b_{obs_name}[{p_L}]"
+        sorted_states = sorted(b.dist, key=lambda s: s.state_id)
+        s0_ = sorted_states[0]
+        obs_name = getattr(obs_of[s0_], "alias", repr(obs_of[s0_]))
+        obs_key = obs_of[s0_]
+        if len(obs_groups[obs_key]) == 2:
+            p_L = b.dist.get(s0_, Fraction(0))
+            return f"b_{obs_name}[{p_L}]"
+        # 3-state: show the two free coordinates
+        p0 = b.dist.get(sorted_states[0], Fraction(0))
+        p1 = b.dist.get(sorted_states[1], Fraction(0))
+        return f"b_{obs_name}[{p0},{p1}]"
 
     # --- Assemble and run bird -----------------------------------------------
 

@@ -37,3 +37,4 @@ from stormvogel.examples.two_state_commitment_pomdp import (
 )
 from stormvogel.examples.sup_not_attained_pomdp import create_sup_not_attained_pomdp  # NOQA
 from stormvogel.examples.atva20 import create_atva20_pomdp  # NOQA
+from stormvogel.examples.atva20_z0 import create_atva20_z0_pomdp  # NOQA
