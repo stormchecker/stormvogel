@@ -182,6 +182,8 @@ class State[ValueType: Value]:
 
     @valuations.setter
     def valuations(self, value: dict[Variable, Any]):
+        for var, val in value.items():
+            var.check_valuation(val)
         self.model.state_valuations[self] = value
 
     def add_valuation(self, variable: Variable, value: Any):
@@ -190,6 +192,7 @@ class State[ValueType: Value]:
         :param variable: The variable name.
         :param value: The value for the variable.
         """
+        variable.check_valuation(value)
         self.valuations[variable] = value
 
     def get_valuation(self, variable: Variable) -> Any:
