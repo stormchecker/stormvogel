@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "stormvogel"
-version = "0.11.0"
+version = "0.12.0"
 description = "Probabilistic Model Checking for almost everyone"
 authors = ["The stormvogel team"]
 license = "GPLv3"
@@ -59,7 +59,6 @@ pytest-cov = "^7.1.0"
 
 [tool.poetry.group.optional.dependencies]
 cairosvg = "^2.8.2"
-umbi = "*"
 
 [tool.ruff]
 src = ["stormvogel", "examples"]

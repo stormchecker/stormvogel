@@ -556,13 +556,10 @@ class Model[ValueType: Value]:
         """Create a new observation and return it.
 
         :param alias: The alias for the new observation.
-        :param valuations: Variable- or predicate-value pairs to assign as valuations.
-            Domain constraints are enforced: ``Variable`` keys with a declared domain
-            and all ``Predicate`` keys are checked and raise ``ValueError`` on violation.
+        :param valuations: Variable-value pairs to assign as valuations.
         :returns: The newly created observation.
         :raises RuntimeError: If the model does not support observations, or if
             an observation with the given alias already exists.
-        :raises ValueError: If a value violates the domain of its key.
         """
         if not self.supports_observations():
             raise RuntimeError(
@@ -572,12 +569,11 @@ class Model[ValueType: Value]:
             raise RuntimeError(
                 f"An observation with alias {alias} already exists in this model."
             )
-        if valuations is not None:
-            for key, value in valuations.items():
-                key.check_valuation(value)
         obs = Observation(self)
         self.observation_aliases[obs] = alias
-        self.observation_valuations[obs] = valuations if valuations is not None else {}
+        self.observation_valuations[obs] = (
+            valuations if valuations is not None else dict()
+        )
         return obs
 
     def get_observation(self, alias: str) -> Observation:
