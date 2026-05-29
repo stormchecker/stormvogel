@@ -378,12 +378,19 @@ def translate_to_stormvogel(
     for s_id in range(ats.num_states):
         state = model.states[s_id]
         choices_shorthand: dict[Action, list] = {}
-        if exit_rates is not None and s_id not in exit_rates:
-            raise RuntimeError(
-                f"CTMC state {s_id} has no exit rate in the ATS — cannot reconstruct transition rates."
-            )
-        s_exit_rate = float(exit_rates[s_id]) if exit_rates is not None else None  # type: ignore[arg-type]
-        for c_id in ats.get_state_choices(s_id):
+        state_choice_ids = list(ats.get_state_choices(s_id))
+        if exit_rates is not None:
+            if s_id not in exit_rates:
+                if state_choice_ids:
+                    raise RuntimeError(
+                        f"CTMC state {s_id} has transitions but no exit rate in the ATS."
+                    )
+                s_exit_rate: float | None = 0.0
+            else:
+                s_exit_rate = float(exit_rates[s_id])  # type: ignore[arg-type]
+        else:
+            s_exit_rate = None
+        for c_id in state_choice_ids:
             action = (
                 ca_to_action[ats.choice_to_choice_action[c_id]]
                 if ats.has_choice_to_choice_action
