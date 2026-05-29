@@ -17,7 +17,7 @@ from stormvogel.model.state import State
 from stormvogel import parametric
 from stormvogel.parametric import Parametric
 from stormvogel.model.reward_model import RewardModel
-from stormvogel.model.variable import Variable
+from stormvogel.model.variable import Variable, VariableKey
 
 
 class ModelType(Enum):
@@ -67,7 +67,7 @@ class Model[ValueType: Value]:
 
     observation_aliases: dict[Observation, str]
 
-    observation_valuations: dict[Observation, dict[Variable, Any]]
+    observation_valuations: dict[Observation, dict[VariableKey, Any]]
 
     state_observations: dict[
         State[ValueType], Observation | Distribution[ValueType, Observation]
@@ -551,7 +551,7 @@ class Model[ValueType: Value]:
     # Observation management
 
     def new_observation(
-        self, alias: str, valuations: dict[Variable, Any] | None = None
+        self, alias: str, valuations: dict[VariableKey, Any] | None = None
     ) -> Observation:
         """Create a new observation and return it.
 
@@ -569,6 +569,9 @@ class Model[ValueType: Value]:
             raise RuntimeError(
                 f"An observation with alias {alias} already exists in this model."
             )
+        if valuations is not None:
+            for var, val in valuations.items():
+                var.check_valuation(val)
         obs = Observation(self)
         self.observation_aliases[obs] = alias
         self.observation_valuations[obs] = (

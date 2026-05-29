@@ -266,9 +266,9 @@ def test_bird_dtmc():
 
     # we build the model in the regular way:
     regular_model = model.new_dtmc()
-    regular_model.states[0].valuations = {"s": 0}
+    regular_model.states[0].valuations = {Variable("s"): 0}
     init = regular_model.initial_state
-    init.valuations = {"s": 0, "d": -1}
+    init.valuations = {Variable("s"): 0, Variable("d"): -1}
     regular_model.set_choices(
         init,
         [

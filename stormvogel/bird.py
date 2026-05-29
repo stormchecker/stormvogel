@@ -7,6 +7,7 @@ import inspect
 from collections import deque
 from collections.abc import Iterable
 from stormvogel.model import Variable
+from stormvogel.model.variable import VariableKey
 from stormvogel import parametric
 
 
@@ -470,7 +471,9 @@ def build_bird[ValueType: stormvogel.model.Value](
                             f"On input observation id {obs.alias}, the dictionary that the observation_valuations function returns contains a value {val} which is not of type int, float or bool"
                         )
 
-                model.observation_valuations[obs] = valuation_dict
+                model.observation_valuations[obs] = cast(
+                    dict[VariableKey, Any], valuation_dict
+                )
 
     # we add the exit rates
     if rates is not None:

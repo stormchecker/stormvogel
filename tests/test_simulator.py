@@ -8,7 +8,9 @@ from stormvogel.examples.lion import create_lion_mdp
 import stormvogel.model
 import stormvogel.result
 from stormvogel.model.variable import Variable
+import gymnasium as gym
 import stormvogel.simulator as simulator
+from stormvogel.gym_env import ActionUnavailableError, ModelEnv
 from model_testing import assert_models_equal, assert_paths_equal
 
 
@@ -551,3 +553,398 @@ def test_get_action_at_state_type_error():
     dtmc = _simple_dtmc()
     with pytest.raises(TypeError):
         simulator.get_action_at_state(dtmc.initial_state, 42)  # type: ignore
+
+
+# --- ModelEnv tests ---
+
+
+def _gym_mdp():
+    """Two-state MDP: init --(a)--> goal (absorbing), init --(b)--> init."""
+    mdp = stormvogel.model.new_mdp()
+    init = mdp.initial_state
+    goal = mdp.new_state("goal")
+    a = mdp.new_action("a")
+    b = mdp.new_action("b")
+    init.set_choices({a: [(1.0, goal)], b: [(1.0, init)]})
+    r = mdp.new_reward_model("R")
+    r.set_state_reward(init, 1.0)
+    r.set_state_reward(goal, 0.0)
+    return mdp
+
+
+def _gym_mdp_with_valuations():
+    """_gym_mdp extended with a domain-bearing variable 'x' on each state."""
+    from stormvogel.model.variable import (
+        Variable,
+        IntDomain,
+        BoolDomain,
+        CategoricalDomain,
+    )
+
+    mdp = _gym_mdp()
+    x = Variable("x", IntDomain(0, 1))
+    done = Variable("done", BoolDomain())
+    dir_ = Variable("dir", CategoricalDomain(("left", "right")))
+    for i, s in enumerate(mdp.states):
+        s.add_valuation(x, i)
+        s.add_valuation(done, i == 1)
+        s.add_valuation(dir_, "left" if i == 0 else "right")
+    return mdp
+
+
+def test_model_env_rejects_ctmc():
+    ctmc = stormvogel.model.new_ctmc()
+    with pytest.raises(ValueError, match="MDP, DTMC, POMDP, or HMM"):
+        ModelEnv(ctmc)
+
+
+def test_mdp_env_multiple_rewards_no_name():
+    mdp = _gym_mdp()
+    mdp.new_reward_model("R2")
+    with pytest.raises(ValueError, match="multiple reward models"):
+        ModelEnv(mdp)
+
+
+def test_mdp_env_reset():
+    mdp = _gym_mdp()
+    env = ModelEnv(mdp)
+    obs, info = env.reset(seed=0)
+    assert obs == env._state_to_index[mdp.initial_state]
+    assert info["state"] is mdp.initial_state
+
+
+def test_mdp_env_step_valid():
+    mdp = _gym_mdp()
+    env = ModelEnv(mdp)
+    env.reset(seed=0)
+    a_idx = env._action_to_index[
+        next(x for x in env._index_to_action if x.label == "a")
+    ]
+    obs, _reward, terminated, truncated, _info = env.step(a_idx)
+    assert not truncated
+    assert terminated  # goal is absorbing
+    assert isinstance(obs, int)
+    assert 0 <= obs < env.observation_space.n
+
+
+def test_mdp_env_action_unavailable_error():
+    mdp = _gym_mdp()
+    env = ModelEnv(mdp)
+    env.reset()
+    # "b" goes back to init; manually move to goal first by patching current state
+    goal = next(s for s in mdp.states if s.has_label("goal"))
+    env._current_state = goal
+    b_idx = env._action_to_index[
+        next(x for x in env._index_to_action if x.label == "b")
+    ]
+    with pytest.raises(ActionUnavailableError):
+        env.step(b_idx)
+
+
+def test_mdp_env_reward():
+    mdp = _gym_mdp()
+    env = ModelEnv(mdp, reward_model_name="R")
+    env.reset()
+    # Stepping from init with action "a" gives state-exit reward of init = 1.0
+    a_idx = env._action_to_index[
+        next(x for x in env._index_to_action if x.label == "a")
+    ]
+    _, reward, _, _, _ = env.step(a_idx)
+    assert reward == 1.0
+
+
+# --- obs_type="valuations" tests ---
+
+
+def test_mdp_env_valuations_obs_space():
+    mdp = _gym_mdp_with_valuations()
+    env = ModelEnv(mdp, obs_type="valuations")
+    assert isinstance(env.observation_space, gym.spaces.Dict)
+    # dir: CategoricalDomain(("left","right")) → Discrete(2)
+    assert env.observation_space["dir"].n == 2
+    # done: BoolDomain → Discrete(2)
+    assert env.observation_space["done"].n == 2
+    # x: IntDomain(0,1) → Discrete(2)
+    assert env.observation_space["x"].n == 2
+
+
+def test_mdp_env_valuations_reset_returns_dict():
+    mdp = _gym_mdp_with_valuations()
+    env = ModelEnv(mdp, obs_type="valuations")
+    obs, info = env.reset()
+    assert isinstance(obs, dict)
+    assert set(obs.keys()) == {"x", "done", "dir"}
+    # init state: x=0, done=False, dir="left"
+    assert obs["x"] == 0  # 0 - lo(0) = 0
+    assert obs["done"] == 0  # False → 0
+    assert obs["dir"] == 0  # "left" is index 0
+
+
+def test_mdp_env_valuations_step_returns_dict():
+    mdp = _gym_mdp_with_valuations()
+    env = ModelEnv(mdp, obs_type="valuations")
+    env.reset()
+    a_idx = env._action_to_index[
+        next(x for x in env._index_to_action if x.label == "a")
+    ]
+    obs, _, terminated, _, _ = env.step(a_idx)
+    assert isinstance(obs, dict)
+    assert terminated
+    # goal state: x=1, done=True, dir="right"
+    assert obs["x"] == 1
+    assert obs["done"] == 1
+    assert obs["dir"] == 1
+
+
+def test_mdp_env_valuations_no_domain_vars_raises():
+    mdp = _gym_mdp()  # no domain-bearing variables
+    with pytest.raises(ValueError, match="domain"):
+        ModelEnv(mdp, obs_type="valuations")
+
+
+def test_mdp_env_index_unchanged():
+    """obs_type='index' (default) still returns plain int observations."""
+    mdp = _gym_mdp_with_valuations()
+    env = ModelEnv(mdp, obs_type="index")
+    obs, _ = env.reset()
+    assert isinstance(obs, int)
+
+
+# --- DTMC ModelEnv tests ---
+
+
+def _gym_dtmc():
+    """Two-state DTMC: init --(0.5)--> init, --(0.5)--> goal (absorbing)."""
+    dtmc = stormvogel.model.new_dtmc()
+    init = dtmc.initial_state
+    goal = dtmc.new_state("goal")
+    init.set_choices([(0.5, init), (0.5, goal)])
+    return dtmc
+
+
+def test_dtmc_env_action_space():
+    dtmc = _gym_dtmc()
+    env = ModelEnv(dtmc)
+    assert env.action_space.n == 1
+
+
+def test_dtmc_env_reset():
+    dtmc = _gym_dtmc()
+    env = ModelEnv(dtmc)
+    obs, info = env.reset(seed=0)
+    assert obs == env._state_to_index[dtmc.initial_state]
+    assert info["state"] is dtmc.initial_state
+
+
+def test_dtmc_env_step():
+    dtmc = _gym_dtmc()
+    env = ModelEnv(dtmc)
+    env.reset()
+    obs, reward, terminated, truncated, info = env.step(0)
+    assert isinstance(obs, int)
+    assert reward == 0.0
+    assert not truncated
+    assert "state" in info
+
+
+def test_dtmc_env_step_invalid_action():
+    dtmc = _gym_dtmc()
+    env = ModelEnv(dtmc)
+    env.reset()
+    with pytest.raises(ActionUnavailableError):
+        env.step(1)
+
+
+# --- POMDP / HMM ModelEnv tests ---
+
+
+def _gym_pomdp():
+    """Three-state POMDP with two observations (no valuations)."""
+    pomdp = stormvogel.model.new_pomdp()
+    obs_init = pomdp.get_observation("init")
+    obs_goal = pomdp.new_observation("goal")
+
+    init = pomdp.initial_state
+    goal = pomdp.new_state("goal", observation=obs_goal)
+    loop = pomdp.new_state("loop", observation=obs_init)  # shares obs with init
+
+    a = pomdp.new_action("a")
+    b = pomdp.new_action("b")
+    init.set_choices({a: [(1.0, goal)], b: [(1.0, loop)]})
+    loop.set_choices({a: [(1.0, goal)], b: [(1.0, loop)]})
+    goal.set_choices({a: [(1.0, goal)], b: [(1.0, goal)]})
+    return pomdp
+
+
+def _gym_pomdp_with_obs_valuations():
+    """Same POMDP but with a domain-bearing variable 'y' on each observation."""
+    from stormvogel.model.variable import Variable, IntDomain
+
+    pomdp = _gym_pomdp()
+    y = Variable("y", IntDomain(0, 1))
+    obs_init = pomdp.get_observation("init")
+    obs_goal = pomdp.get_observation("goal")
+    pomdp.observation_valuations[obs_init] = {y: 0}
+    pomdp.observation_valuations[obs_goal] = {y: 1}
+    return pomdp
+
+
+def _gym_hmm():
+    """Two-state HMM: init loops with prob 0.5, goes to goal with prob 0.5."""
+    hmm = stormvogel.model.new_hmm()
+    obs_goal = hmm.new_observation("goal")
+
+    init = hmm.initial_state
+    goal = hmm.new_state("goal", observation=obs_goal)
+    init.set_choices([(0.5, init), (0.5, goal)])
+    goal.set_choices([(1.0, goal)])
+    return hmm
+
+
+def test_pomdp_env_rejects_unsupported():
+    """MA is not accepted."""
+    ma = stormvogel.model.new_ma()
+    with pytest.raises(ValueError, match="MDP, DTMC, POMDP, or HMM"):
+        ModelEnv(ma)
+
+
+def test_pomdp_env_index_obs_space():
+    """index mode: observation_space size equals number of distinct observations."""
+    pomdp = _gym_pomdp()
+    env = ModelEnv(pomdp)
+    # 2 observations: "init" and "goal"
+    assert env.observation_space.n == 2
+
+
+def test_pomdp_env_index_reset():
+    """reset returns an integer observation index, not a state index."""
+    pomdp = _gym_pomdp()
+    env = ModelEnv(pomdp)
+    obs, info = env.reset()
+    assert isinstance(obs, int)
+    assert 0 <= obs < env.observation_space.n
+    assert info["state"] is pomdp.initial_state
+
+
+def test_pomdp_env_index_step_maps_to_observation():
+    """step returns the observation index of the next state."""
+    pomdp = _gym_pomdp()
+    env = ModelEnv(pomdp)
+    env.reset()
+    a_idx = env._action_to_index[
+        next(x for x in env._index_to_action if x.label == "a")
+    ]
+    obs, _reward, terminated, truncated, info = env.step(a_idx)
+    assert isinstance(obs, int)
+    assert not truncated
+    # The returned index must equal the index of the next state's observation.
+    next_obs = env._observation_to_index[info["state"].observation]
+    assert obs == next_obs
+
+
+def test_pomdp_env_shared_observation():
+    """Two distinct states sharing one observation return the same obs index."""
+    pomdp = _gym_pomdp()
+    env = ModelEnv(pomdp)
+    obs_init = pomdp.get_observation("init")
+    init_idx = env._observation_to_index[obs_init]
+
+    loop = next(s for s in pomdp.states if s.has_label("loop"))
+    env._current_state = loop
+    obs, _r, _term, _trunc, _info = env.step(
+        env._action_to_index[next(x for x in env._index_to_action if x.label == "b")]
+    )
+    # loop --b--> loop, loop shares obs_init
+    assert obs == init_idx
+
+
+def test_pomdp_env_action_space():
+    """POMDP has an action space reflecting its actions."""
+    pomdp = _gym_pomdp()
+    env = ModelEnv(pomdp)
+    assert env.action_space.n == 2
+
+
+def test_pomdp_env_valuations_obs_space():
+    """valuations mode: observation_space is a Dict built from observation variables."""
+    pomdp = _gym_pomdp_with_obs_valuations()
+    env = ModelEnv(pomdp, obs_type="valuations")
+    assert isinstance(env.observation_space, gym.spaces.Dict)
+    # y: IntDomain(0, 1) → Discrete(2)
+    assert env.observation_space["y"].n == 2
+
+
+def test_pomdp_env_valuations_reset():
+    """valuations reset returns a dict encoding the initial observation."""
+    pomdp = _gym_pomdp_with_obs_valuations()
+    env = ModelEnv(pomdp, obs_type="valuations")
+    obs, info = env.reset()
+    assert isinstance(obs, dict)
+    assert obs["y"] == 0  # obs_init has y=0
+
+
+def test_pomdp_env_valuations_step():
+    """After stepping to goal, valuations encode obs_goal."""
+    pomdp = _gym_pomdp_with_obs_valuations()
+    env = ModelEnv(pomdp, obs_type="valuations")
+    env.reset()
+    a_idx = env._action_to_index[
+        next(x for x in env._index_to_action if x.label == "a")
+    ]
+    obs, _r, _term, _trunc, _info = env.step(a_idx)
+    assert isinstance(obs, dict)
+    assert obs["y"] == 1  # obs_goal has y=1
+
+
+def test_pomdp_env_valuations_missing_var_raises():
+    """Stepping into a state whose observation lacks a required variable raises ValueError."""
+    from stormvogel.model.variable import Variable, IntDomain
+
+    pomdp = _gym_pomdp()
+    y = Variable("y", IntDomain(0, 1))
+    # Only annotate obs_init; leave obs_goal empty so a step to goal triggers the error.
+    obs_init = pomdp.get_observation("init")
+    pomdp.observation_valuations[obs_init] = {y: 0}
+
+    env = ModelEnv(pomdp, obs_type="valuations")
+    env.reset()
+    a_idx = env._action_to_index[
+        next(x for x in env._index_to_action if x.label == "a")
+    ]
+    with pytest.raises(ValueError, match="has no value for variable"):
+        env.step(a_idx)
+
+
+def test_pomdp_env_valuations_no_domain_vars_raises():
+    """valuations mode requires at least one domain-bearing observation variable."""
+    pomdp = _gym_pomdp()  # observations have empty valuations
+    with pytest.raises(ValueError, match="domain"):
+        ModelEnv(pomdp, obs_type="valuations")
+
+
+def test_hmm_env_action_space():
+    """HMM has no actions — action space is Discrete(1)."""
+    hmm = _gym_hmm()
+    env = ModelEnv(hmm)
+    assert env.action_space.n == 1
+
+
+def test_hmm_env_index_obs_space():
+    """HMM index mode observation space is Discrete(n_observations)."""
+    hmm = _gym_hmm()
+    env = ModelEnv(hmm)
+    assert env.observation_space.n == 2
+
+
+def test_hmm_env_reset_and_step():
+    """HMM reset returns an observation index; step with action 0 advances."""
+    hmm = _gym_hmm()
+    env = ModelEnv(hmm)
+    obs, info = env.reset()
+    assert isinstance(obs, int)
+    assert info["state"] is hmm.initial_state
+    obs2, reward, _term, truncated, info2 = env.step(0)
+    assert isinstance(obs2, int)
+    assert reward == 0.0
+    assert not truncated
+    assert "state" in info2
