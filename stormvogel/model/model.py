@@ -560,6 +560,7 @@ class Model[ValueType: Value]:
         :returns: The newly created observation.
         :raises RuntimeError: If the model does not support observations, or if
             an observation with the given alias already exists.
+        :raises ValueError: If any value is outside its variable's domain.
         """
         if not self.supports_observations():
             raise RuntimeError(
