@@ -560,6 +560,7 @@ class Model[ValueType: Value]:
         :returns: The newly created observation.
         :raises RuntimeError: If the model does not support observations, or if
             an observation with the given alias already exists.
+        :raises ValueError: If any value is outside its variable's domain.
         """
         if not self.supports_observations():
             raise RuntimeError(
@@ -569,6 +570,9 @@ class Model[ValueType: Value]:
             raise RuntimeError(
                 f"An observation with alias {alias} already exists in this model."
             )
+        if valuations is not None:
+            for var, val in valuations.items():
+                var.check_valuation(val)
         obs = Observation(self)
         self.observation_aliases[obs] = alias
         self.observation_valuations[obs] = (

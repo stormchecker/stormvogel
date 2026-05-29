@@ -288,9 +288,6 @@ def stormpy_to_stormvogel(
                 else:
                     values = list(ov._get_integer_values_states(storm_var))
             except (IndexError, KeyError):
-                # Variable exists in the expression manager but has no entries
-                # in the observation valuations (it is not an observable variable).
-
                 # TODO: named predicate observables (observable "name" = expr;) will
                 # become accessible here once the stormpy API is extended.
                 continue
