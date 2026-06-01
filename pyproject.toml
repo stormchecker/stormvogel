@@ -17,7 +17,6 @@ pyvis = "^0.3.2"
 numpy = "^2.0.1"
 pandas = "^2.2.2"
 nbval = "^0.11.0"
-sphinx-autoapi = "^3.3.1"
 matplotlib = "^3.9.2"
 anyio = "^4.6.0"
 nbmake = "^1.5.4"
@@ -41,6 +40,7 @@ pytest_tagging = "^1.6.0"
 pytest-cov = "^7.1.0"
 pytest-mock = "^3.14.0"
 hypothesis = "^6.151.12"
+sphinx-autoapi = "^3.3.1"
 
 [tool.poetry.group.lint.dependencies]
 pre-commit = "^3.7.1"
@@ -58,6 +58,7 @@ pytest-cov = "^7.1.0"
 
 [tool.poetry.group.optional.dependencies]
 cairosvg = "^2.8.2"
+umbi = "^0.2.10"
 pygame = "^2.6.1"
 
 [tool.ruff]
