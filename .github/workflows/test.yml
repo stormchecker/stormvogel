@@ -44,10 +44,7 @@ jobs:
 
 
       - name: Install dependencies
-        run: poetry install
-
-      - name: Install stormpy
-        run: poetry run pip install stormpy
+        run: poetry install --with optional
 
       - name: Run tests
         run: poetry run pytest -vv --cov=stormvogel --cov-report=xml tests/
