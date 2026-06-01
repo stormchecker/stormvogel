@@ -15,17 +15,18 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       image: python:3.13
+    strategy:
+      fail-fast: false
+      matrix:
+        deps: [pinned, latest]
+    name: Test (${{ matrix.deps }} dependencies)
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           apt-get update
-          apt-get -y install curl
-          apt-get -y install git
-          apt-get -y install libcairo2-dev
-          apt-get -y install nodejs
-          apt-get -y install graphviz
+          apt-get -y install curl git libcairo2-dev nodejs graphviz
 
       - name: Configure Python
         uses: actions/setup-python@v5
@@ -42,19 +43,15 @@ jobs:
       - name: Load existing venv
         run: poetry env use system
 
-
-      - name: Install dependencies
+      - name: Install pinned dependencies
+        if: matrix.deps == 'pinned'
         run: poetry install --with optional
+
+      - name: Install latest dependencies
+        if: matrix.deps == 'latest'
+        run: |
+          poetry install --with optional
+          pip install --upgrade $(pip list --format=freeze | cut -d= -f1 | tr '\n' ' ')
 
       - name: Run tests
         run: poetry run pytest -vv --cov=stormvogel --cov-report=xml tests/
-
-      - name: List kernels
-        run: poetry run jupyter kernelspec list
-
-      - name: Glob notebooks in docs folder
-        uses: tj-actions/glob@v22
-        id: glob
-        with:
-          files: |
-            docs/**/*.ipynb
