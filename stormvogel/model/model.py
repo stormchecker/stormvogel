@@ -1067,6 +1067,16 @@ class Model[ValueType: Value]:
         """Get the type of this model."""
         return self.model_type
 
+    def validate(self):
+        from stormvogel.model.validation import validate
+
+        return validate(self)
+
+    def semantic_hash(self) -> str:
+        from stormvogel.model.fingerprint import semantic_hash
+
+        return semantic_hash(self)
+
     @deprecated(version="0.11.0", reason="use initial_state instead.")
     def get_initial_state(self) -> State:
         """Get the initial state of this model."""
