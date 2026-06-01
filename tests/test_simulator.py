@@ -8,7 +8,8 @@ from stormvogel.examples.lion import create_lion_mdp
 import stormvogel.model
 import stormvogel.result
 from stormvogel.model.variable import Variable
-import gymnasium as gym
+
+gym = pytest.importorskip("gymnasium")
 import stormvogel.simulator as simulator
 from stormvogel.gym_env import ActionUnavailableError, ModelEnv
 from model_testing import assert_models_equal, assert_paths_equal

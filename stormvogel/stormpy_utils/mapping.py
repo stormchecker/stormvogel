@@ -257,8 +257,27 @@ def stormpy_to_stormvogel(
             return
 
         nr_obs = sparsepomdp.nr_observations
+
+        # Parse observation 0's string to find which variables are actually stored.
+        # ov.manager.get_variables() returns all expression-manager variables, but
+        # calling _get_*_values_states on an absent variable triggers a fatal SIGABRT
+        # in the C++ layer that cannot be caught by Python. Format: '[o=5\t& ...]'
+        stored_names: set[str] = set()
+        if nr_obs > 0:
+            raw = ov.get_string(0).strip("[]")
+            for token in raw.split("\t& "):
+                token = token.strip()
+                if "=" in token:
+                    stored_names.add(token.split("=")[0])
+                elif token.startswith("!"):
+                    stored_names.add(token[1:])
+                elif token:
+                    stored_names.add(token)
+
         var_info: list[tuple[Variable, list]] = []
         for storm_var in storm_vars:
+            if storm_var.name not in stored_names:
+                continue
             is_bool = storm_var.has_boolean_type()
             is_int = storm_var.has_integer_type()
             if not (is_bool or is_int):
@@ -269,8 +288,6 @@ def stormpy_to_stormvogel(
                 else:
                     values = list(ov._get_integer_values_states(storm_var))
             except (IndexError, KeyError):
-                # Variable exists in the expression manager but has no entries
-                # in the observation valuations (it is not an observable variable).
                 # TODO: named predicate observables (observable "name" = expr;) will
                 # become accessible here once the stormpy API is extended.
                 continue

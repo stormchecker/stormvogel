@@ -45,7 +45,7 @@ def empty_string_to_none(x: str) -> str | None:
 
 
 def to_nr_players(model_type: ModelType) -> int:
-    if model_type in (ModelType.DTMC, ModelType.CTMC):
+    if model_type in (ModelType.DTMC, ModelType.CTMC, ModelType.HMM):
         return 0
     return 1
 
@@ -87,7 +87,7 @@ def get_model_type(
     if time == umbi.ats.TimeType.DISCRETE:
         if players == 0:
             if has_observations:
-                raise ValueError("Stormvogel does not support MCs with observations")
+                return ModelType.HMM
             return ModelType.DTMC
         if players == 1:
             if has_observations:
@@ -267,6 +267,11 @@ def translate_to_umbi(
                 var: ov_ent.new_variable(var.label) for var in all_ov_vars
             }
             for obs, vals in obs_valuations.items():
+                if obs not in obs_to_id:
+                    logger.warning(
+                        "Observation with valuations is not assigned to any state and will be skipped."
+                    )
+                    continue
                 sv_vals = {
                     var: val
                     for var, val in vals.items()
@@ -373,7 +378,21 @@ def translate_to_stormvogel(
     for s_id in range(ats.num_states):
         state = model.states[s_id]
         choices_shorthand: dict[Action, list] = {}
-        for c_id in ats.get_state_choices(s_id):
+        state_choice_ids = list(ats.get_state_choices(s_id))
+        if exit_rates is not None and state_choice_ids:
+            raw_exit_rate = exit_rates[s_id]
+            if isinstance(raw_exit_rate, umbi.datatypes.Interval):
+                raise RuntimeError(
+                    f"CTMC state {s_id} has an interval-valued exit rate, which is not supported."
+                )
+            s_exit_rate: int | float | Fraction | None = raw_exit_rate
+            if s_exit_rate == 0:
+                raise RuntimeError(
+                    f"CTMC state {s_id} has transitions but exit rate is zero."
+                )
+        else:
+            s_exit_rate = None
+        for c_id in state_choice_ids:
             action = (
                 ca_to_action[ats.choice_to_choice_action[c_id]]
                 if ats.has_choice_to_choice_action
@@ -385,18 +404,16 @@ def translate_to_stormvogel(
                 target = model.states[ats.branch_to_target[b_id]]
                 if isinstance(raw_prob, umbi.datatypes.Interval):
                     sv_interval = from_umbi_interval(raw_prob)
-                    if exit_rates is not None:
-                        # Scale probability interval by exit rate to recover rate interval
-                        rate = float(exit_rates[s_id])  # type: ignore[arg-type]
+                    if s_exit_rate is not None:
                         value = Interval(
-                            lower=sv_interval.lower * rate,
-                            upper=sv_interval.upper * rate,
+                            lower=sv_interval.lower * s_exit_rate,
+                            upper=sv_interval.upper * s_exit_rate,
                         )
                     else:
                         value = sv_interval
                 elif isinstance(raw_prob, (int, float, Fraction)):
-                    if exit_rates is not None:
-                        value = raw_prob * exit_rates[s_id]  # type: ignore[arg-type]
+                    if s_exit_rate is not None:
+                        value = raw_prob * s_exit_rate
                     else:
                         value = raw_prob
                 else:
@@ -424,8 +441,9 @@ def translate_to_stormvogel(
                 val is not None
                 and val != 0
                 and not isinstance(val, umbi.datatypes.Interval)
+                and isinstance(val, (int, float, Fraction))
             ):
-                reward_model.set_state_reward(model.states[s_id], float(val))
+                reward_model.set_state_reward(model.states[s_id], val)
 
     # State and observation valuations
     if ats.has_variable_valuations:

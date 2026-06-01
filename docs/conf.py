@@ -6,9 +6,16 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+import importlib.util
 import os
 from pathlib import Path
 import tomllib
+
+if importlib.util.find_spec("pygame") is None:
+    raise ImportError(
+        "pygame is required to build the docs (used by Gymnasium notebook examples). "
+        "Install it with: poetry install --with optional"
+    )
 
 project = "stormvogel"
 copyright = "2024, stormvogel team"

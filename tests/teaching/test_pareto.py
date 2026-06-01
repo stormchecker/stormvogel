@@ -2,6 +2,8 @@
 
 import numpy as np
 import pytest
+
+pytest.importorskip("scipy")
 import stormvogel.model
 from stormvogel.result import ParetoResult, plot_pareto_result
 from stormvogel.teaching.pareto import (

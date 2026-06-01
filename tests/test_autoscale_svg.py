@@ -2,6 +2,8 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
+pytest.importorskip("svgpathtools")
+
 from stormvogel.autoscale_svg import autoscale_svg, remove_invalid_paths
 
 SVG_NS = "http://www.w3.org/2000/svg"
