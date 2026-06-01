@@ -1,0 +1,56 @@
+name: Test without optional dependencies
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.13'
+  POETRY_VERSION: '1.8.3'
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    container:
+      image: python:3.13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get -y install curl
+          apt-get -y install git
+          apt-get -y install nodejs
+          apt-get -y install graphviz
+
+      - name: Configure Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Load existing venv
+        run: poetry env use system
+
+      - name: Install dependencies (no optional group)
+        run: poetry install --only main,test
+
+      - name: Verify base import works
+        run: poetry run python -c "import stormvogel"
+
+      - name: Run tests
+        run: poetry run pytest -vv

@@ -1,4 +1,4 @@
-name: Test without stormpy
+name: Test core (no dev/test/optional dependencies)
 
 on:
   push:
@@ -23,14 +23,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           apt-get update
-          apt-get -y install curl
-          apt-get -y install git
-          apt-get -y install libcairo2-dev
-          apt-get -y install nodejs
-          apt-get -y install graphviz
+          apt-get -y install curl git
 
       - name: Configure Python
         uses: actions/setup-python@v5
@@ -47,18 +43,8 @@ jobs:
       - name: Load existing venv
         run: poetry env use system
 
-      - name: Install dependencies
-        run: poetry install
+      - name: Install main dependencies only
+        run: poetry install --only main
 
-      - name: Run tests
-        run: poetry run pytest -vv
-
-      - name: List kernels
-        run: poetry run jupyter kernelspec list
-
-      - name: Glob notebooks in docs folder
-        uses: tj-actions/glob@v22
-        id: glob
-        with:
-          files: |
-            docs/**/*.ipynb
+      - name: Run smoke test
+        run: poetry run python smoke.py
