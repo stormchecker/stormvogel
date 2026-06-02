@@ -10,6 +10,7 @@ import stormvogel.result
 from stormvogel.model.variable import Variable
 
 gym = pytest.importorskip("gymnasium")
+import gymnasium.spaces
 import stormvogel.simulator as simulator
 from stormvogel.gym_env import ActionUnavailableError, ModelEnv
 from model_testing import assert_models_equal, assert_paths_equal
@@ -661,7 +662,7 @@ def test_mdp_env_valuations_obs_space():
     mdp = _gym_mdp_with_valuations()
     env = ModelEnv(mdp, obs_type="valuations")
     obs_space = env.observation_space
-    assert isinstance(obs_space, gym.spaces.Dict)
+    assert isinstance(obs_space, gymnasium.spaces.Dict)
     # dir: CategoricalDomain(("left","right")) → Discrete(2)
     assert obs_space["dir"].n == 2
     # done: BoolDomain → Discrete(2)
@@ -872,7 +873,7 @@ def test_pomdp_env_valuations_obs_space():
     pomdp = _gym_pomdp_with_obs_valuations()
     env = ModelEnv(pomdp, obs_type="valuations")
     obs_space = env.observation_space
-    assert isinstance(obs_space, gym.spaces.Dict)
+    assert isinstance(obs_space, gymnasium.spaces.Dict)
     # y: IntDomain(0, 1) → Discrete(2)
     assert obs_space["y"].n == 2
 

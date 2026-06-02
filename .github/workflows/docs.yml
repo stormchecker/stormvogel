@@ -83,10 +83,10 @@ jobs:
         run: poetry env use system
 
       - name: Install project dependencies
-        run: poetry install --with optional --extras stormpy
+        run: poetry install --with doc --all-extras
 
-      - name: Install extra dependencies
-        run: poetry run pip install pyscipopt paynt
+      - name: Install paynt
+        run: poetry run pip install paynt --no-deps
 
       - name: Glob python files in docs folder
         uses: tj-actions/glob@v22

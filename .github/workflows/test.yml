@@ -45,12 +45,12 @@ jobs:
 
       - name: Install pinned dependencies
         if: matrix.deps == 'pinned'
-        run: poetry install --with optional --extras stormpy
+        run: poetry install --all-extras
 
       - name: Install latest dependencies
         if: matrix.deps == 'latest'
         run: |
-          poetry install --with optional --extras stormpy
+          poetry install --all-extras
           pip install --upgrade $(pip list --format=freeze | cut -d= -f1 | tr '\n' ' ')
 
       - name: Run tests
