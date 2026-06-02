@@ -83,7 +83,7 @@ jobs:
         run: poetry env use system
 
       - name: Install project dependencies
-        run: poetry install --with optional
+        run: poetry install --with optional --extras stormpy
 
       - name: Install extra dependencies
         run: poetry run pip install pyscipopt paynt

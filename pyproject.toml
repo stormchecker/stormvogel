@@ -22,6 +22,10 @@ networkx = "^3.4.2"
 deprecated = "^1.2.18"
 sympy = "^1.14.0"
 pydot = "^4.0.1"
+stormpy = {version = "^1.13.2", optional = true}
+
+[tool.poetry.extras]
+stormpy = ["stormpy"]
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.2.2"
@@ -56,7 +60,6 @@ pillow = "^12.1.1"
 svgpathtools = "^1.6.1"
 z3-solver = "^4.0"
 scipy = "^1.13"
-stormpy = "^1.13.2"
 
 [tool.ruff]
 src = ["stormvogel", "examples"]
