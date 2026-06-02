@@ -83,7 +83,7 @@ jobs:
         run: poetry env use system
 
       - name: Install project dependencies
-        run: poetry install --with doc --all-extras
+        run: poetry install --all-extras
 
       - name: Install paynt
         run: poetry run pip install paynt --no-deps
