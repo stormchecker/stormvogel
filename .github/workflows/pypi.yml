@@ -42,9 +42,7 @@ jobs:
         run: poetry env use system
 
       - name: Install dependencies
-        run: |
-          poetry lock --no-update
-          poetry install
+        run: poetry install
 
       - name: Build and publish to pypi
         uses: JRubics/poetry-publish@v2.1

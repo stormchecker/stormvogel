@@ -42,9 +42,7 @@ jobs:
         run: poetry env use system
 
       - name: Install main dependencies only
-        run: |
-          poetry lock --no-update
-          poetry install --only main
+        run: poetry install --only main
 
       - name: Run smoke test
         run: poetry run python smoke.py

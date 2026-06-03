@@ -45,9 +45,7 @@ jobs:
         run: poetry env use system
 
       - name: Install dependencies (no optional group)
-        run: |
-          poetry lock --no-update
-          poetry install --only main,test
+        run: poetry install --only main,test
 
       - name: Verify base import works
         run: poetry run python -c "import stormvogel"

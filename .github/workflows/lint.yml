@@ -44,9 +44,7 @@ jobs:
         run: poetry env use system
 
       - name: Install dependencies
-        run: |
-          poetry lock --no-update
-          poetry install
+        run: poetry install
 
       - name: Git thinks the directories are sus
         run: git config --global --add safe.directory '*'
