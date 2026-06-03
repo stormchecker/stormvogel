@@ -1,5 +1,7 @@
 """A model state."""
 
+__all__ = ["State"]
+
 from dataclasses import dataclass, field
 from typing import Any, Iterable, TYPE_CHECKING
 from uuid import UUID, uuid4

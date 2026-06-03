@@ -1,3 +1,5 @@
+__all__ = ["model_checking"]
+
 import warnings
 
 import stormvogel.stormpy_utils.mapping as mapping

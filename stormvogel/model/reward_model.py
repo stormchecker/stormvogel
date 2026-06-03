@@ -1,5 +1,7 @@
 """Reward model."""
 
+__all__ = ["RewardModel"]
+
 from dataclasses import dataclass, field
 from stormvogel.model.value import Value
 from stormvogel.model.state import State

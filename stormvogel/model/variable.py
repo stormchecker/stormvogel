@@ -1,5 +1,15 @@
 """A model variable."""
 
+__all__ = [
+    "IntDomain",
+    "BoolDomain",
+    "CategoricalDomain",
+    "VariableDomain",
+    "Variable",
+    "Predicate",
+    "VariableKey",
+]
+
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any

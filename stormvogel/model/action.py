@@ -1,5 +1,7 @@
 """A model action."""
 
+__all__ = ["Action", "EmptyAction"]
+
 from dataclasses import dataclass
 
 

@@ -39,8 +39,9 @@ autoapi_options = [
     "show-inheritance",
     "show-module-summary",
     "special-members",
-    # "imported-members" omitted: prevents duplicate object descriptions and
-    # sympy docstring leakage. TODO: fix properly with __all__ in model submodules.
+    # "imported-members" is intentionally omitted: each symbol is documented
+    # only at its defining module (e.g. stormvogel.model.state.State), not at
+    # every re-export level. __all__ in each module makes the public API explicit.
 ]
 autosummary_generate = True
 
@@ -50,11 +51,6 @@ nbsphinx_custom_formats = {
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**/orchard/**", "conf.py"]
-
-# Suppress ambiguous cross-reference warnings caused by the intentional
-# three-level re-export chain (stormvogel.X / stormvogel.model.X / stormvogel.model.x.X).
-# TODO: fix properly by adding __all__ to model submodules and collapsing to one re-export level.
-suppress_warnings = ["ref.python"]
 
 
 # -- Options for HTML output -------------------------------------------------
