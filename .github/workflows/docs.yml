@@ -80,17 +80,14 @@ jobs:
       - name: Load existing venv
         run: poetry env use system
 
-      - name: Debug Poetry environment
-        run: |
-          poetry --version
-          poetry env info
-          poetry debug tags
-          poetry install --all-extras -vvv
-          poetry show stormpy
-          poetry run python -c "import stormpy; print(stormpy.__version__)"
+      - name: Install project dependencies
+        run: poetry install --all-extras
 
       - name: Install paynt
         run: poetry run pip install paynt --no-deps
+
+      - name: Register venv kernel
+        run: poetry run python -m ipykernel install --user --name python3
 
       - name: Glob python files in docs folder
         uses: tj-actions/glob@v22
