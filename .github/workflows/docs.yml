@@ -80,8 +80,14 @@ jobs:
       - name: Load existing venv
         run: poetry env use system
 
-      - name: Install project dependencies
-        run: poetry install --all-extras
+      - name: Debug Poetry environment
+        run: |
+          poetry --version
+          poetry env info
+          poetry debug tags
+          poetry install --all-extras -vvv
+          poetry show stormpy
+          poetry run python -c "import stormpy; print(stormpy.__version__)"
 
       - name: Install paynt
         run: poetry run pip install paynt --no-deps
