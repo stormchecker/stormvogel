@@ -8,7 +8,6 @@ concurrency:
 
 env:
   PYTHON_VERSION: '3.13'
-  POETRY_VERSION: '2.4.1'
 
 jobs:
   test:
@@ -36,12 +35,14 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: ${{ env.POETRY_VERSION }}
           virtualenvs-create: true
           virtualenvs-in-project: true
 
       - name: Load existing venv
         run: poetry env use system
+
+      - name: Normalize lock file
+        run: poetry lock --no-update
 
       - name: Install pinned dependencies
         if: matrix.deps == 'pinned'

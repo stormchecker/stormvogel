@@ -13,7 +13,6 @@ concurrency:
 
 env:
   PYTHON_VERSION: '3.13'
-  POETRY_VERSION: '2.4.1'
 
 jobs:
   pre-commit:
@@ -38,7 +37,6 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: ${{ env.POETRY_VERSION }}
           virtualenvs-create: true
           virtualenvs-in-project: true
 
@@ -46,7 +44,9 @@ jobs:
         run: poetry env use system
 
       - name: Install dependencies
-        run: poetry install
+        run: |
+          poetry lock --no-update
+          poetry install
 
       - name: Git thinks the directories are sus
         run: git config --global --add safe.directory '*'

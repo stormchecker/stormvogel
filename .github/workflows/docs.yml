@@ -18,7 +18,6 @@ permissions:
 
 env:
   PYTHON_VERSION: '3.13'
-  POETRY_VERSION: '2.4.1'
 
 jobs:
   get-tag:
@@ -75,7 +74,6 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: ${{ env.POETRY_VERSION }}
           virtualenvs-create: true
           virtualenvs-in-project: true
 
@@ -83,7 +81,9 @@ jobs:
         run: poetry env use system
 
       - name: Install project dependencies
-        run: poetry install --extras stormpy --extras gym --extras viz --extras io --extras solvers
+        run: |
+          poetry lock --no-update
+          poetry install --extras stormpy --extras gym --extras viz --extras io --extras solvers
 
       - name: Install paynt
         run: poetry run pip install paynt --no-deps
