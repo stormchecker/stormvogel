@@ -74,20 +74,13 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Load existing venv
-        run: poetry env use system
+          virtualenvs-create: false
 
       - name: Install project dependencies
         run: poetry install --all-extras
 
       - name: Install paynt
-        run: poetry run pip install paynt --no-deps
-
-      - name: Register venv kernel
-        run: poetry run python -m ipykernel install --user --name python3
+        run: pip install paynt --no-deps
 
       - name: Glob python files in docs folder
         uses: tj-actions/glob@v22
