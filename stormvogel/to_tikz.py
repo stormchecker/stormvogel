@@ -15,7 +15,6 @@ from stormvogel.model import EmptyAction
 
 _LETTER_NUM_RE = re.compile(r"^([a-zA-Z]+)(\d+)$")
 
-
 # ---------------------------------------------------------------------------
 # Label helpers
 # ---------------------------------------------------------------------------
@@ -116,15 +115,15 @@ def model_to_tikz(
         \\tikzset{state/.append style={minimum size=1.2cm, circle, draw}}
 
     The generated code uses absolute ``at (x, y)`` coordinates derived from
-    the Graphviz layout, so no relative-positioning library is needed.  Label
-    positions default to ``midway, above``; adjust per-edge for
+    the Graphviz ``dot`` layout, so no relative-positioning library is needed.
+    Label positions default to ``midway, above``; adjust per-edge for
     publication-quality output.
 
     :param model: The model to render.
     :param output_file: If given, write the TikZ snippet to this path.
     :param positions: Optional ``dict`` mapping :class:`~stormvogel.model.State`
         to ``(x, y)`` in inches (same format as ``suggest_positions()``).
-        Auto-computed via Graphviz when omitted.
+        Auto-computed via Graphviz ``dot`` when omitted.
     :param coord_scale: Multiply Graphviz inch coordinates by this factor to
         get centimetres in TikZ (default 2.5).
     :param rankdir: Graphviz layout direction used when *positions* are
@@ -142,10 +141,12 @@ def model_to_tikz(
         annotation badges outside the state circle.  For each state carrying
         one of these labels a tiny labelled node is placed at successive
         compass positions (``north east``, ``north west``, …).
-    :param layout_size: Optional ``(width_cm, height_cm)`` pair.  Passed to
-        Graphviz as a bounding-box constraint (converted from cm to inches via
-        *coord_scale*) so the layout fits within the given area.  Ignored when
-        *positions* are provided explicitly.
+    :param layout_size: Optional ``(width_cm, height_cm)`` pair passed to
+        Graphviz as a bounding-box constraint.  Ignored when *positions* are
+        provided explicitly.
+    :param ranksep: Graphviz ``ranksep`` — minimum distance between ranks.
+    :param nodesep: Graphviz ``nodesep`` — minimum distance between nodes in
+        the same rank.
     """
     from stormvogel.to_dot import _auto_action_positions, suggest_positions
 
@@ -230,12 +231,22 @@ def model_to_tikz(
     except RuntimeError:
         init_state = None
 
-    # Pre-compute initial-arrow direction from the layout.
+    # Pre-compute initial-arrow direction and per-state self-loop directions.
+    all_pos = [p for p in positions.values() if p is not None]
     if init_state is not None and positions.get(init_state) is not None:
-        all_pos = [p for s, p in positions.items() if p is not None]
         _init_where = _initial_where(positions[init_state], all_pos)
     else:
         _init_where = "above"
+
+    # For each state pick the self-loop direction most opposite to all other states.
+    _loop_dir: dict = {}
+    for _s in model.states:
+        _sp = positions.get(_s)
+        if _sp is None:
+            continue
+        _loop_dir[_s] = _initial_where(
+            _sp, all_pos, allowed=("above", "below", "left", "right")
+        )
 
     # --- State nodes ------------------------------------------------------
     lines.append(f"{ind}% States")
@@ -254,7 +265,7 @@ def model_to_tikz(
             style_parts += ["initial", "initial text=", f"initial where={_init_where}"]
         style = ", ".join(style_parts)
         lines.append(
-            f"{ind}\\node[{style}] ({nname}) at ({x:.3f}cm, {y:.3f}cm) {{{label}}};"
+            f"{ind}\\node[{style}] ({nname}) at ({x:.1f}cm, {y:.1f}cm) {{{label}}};"
         )
     lines.append("")
 
@@ -293,7 +304,7 @@ def model_to_tikz(
             aname = _action_node_name(state, action)
             lines.append(
                 f"{ind}\\node[circle, inner sep=2pt, fill=black]"
-                f" ({aname}) at ($({sname})+({dx:.3f}cm,{dy:.3f}cm)$) {{}};"
+                f" ({aname}) at ($({sname})+({dx:.1f}cm,{dy:.1f}cm)$) {{}};"
             )
         lines.append("")
 
@@ -415,11 +426,12 @@ def model_to_tikz(
             tname = _state_node_name(target)
             prob_lbl = f"${_prob_to_latex(prob)}$"
 
-            # DTMC self-loop: use TikZ loop style
+            # DTMC self-loop: use TikZ loop style with direction-aware placement
             if action == EmptyAction and target is state:
+                direction = _loop_dir.get(state, "above")
                 lines.append(
-                    f"{ind}\\draw ({sname}) edge[->, loop above]"
-                    f" node[above] {{{prob_lbl}}} ({sname});"
+                    f"{ind}\\draw ({sname}) edge[->, loop {direction}]"
+                    f" node[{direction}] {{{prob_lbl}}} ({sname});"
                 )
                 continue
 

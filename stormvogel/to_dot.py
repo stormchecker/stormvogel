@@ -108,22 +108,27 @@ def _auto_action_positions(
     model: stormvogel.model.Model,
     positions: dict,
     self_loop_radius: float = 0.7,
-    collision_threshold: float = 0.05,
+    action_radius: float = 0.5,
+    collision_threshold: float = 0.2,
     perp_offset: float = 0.3,
 ) -> dict:
     """Compute positions for action nodes whose state source has a known position.
 
-    For regular (non-self-loop) actions the action node is placed at the midpoint
-    between the source state and the probability-weighted average of target positions
-    (targets without positions are ignored in the average).
+    For regular (non-self-loop) actions the action node is placed at
+    ``action_radius`` inches from the source state in the direction of the
+    probability-weighted average of target positions.  Using a fixed radius
+    (rather than the midpoint) keeps the dot close to its source state,
+    which makes ownership visually unambiguous and avoids the dot landing
+    near or inside a distant target state's circle.
 
     For self-loop actions the action node is placed at ``self_loop_radius`` inches
     from the state, cycling through compass angles (below, lower-left, lower-right,
     …) so that multiple self-loops on the same state do not overlap.
 
     After initial placement, action nodes that land within ``collision_threshold``
-    inches of each other are spread symmetrically perpendicular to the line
-    connecting their source states, separated by ``perp_offset`` inches.
+    inches of each other are spread symmetrically perpendicular to their common
+    direction (same-source) or to the line connecting their source states
+    (different-source), separated by ``perp_offset`` inches.
     """
     # Candidate angles for self-loop placement (degrees, CCW from east).
     # Cardinals first; diagonals as fallback.
@@ -207,10 +212,40 @@ def _auto_action_positions(
                 total = sum(p for p, _ in known)
                 avg_x = sum(p * pos[0] for p, pos in known) / total
                 avg_y = sum(p * pos[1] for p, pos in known) / total
-                auto[(state, action)] = (
-                    (src[0] + avg_x) / 2,
-                    (src[1] + avg_y) / 2,
+
+                # Use midpoint only for 2-state SCCs: exactly one non-self
+                # target that has a direct back-edge to this state.  This
+                # preserves the "lens" visual (two dots flanking the midpoint,
+                # spread perpendicular) that makes 2-cycles easy to read.
+                # For everything else (DAG edges, 3+-cycles, fan-outs) keep
+                # the action dot close to its source state.
+                non_self_targets = [t for _, t in branch if t is not state]
+                is_two_cycle = (
+                    len(non_self_targets) == 1
+                    and non_self_targets[0] in model.transitions
+                    and any(
+                        any(tgt is state for _, tgt in br)
+                        for _, br in model.transitions[non_self_targets[0]]
+                        if _ != EmptyAction
+                    )
                 )
+
+                if is_two_cycle:
+                    auto[(state, action)] = (
+                        (src[0] + avg_x) / 2,
+                        (src[1] + avg_y) / 2,
+                    )
+                else:
+                    dx = avg_x - src[0]
+                    dy = avg_y - src[1]
+                    dist = math.sqrt(dx * dx + dy * dy)
+                    if dist > 0:
+                        auto[(state, action)] = (
+                            src[0] + dx / dist * action_radius,
+                            src[1] + dy / dist * action_radius,
+                        )
+                    else:
+                        auto[(state, action)] = (src[0] + action_radius, src[1])
 
     # Spread action nodes that collide (within collision_threshold) symmetrically
     # perpendicular to the line between their source states.
@@ -231,18 +266,58 @@ def _auto_action_positions(
             continue
         for k in cluster:
             resolved.add(k)
-        cx, cy = auto[cluster[0]]
-        # Perpendicular direction: use line between the first two source states.
-        s1_pos = positions[cluster[0][0]]
-        s2_pos = positions[cluster[1][0]]
-        ldx = s2_pos[0] - s1_pos[0]
-        ldy = s2_pos[1] - s1_pos[1]
-        length = math.sqrt(ldx * ldx + ldy * ldy) or 1.0
-        px, py = ldy / length, -ldx / length  # unit perpendicular (CW rotation)
-        n = len(cluster)
-        for idx, k in enumerate(cluster):
-            t = idx - (n - 1) / 2  # symmetric: e.g. -0.5, +0.5 for n=2
-            auto[k] = (cx + t * perp_offset * px, cy + t * perp_offset * py)
+        src0 = positions[cluster[0][0]]
+        src1 = positions[cluster[1][0]]
+        same_src = src0 is src1 or (src0[0] == src1[0] and src0[1] == src1[1])
+
+        if same_src:
+            # Same-source fan-out: place nodes at angles around the average
+            # direction, with a radius large enough to guarantee min_chord_in
+            # visual separation between any two neighbouring dots.
+            min_fan_angle = math.radians(25)  # minimum angular gap
+            min_chord_in = 0.4  # minimum chord distance (inches)
+
+            nat = sorted(
+                (math.atan2(auto[k][1] - src0[1], auto[k][0] - src0[0]), k)
+                for k in cluster
+            )
+            sorted_angles = [a for a, _ in nat]
+            sorted_cluster = [k for _, k in nat]
+            n = len(sorted_cluster)
+
+            # Push adjacent angles apart until all gaps >= min_fan_angle
+            fanned = list(sorted_angles)
+            for i in range(1, n):
+                if fanned[i] - fanned[i - 1] < min_fan_angle:
+                    fanned[i] = fanned[i - 1] + min_fan_angle
+            # Re-centre: preserve the original average direction
+            shift = sum(fanned) / n - sum(sorted_angles) / n
+            fanned = [a - shift for a in fanned]
+
+            # Radius so the smallest neighbouring chord >= min_chord_in
+            min_half_gap = min(fanned[i + 1] - fanned[i] for i in range(n - 1)) / 2
+            r = max(
+                action_radius, min_chord_in / (2 * math.sin(max(min_half_gap, 1e-9)))
+            )
+
+            for k, angle in zip(sorted_cluster, fanned):
+                auto[k] = (
+                    src0[0] + r * math.cos(angle),
+                    src0[1] + r * math.sin(angle),
+                )
+        else:
+            # Different-source: spread along the perpendicular to the line
+            # connecting the two source states.
+            cx = sum(auto[k][0] for k in cluster) / len(cluster)
+            cy = sum(auto[k][1] for k in cluster) / len(cluster)
+            ldx = src1[0] - src0[0]
+            ldy = src1[1] - src0[1]
+            length = math.sqrt(ldx * ldx + ldy * ldy) or 1.0
+            px, py = ldy / length, -ldx / length  # unit perpendicular (CW)
+            n = len(cluster)
+            for idx, k in enumerate(cluster):
+                t = idx - (n - 1) / 2
+                auto[k] = (cx + t * perp_offset * px, cy + t * perp_offset * py)
 
     return auto
 
@@ -255,7 +330,7 @@ def suggest_positions(
     ranksep: "float | None" = None,
     nodesep: "float | None" = None,
 ) -> dict:
-    """Run the graphviz layout engine on *model* and return the computed state positions.
+    """Run the graphviz ``dot`` layout engine on *model* and return the computed state positions.
 
     The returned dict maps each :class:`~stormvogel.model.State` to an ``(x, y)``
     tuple (inches) that can be passed directly as the ``positions`` argument of
