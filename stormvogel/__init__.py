@@ -85,6 +85,9 @@ from stormvogel.visualization import JSVisualization  # NOQA
 from stormvogel.stormpy_utils.model_checking import *  # NOQA
 import stormvogel.communication_server  # NOQA
 
+# Only for tutorial paper, not recommended way to import mapping
+import stormvogel.stormpy_utils.mapping as mapping  # NOQA
+
 
 def is_in_notebook():
     try:

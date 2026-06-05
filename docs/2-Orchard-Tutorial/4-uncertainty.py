@@ -37,7 +37,6 @@ from orchard.orchard_game_stormvogel import (
 )
 from orchard.orchard_builder import build_simple
 
-
 # %% [markdown]
 # ## Imprecise Probabilities
 # Transition probabilities in MDPs are often an abstraction of more complicated
@@ -147,7 +146,7 @@ orchard = stormvogel.bird.build_bird(
 )
 
 # Convert to stormpy model
-orchard_storm = stormvogel.mapping.stormvogel_to_stormpy(orchard)
+orchard_storm = stormvogel.stormpy_utils.mapping.stormvogel_to_stormpy(orchard)
 
 # %% [markdown]
 # Printing the model reveals that it has type IMDP now.
@@ -294,14 +293,18 @@ orchard_pmc = stormvogel.bird.build_bird(
 )
 
 # Convert to stormpy model
-orchard_stormpy_pmdp = stormvogel.mapping.stormvogel_to_stormpy(orchard_pmc)
+orchard_stormpy_pmdp = stormvogel.stormpy_utils.mapping.stormvogel_to_stormpy(
+    orchard_pmc
+)
 
 # %% [markdown]
 # After building the model, we apply the optimal winning policy from the non-parameterized game on the pMDP and obtain the induced parametric Markov chain (pMC).
 
 # %%
 # Get scheduler from MDP
-orchard_mdp_stormpy = stormvogel.mapping.stormvogel_to_stormpy(build_simple())
+orchard_mdp_stormpy = stormvogel.stormpy_utils.mapping.stormvogel_to_stormpy(
+    build_simple()
+)
 result = stormpy.model_checking(
     orchard_mdp_stormpy, properties[0].raw_formula, extract_scheduler=True
 )

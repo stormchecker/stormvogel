@@ -60,7 +60,6 @@ import stormvogel
 from enum import Enum
 from copy import deepcopy
 
-
 # %% [markdown]
 # We start the modelling by defining some general data structures for the Orchard game, for the different types of fruit `Fruit`, for the possible outcomes of the dice `DiceOutcome` and for the game state `GameState`.
 
@@ -439,7 +438,7 @@ print(orchard.summary())
 # Stormpy model
 import stormpy
 
-orchard_storm = stormvogel.mapping.stormvogel_to_stormpy(orchard)
+orchard_storm = stormvogel.stormpy_utils.mapping.stormvogel_to_stormpy(orchard)
 print(orchard_storm)
 
 # %% [markdown]
