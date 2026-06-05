@@ -23,6 +23,7 @@
 
 # %%
 from stormvogel import *
+import stormvogel
 
 # Create a new model
 ctmc = stormvogel.model.new_ctmc()
