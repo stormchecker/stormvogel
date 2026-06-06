@@ -81,7 +81,7 @@ jobs:
 
       - name: Install stormpy
         # It is unclear why we need this, but removing this regularly leads to errors.
-        run: poetry run pip install "stormpy>=1.13.2,<2"
+        run: poetry run pip install "stormpy>=1.13.2,<2" pyscipopt
 
       - name: Install paynt
         # no-deps because current conflict with stormpy version.
