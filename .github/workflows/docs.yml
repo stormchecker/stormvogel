@@ -80,7 +80,7 @@ jobs:
         run: poetry install --all-extras
 
       - name: Install paynt
-        run: poetry install paynt --no-deps
+        run: poetry run pip install paynt --no-deps
 
       - name: Glob python files in docs folder
         uses: tj-actions/glob@v22

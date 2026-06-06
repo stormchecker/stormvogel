@@ -26,6 +26,8 @@ def create_mixed_mec_mdp():
             return ["loop", "escape"]
         if s == S4:
             return ["loop", "self"]
+        if s == S5:
+            return ["self"]
         return ["loop"]
 
     def _delta(s, act):
