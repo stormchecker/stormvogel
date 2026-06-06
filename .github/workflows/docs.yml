@@ -79,6 +79,9 @@ jobs:
       - name: Install project dependencies
         run: poetry install --all-extras
 
+      - name: Install stormpy
+        run: poetry run pip install "stormpy>=1.13.2,<2"
+
       - name: Install paynt
         run: poetry run pip install paynt --no-deps
 
