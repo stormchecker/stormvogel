@@ -85,7 +85,7 @@ jobs:
 
       - name: Install paynt
         # no-deps because current conflict with stormpy version.
-        run: poetry run pip install paynt --no-deps; poetry run pip install graphviz
+        run: poetry run pip install paynt --no-deps; poetry run pip install graphviz sklearn
 
 
       - name: Glob python files in docs folder
