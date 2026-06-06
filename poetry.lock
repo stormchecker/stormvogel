@@ -4561,7 +4561,7 @@ description = "stormpy - Python Bindings for Storm"
 optional = true
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "extra == \"stormpy\""
+markers = "extra == \"storm\""
 files = [
     {file = "stormpy-1.13.2-cp310-cp310-macosx_14_0_arm64.whl", hash = "sha256:d290bd95521a64bd584017951e910f89e14fabc5bf3ec23ac78cf9622f1e3614"},
     {file = "stormpy-1.13.2-cp310-cp310-macosx_15_0_x86_64.whl", hash = "sha256:b7e2dc794f2eab8654328466e124a70d024f7234282cef2968343cbfa8e5fcd6"},
@@ -5079,10 +5079,10 @@ files = [
 gym = ["gymnasium"]
 io = ["umbi"]
 solvers = ["scipy", "z3-solver"]
-stormpy = ["stormpy"]
+storm = ["stormpy"]
 viz = ["cairosvg", "imageio", "pillow", "pygame", "svgpathtools"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "e083a6a0a6e55f1c8d166d862b7ae3eb15964b615e89a5dc791312419cdf4a40"
+content-hash = "ede4090bb54820949abd409e6fd0e781a4491ae47cb83eb5609927dc816bfe5d"

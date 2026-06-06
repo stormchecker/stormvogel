@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-stormpy = ["stormpy>=1.13.2,<2"]
+storm  = ["stormpy>=1.13.2,<2"]
 gym     = ["gymnasium>=1.1.1,<2"]
 io      = ["umbi>=0.2.10,<0.3"]
 viz     = ["cairosvg>=2.8.2,<3", "pygame>=2.6.1,<3", "imageio>=2.37.0,<3", "pillow>=12.1.1,<13", "svgpathtools>=1.6.1,<2"]
