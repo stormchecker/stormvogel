@@ -81,7 +81,7 @@ jobs:
         run: poetry install --all-extras --sync --no-interaction
 
       - name: Install stormpy
-        # It is unclear why we need this, but removing this regularly leads to errors.
+        # This is a safety net for the old main branch, which does not properly install extras above as the ci has changed.
         run: poetry run pip install "stormpy>=1.13.2,<2" pyscipopt
 
       - name: Install paynt
