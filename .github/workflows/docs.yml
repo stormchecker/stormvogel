@@ -80,10 +80,13 @@ jobs:
         run: poetry install --all-extras
 
       - name: Install stormpy
+        # It is unclear why we need this, but removing this regularly leads to errors.
         run: poetry run pip install "stormpy>=1.13.2,<2"
 
       - name: Install paynt
-        run: poetry run pip install paynt --no-deps
+        # no-deps because current conflict with stormpy version.
+        run: poetry run pip install paynt --no-deps; poetry run pip install graphviz
+
 
       - name: Glob python files in docs folder
         uses: tj-actions/glob@v22
