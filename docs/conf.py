@@ -39,9 +39,7 @@ autoapi_options = [
     "show-inheritance",
     "show-module-summary",
     "special-members",
-    # "imported-members" is intentionally omitted: each symbol is documented
-    # only at its defining module (e.g. stormvogel.model.state.State), not at
-    # every re-export level. __all__ in each module makes the public API explicit.
+    "imported-members",
 ]
 autosummary_generate = True
 
