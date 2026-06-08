@@ -18,6 +18,7 @@
 
 # %%
 from stormvogel import *
+import stormvogel
 
 lion = examples.create_lion_mdp()
 show(lion)

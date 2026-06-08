@@ -37,6 +37,7 @@
 
 # %%
 from stormvogel import *
+import stormvogel
 
 # Create an initial state. States can be of any type. In this case we use integers.
 init = 0

@@ -36,6 +36,7 @@
 
 # %%
 from stormvogel import *
+import stormvogel
 
 
 def available_actions(s):
@@ -86,7 +87,6 @@ show(bird_study)
 # ### Model API
 
 # %%
-from stormvogel import *
 
 mdp = stormvogel.model.new_mdp()
 

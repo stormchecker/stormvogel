@@ -1,5 +1,7 @@
 """Shorter api for showing a model."""
 
+__all__ = ["show", "show_bird"]
+
 from typing import Callable, Any, TYPE_CHECKING
 import stormvogel.model
 from stormvogel.layout import Layout, DEFAULT

@@ -112,7 +112,6 @@ show(new_mdp, result=result)
 # This is useful, because this allows you to combine both APIs. For example, you could create a model in stormvogel becuase it has an easy API, do some model checking in stormpy, and then convert it back to display the results. (Note that there is also a direct model checking function available that uses stormpy behind the scenes.)
 
 # %%
-from stormvogel import *
 
 stormvogel_model = examples.create_car_mdp()
 show(stormvogel_model)

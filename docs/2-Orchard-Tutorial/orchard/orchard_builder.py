@@ -58,7 +58,7 @@ def build_full():
     )
 
     # Convert to stormpy model
-    orchard_storm = stormvogel.mapping.stormvogel_to_stormpy(orchard)
+    orchard_storm = stormvogel.stormpy_utils.mapping.stormvogel_to_stormpy(orchard)
 
     return orchard, orchard_storm
 

@@ -1,5 +1,7 @@
 """A distribution object."""
 
+__all__ = ["Distribution"]
+
 import math
 from fractions import Fraction
 

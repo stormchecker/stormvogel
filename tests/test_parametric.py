@@ -8,7 +8,6 @@ import stormvogel.parametric
 import stormvogel.stormpy_utils.mapping as mapping
 from model_testing import assert_models_equal
 
-
 stormpy = pytest.importorskip("stormpy")
 
 
@@ -79,10 +78,14 @@ def test_pmc_conversion_from_stormpy():
     stormpy_pmc = (
         stormvogel.examples.stormpy_examples.stormpy_pmc.example_parametric_models_01()
     )
-    stormvogel_pmc = stormvogel.mapping.stormpy_to_stormvogel(stormpy_pmc)
+    stormvogel_pmc = stormvogel.stormpy_utils.mapping.stormpy_to_stormvogel(stormpy_pmc)
     assert stormvogel_pmc is not None
-    new_stormpy_pmc = stormvogel.mapping.stormvogel_to_stormpy(stormvogel_pmc)
-    new_stormvogel_pmc = stormvogel.mapping.stormpy_to_stormvogel(new_stormpy_pmc)
+    new_stormpy_pmc = stormvogel.stormpy_utils.mapping.stormvogel_to_stormpy(
+        stormvogel_pmc
+    )
+    new_stormvogel_pmc = stormvogel.stormpy_utils.mapping.stormpy_to_stormvogel(
+        new_stormpy_pmc
+    )
     assert_models_equal(stormvogel_pmc, new_stormvogel_pmc)
 
 

@@ -3,10 +3,10 @@
 import pytest
 import sympy as sp
 
+import stormvogel
 import stormvogel.model as sv_model
 from stormvogel.model.model import ModelType
 from stormvogel.teaching.policy_to_pmc import policy_to_pmc
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -106,7 +106,7 @@ def test_combined_expression_is_parametric():
     init_new = next(iter(pmc.state_labels["init"]))
     for _, branch in pmc.transitions[init_new]:
         for val, _ in branch:
-            assert sv_model.parametric.is_parametric(val)
+            assert stormvogel.parametric.is_parametric(val)
 
 
 def test_combined_expressions_sum_to_one():
@@ -162,8 +162,8 @@ def test_pomdp_shared_observation_shared_params():
         names = set()
         for _, branch in pmc.transitions[state]:
             for val, _ in branch:
-                if sv_model.parametric.is_parametric(val):
-                    names |= sv_model.parametric.free_symbol_names(val)
+                if stormvogel.parametric.is_parametric(val):
+                    names |= stormvogel.parametric.free_symbol_names(val)
         return names
 
     assert _param_names(s0_new) == _param_names(s1_new)
@@ -175,7 +175,7 @@ def test_pomdp_absorbing_state_copied_directly():
     s2_new = next(iter(pmc.state_labels["s2"]))
     for _, branch in pmc.transitions[s2_new]:
         for val, _ in branch:
-            assert not sv_model.parametric.is_parametric(val)
+            assert not stormvogel.parametric.is_parametric(val)
 
 
 def test_pomdp_param_count():
@@ -234,8 +234,8 @@ def test_pmdp_combined_expr_contains_x():
     all_free: set[str] = set()
     for _, branch in pmc.transitions[init_new]:
         for val, _ in branch:
-            if sv_model.parametric.is_parametric(val):
-                all_free |= sv_model.parametric.free_symbol_names(val)
+            if stormvogel.parametric.is_parametric(val):
+                all_free |= stormvogel.parametric.free_symbol_names(val)
     assert "x" in all_free
 
 
@@ -324,8 +324,8 @@ def test_monty_hall_pick_states_share_params(monty_hall_pmc):
         names: set[str] = set()
         for _, branch in monty_hall_pmc.transitions[state]:
             for val, _ in branch:
-                if sv_model.parametric.is_parametric(val):
-                    names |= sv_model.parametric.free_symbol_names(val)
+                if stormvogel.parametric.is_parametric(val):
+                    names |= stormvogel.parametric.free_symbol_names(val)
         return names
 
     d_states = [
@@ -344,7 +344,7 @@ def test_monty_hall_win_lose_not_parametric(monty_hall_pmc):
         s = next(iter(monty_hall_pmc.state_labels[lbl]))
         for _, branch in monty_hall_pmc.transitions[s]:
             for val, _ in branch:
-                assert not sv_model.parametric.is_parametric(val)
+                assert not stormvogel.parametric.is_parametric(val)
 
 
 # stormpy-gated: verify the classic Monty Hall result via AnalyseParametric

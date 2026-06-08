@@ -1,3 +1,5 @@
+__all__ = ["Observation"]
+
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
 from typing import Any, TYPE_CHECKING
