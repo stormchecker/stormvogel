@@ -12,6 +12,7 @@ from stormvogel.model.choices import Choices, ChoicesShorthand, choices_from_sho
 from stormvogel.model.action import Action, EmptyAction
 from stormvogel.model.distribution import Distribution
 from stormvogel.model.observation import Observation
+from stormvogel.model.validation import ValidationResult, validate
 from stormvogel.model.value import Value, Interval, Number
 from stormvogel.model.state import State
 from stormvogel import parametric
@@ -1022,6 +1023,9 @@ class Model[ValueType: Value]:
                 if variable not in state.valuations:
                     yield (state, variable)
 
+    def validate(self) -> ValidationResult:
+        return validate(self)
+
     # Output
 
     def to_dot(self) -> str:
@@ -1066,16 +1070,6 @@ class Model[ValueType: Value]:
     def get_type(self) -> ModelType:
         """Get the type of this model."""
         return self.model_type
-
-    def validate(self):
-        from stormvogel.model.validation import validate
-
-        return validate(self)
-
-    def semantic_hash(self) -> str:
-        from stormvogel.model.fingerprint import semantic_hash
-
-        return semantic_hash(self)
 
     @deprecated(version="0.11.0", reason="use initial_state instead.")
     def get_initial_state(self) -> State:
