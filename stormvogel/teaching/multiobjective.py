@@ -179,7 +179,7 @@ def compute_weighted_reachability_policy(
         from stormvogel.stormpy_utils.model_checking import model_checking
     except ImportError as exc:
         raise ImportError(
-            "stormpy is required for policy computation; install stormvogel[stormpy]."
+            "stormpy is required for policy computation; install stormvogel[storm]."
         ) from exc
 
     transformed = weighted_multi_target_reachability(mdp, target_labels, weights)
@@ -213,7 +213,7 @@ def evaluate_policy_reachability(
         from stormvogel.stormpy_utils.model_checking import model_checking
     except ImportError as exc:
         raise ImportError(
-            "stormpy is required for policy evaluation; install stormvogel[stormpy]."
+            "stormpy is required for policy evaluation; install stormvogel[storm]."
         ) from exc
 
     if result.scheduler is None:

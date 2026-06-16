@@ -26,10 +26,11 @@
 
 # %%
 from stormvogel import *
+from stormvogel.extensions.gym_sampling import sample_gym_to_stormvogel
 import gymnasium as gym
 
 env = gym.make("FrozenLake-v1", render_mode="rgb_array", is_slippery=False)
-model = extensions.sample_gym_to_stormvogel(env, no_samples=200)
+model = sample_gym_to_stormvogel(env, no_samples=200)
 print(model.summary())
 show(model)
 
@@ -42,7 +43,7 @@ import gymnasium as gym
 from stormvogel import *
 
 env = gym.make("Blackjack-v1", render_mode="rgb_array")
-model = extensions.sample_gym_to_stormvogel(env, no_samples=50)
+model = sample_gym_to_stormvogel(env, no_samples=50)
 print(model.summary())
 show(model)
 
@@ -58,7 +59,7 @@ def convert_obs(xs):
     return tuple([round(float(x), 1) for x in xs])
 
 
-model = extensions.sample_gym_to_stormvogel(
+model = sample_gym_to_stormvogel(
     env, no_samples=10, sample_length=5, convert_obs=convert_obs, max_size=10000
 )
 print(model.summary())

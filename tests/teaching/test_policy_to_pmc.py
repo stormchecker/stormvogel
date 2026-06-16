@@ -1,5 +1,7 @@
 """Tests for stormvogel.teaching.policy_to_pmc."""
 
+from fractions import Fraction
+
 import pytest
 import sympy as sp
 
@@ -362,11 +364,11 @@ def test_monty_hall_switch_wins_two_thirds(monty_hall_analyser):
     """Switching wins with probability 2/3."""
     result = monty_hall_analyser.evaluate_at_point(
         {
-            "y_pick_pick1": 1 / 3,
-            "y_pick_pick2": 1 / 3,
-            "y_pick_pick3": 1 / 3,
-            "y_show_stay": 0.0,
-            "y_show_switch": 1.0,
+            "y_pick_pick1": Fraction(1, 3),
+            "y_pick_pick2": Fraction(1, 3),
+            "y_pick_pick3": Fraction(1, 3),
+            "y_show_stay": 0,
+            "y_show_switch": 1,
         }
     )
     assert abs(result - 2 / 3) < 1e-6
@@ -376,11 +378,11 @@ def test_monty_hall_stay_wins_one_third(monty_hall_analyser):
     """Staying wins with probability 1/3."""
     result = monty_hall_analyser.evaluate_at_point(
         {
-            "y_pick_pick1": 1 / 3,
-            "y_pick_pick2": 1 / 3,
-            "y_pick_pick3": 1 / 3,
-            "y_show_stay": 1.0,
-            "y_show_switch": 0.0,
+            "y_pick_pick1": Fraction(1, 3),
+            "y_pick_pick2": Fraction(1, 3),
+            "y_pick_pick3": Fraction(1, 3),
+            "y_show_stay": 1,
+            "y_show_switch": 0,
         }
     )
     assert abs(result - 1 / 3) < 1e-6

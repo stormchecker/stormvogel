@@ -4,14 +4,14 @@ from collections import defaultdict
 
 import pytest
 
+gymnasium = pytest.importorskip("gymnasium")
+
 import stormvogel.model as model
 from stormvogel.extensions.gym_sampling import (
     sample_gym,
     sample_to_stormvogel,
     sample_gym_to_stormvogel,
 )
-
-gymnasium = pytest.importorskip("gymnasium")
 
 
 # ── Helpers ──────────────────────────────────────────────────────────

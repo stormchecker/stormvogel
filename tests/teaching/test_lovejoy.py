@@ -81,16 +81,18 @@ def test_raises_for_k_zero():
         lovejoy_grid_mdp(pomdp, {s0: Fraction(1)}, k=0)
 
 
-def test_raises_for_three_states_per_obs():
+def test_raises_for_four_states_per_obs():
     pomdp = sv_model.new_pomdp(create_initial_state=False)
     obs = pomdp.new_observation("z")
     sa = pomdp.new_state(observation=obs)
     sb = pomdp.new_state(observation=obs)
     sc = pomdp.new_state(observation=obs)
+    sd = pomdp.new_state(observation=obs)
     pomdp.set_choices(sa, [(Fraction(1), sa)])
     pomdp.set_choices(sb, [(Fraction(1), sb)])
     pomdp.set_choices(sc, [(Fraction(1), sc)])
-    with pytest.raises(ValueError, match="2 states per observation"):
+    pomdp.set_choices(sd, [(Fraction(1), sd)])
+    with pytest.raises(ValueError, match="3 states per observation"):
         lovejoy_grid_mdp(pomdp, {sa: Fraction(1)}, k=2)
 
 
@@ -266,3 +268,139 @@ def test_two_state_commitment_lovejoy_equals_vpomdp():
         assert result is not None
         val = result.at_init()
         assert val == pytest.approx(0.5, abs=1e-9)
+
+
+# ---------------------------------------------------------------------------
+# 3-state observation tests
+# ---------------------------------------------------------------------------
+
+
+def _make_3state_pomdp():
+    """3-state POMDP: one observation 'z' with s0, s1, s2; absorbing goal/fail.
+
+    Actions:
+      a: s0 -> goal (1), s1 -> goal (1), s2 -> fail (1)  [go from any state]
+      b: s0 -> s0 (1/3), s1 (1/3), s2 (1/3)              [mix the belief]
+         s1 -> s0 (1/3), s1 (1/3), s2 (1/3)
+         s2 -> s0 (1/3), s1 (1/3), s2 (1/3)
+    """
+    pomdp = sv_model.new_pomdp(create_initial_state=False)
+    obs_z = pomdp.new_observation("z")
+    obs_t = pomdp.new_observation("target_obs")
+    obs_f = pomdp.new_observation("fail_obs")
+    s0 = pomdp.new_state(friendly_name="s0", observation=obs_z)
+    s1 = pomdp.new_state(friendly_name="s1", observation=obs_z)
+    s2 = pomdp.new_state(friendly_name="s2", observation=obs_z)
+    goal = pomdp.new_state(["target"], friendly_name="goal", observation=obs_t)
+    fail = pomdp.new_state(friendly_name="fail", observation=obs_f)
+    act_a = pomdp.new_action("a")
+    act_b = pomdp.new_action("b")
+    for src in [s0, s1]:
+        pomdp.set_choices(
+            src,
+            {
+                act_a: [(Fraction(1), goal)],
+                act_b: [
+                    (Fraction(1, 3), s0),
+                    (Fraction(1, 3), s1),
+                    (Fraction(1, 3), s2),
+                ],
+            },
+        )
+    pomdp.set_choices(
+        s2,
+        {
+            act_a: [(Fraction(1), fail)],
+            act_b: [(Fraction(1, 3), s0), (Fraction(1, 3), s1), (Fraction(1, 3), s2)],
+        },
+    )
+    pomdp.set_choices(goal, [(Fraction(1), goal)])
+    pomdp.set_choices(fail, [(Fraction(1), fail)])
+    return pomdp, sorted([s0, s1, s2], key=lambda s: s.state_id), goal, fail
+
+
+def test_3state_result_is_mdp():
+    pomdp, states, *_ = _make_3state_pomdp()
+    mdp = lovejoy_grid_mdp(pomdp, {states[0]: Fraction(1)}, k=3)
+    assert mdp.model_type == ModelType.MDP
+
+
+def test_3state_all_transitions_sum_to_one():
+    pomdp, (sa, sb, sc), *_ = _make_3state_pomdp()
+    mdp = lovejoy_grid_mdp(
+        pomdp, {sa: Fraction(1, 3), sb: Fraction(1, 3), sc: Fraction(1, 3)}, k=3
+    )
+    for state in mdp.states:
+        for _, branch in mdp.transitions[state]:
+            total = sum(p for p, _ in branch)
+            assert total == pytest.approx(1.0, abs=1e-12)
+
+
+def test_3state_vertex_belief_has_unit_weight():
+    """A belief exactly on a grid vertex maps to that vertex with weight 1."""
+    pomdp, states, *_ = _make_3state_pomdp()
+    # Initial belief is the pure state sa — a vertex of the simplex
+    mdp = lovejoy_grid_mdp(pomdp, {states[0]: Fraction(1)}, k=4)
+    # Under action 'b' from {sa:1}, the posterior is {sa:1/3, sb:1/3, sc:1/3},
+    # which is the centroid — a grid point for k=3 but not for k=4.
+    # This test checks that starting from a vertex produces a valid MDP.
+    assert mdp.nr_states >= 1
+
+
+def test_3state_centroid_on_grid():
+    """With k=3 the centroid (1/3,1/3,1/3) is a grid point; action 'b' maps to it directly."""
+    pomdp, states, *_ = _make_3state_pomdp()
+    # Start at states[0] (pure), k=3: centroid (1/3,1/3,1/3) = grid point (1,1,1)
+    mdp = lovejoy_grid_mdp(pomdp, {states[0]: Fraction(1)}, k=3)
+    init = next(iter(mdp.state_labels["init"]))
+    b_trans = _trans_by_action(mdp, init)["b"]
+    # Under 'b' from {sa:1}, all three states each contribute 1/3 to each successor;
+    # successor belief is {sa:1/3, sb:1/3, sc:1/3} which is on the grid.
+    assert len(b_trans) == 1
+    succ_prob = next(iter(b_trans.values()))
+    assert succ_prob == pytest.approx(1.0, abs=1e-12)
+
+
+def test_3state_target_label_propagated():
+    pomdp, states, *_ = _make_3state_pomdp()
+    mdp = lovejoy_grid_mdp(pomdp, {states[0]: Fraction(1)}, k=2)
+    assert "target" in mdp.state_labels
+
+
+def test_atva20_does_not_raise():
+    """The ATVA20 POMDP has observation z0 with 3 states; should not raise."""
+    from stormvogel.examples import create_atva20_pomdp
+
+    pomdp = create_atva20_pomdp()
+    z0_states = sorted(
+        pomdp.compute_states_per_observation()[pomdp.get_observation("z0")],
+        key=lambda s: s.state_id,
+    )
+    s0 = next(s for s in z0_states if s.friendly_name == "s0")
+    mdp = lovejoy_grid_mdp(pomdp, {s0: Fraction(1)}, k=4)
+    assert mdp.model_type == ModelType.MDP
+
+
+def test_atva20_upper_bound_decreases_with_finer_grid():
+    """Lovejoy bound for ATVA20 (3-state observation) is non-increasing as k grows."""
+    pytest.importorskip("stormpy")
+    from stormvogel.examples import create_atva20_pomdp
+    from stormvogel.stormpy_utils.model_checking import model_checking
+
+    pomdp = create_atva20_pomdp()
+    z0_states = sorted(
+        pomdp.compute_states_per_observation()[pomdp.get_observation("z0")],
+        key=lambda s: s.state_id,
+    )
+    s0 = next(s for s in z0_states if s.friendly_name == "s0")
+    b0 = {s0: Fraction(1)}
+
+    bounds = []
+    for k in [2, 4, 8]:
+        mdp = lovejoy_grid_mdp(pomdp, b0, k=k)
+        result = model_checking(mdp, 'Pmax=? [F "target"]')
+        assert result is not None
+        bounds.append(result.at_init())
+
+    assert bounds[0] >= bounds[1] - 1e-9
+    assert bounds[1] >= bounds[2] - 1e-9

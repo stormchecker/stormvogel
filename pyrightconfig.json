@@ -1,10 +1,9 @@
 {
-  "venvPath": ".",
-  "venv": ".venv",
   "reportAttributeAccessIssue": false,
   "reportMissingImports": false,
   "exclude": [
-    "docs"
+    "docs",
+    ".venv"
   ],
   "ignore": [
     "**/.vscode/**",

@@ -3,7 +3,10 @@
 import pytest
 
 import stormvogel.examples as examples
+import stormvogel.model as sv_model
+import stormvogel.bird as bird
 from stormvogel.stormpy_utils.mec import detect_mecs, eliminate_mecs
+from stormvogel.teaching.mec import enumerate_ecs
 
 
 @pytest.fixture
@@ -115,6 +118,45 @@ def test_eliminate_mecs_absorbing_sink_unchanged(mixed_mec_mdp):
     assert state_map[old_s5].nr_choices == 1
 
 
+def test_eliminate_mecs_exit_action_label(mixed_mec_mdp):
+    """Exit choice from (s3, escape) is labelled 'escape_s3' on the representative."""
+    pytest.importorskip("stormpy")
+    _, state_map = eliminate_mecs(mixed_mec_mdp, remove_representative_selfloops=True)
+    old_s3 = next(s for s in mixed_mec_mdp.states if s.friendly_name == "s3")
+    rep = state_map[old_s3]
+    action_labels = {a.label for a, _ in rep.choices}
+    assert "escape_s3" in action_labels
+
+
+def test_eliminate_mecs_selfloop_label(mixed_mec_mdp):
+    """Self-loop added by stormpy to the representative is labelled 'stay'."""
+    pytest.importorskip("stormpy")
+    _, state_map = eliminate_mecs(mixed_mec_mdp)
+    old_s3 = next(s for s in mixed_mec_mdp.states if s.friendly_name == "s3")
+    rep = state_map[old_s3]
+    self_loop_labels = {
+        a.label for a, dist in rep.choices if all(succ is rep for _, succ in dist)
+    }
+    assert "stay" in self_loop_labels
+
+
+def test_eliminate_mecs_passthrough_action_labels(mixed_mec_mdp):
+    """Pass-through state (s0) keeps its original action label."""
+    pytest.importorskip("stormpy")
+    _, state_map = eliminate_mecs(mixed_mec_mdp)
+    old_s0 = next(s for s in mixed_mec_mdp.states if s.friendly_name == "s0")
+    s0_new = state_map[old_s0]
+    action_labels = {a.label for a, _ in s0_new.choices}
+    assert "loop" in action_labels
+
+
+def test_eliminate_mecs_no_friendly_names(ec_mdp):
+    """eliminate_mecs must not crash when states have no friendly names."""
+    pytest.importorskip("stormpy")
+    sv_new, _ = eliminate_mecs(ec_mdp)
+    assert len(sv_new.states) == 2
+
+
 def test_eliminate_mecs_mutually_exclusive(mixed_mec_mdp):
     pytest.importorskip("stormpy")
     with pytest.raises(ValueError):
@@ -123,3 +165,58 @@ def test_eliminate_mecs_mutually_exclusive(mixed_mec_mdp):
             remove_representative_selfloops=True,
             make_representatives_absorbing=True,
         )
+
+
+@pytest.fixture
+def buchi_mdp():
+    def _available_actions(s):
+        if s in [0, 1, 4]:
+            return ["a", "b"]
+        return ["a"]
+
+    def _delta(s, act):
+        if s == 0:
+            return [(0.6, 1), (0.4, 3)] if act == "a" else [(0.2, 1), (0.8, 3)]
+        if s == 1:
+            return [(1.0, 2)] if act == "a" else [(1.0, 1)]
+        if s == 2:
+            return [(1.0, 1)]
+        if s == 3:
+            return [(1.0, 4)]
+        if s == 4:
+            return [(1.0, 3)] if act == "a" else [(1.0, 4)]
+
+    def _labels(s):
+        base = ["s0", "s1", "s2", "s3", "s4"][s]
+        return [base, "T"] if s == 1 else [base]
+
+    def _friendly_name(s):
+        return ["s0", "s1 ★", "s2", "s3", "s4"][s]
+
+    return bird.build_bird(
+        _delta,
+        available_actions=_available_actions,
+        init=0,
+        labels=_labels,
+        modeltype=sv_model.ModelType.MDP,
+        friendly_names=_friendly_name,
+    )
+
+
+def test_enumerate_ecs_buchi_count(buchi_mdp):
+    ecs = enumerate_ecs(buchi_mdp)
+    assert len(ecs) == 6
+
+
+def test_enumerate_ecs_buchi_satisfies(buchi_mdp):
+    ecs = enumerate_ecs(buchi_mdp)
+    target = list(buchi_mdp.get_states_with_label("T"))
+    satisfying = [ec for ec in ecs if ec.satisfies_buchi(target)]
+    not_satisfying = [ec for ec in ecs if not ec.satisfies_buchi(target)]
+    assert len(satisfying) == 3
+    assert len(not_satisfying) == 3
+
+
+def test_enumerate_ecs_mixed_mec_count(mixed_mec_mdp):
+    ecs = enumerate_ecs(mixed_mec_mdp)
+    assert len(ecs) == 4

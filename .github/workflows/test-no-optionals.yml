@@ -1,4 +1,4 @@
-name: Test without stormpy
+name: Test without optional dependencies
 
 on:
   push:
@@ -13,7 +13,6 @@ concurrency:
 
 env:
   PYTHON_VERSION: '3.13'
-  POETRY_VERSION: '1.8.3'
 
 jobs:
   test:
@@ -23,12 +22,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           apt-get update
           apt-get -y install curl
           apt-get -y install git
-          apt-get -y install libcairo2-dev
           apt-get -y install nodejs
           apt-get -y install graphviz
 
@@ -40,25 +38,17 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: ${{ env.POETRY_VERSION }}
           virtualenvs-create: true
           virtualenvs-in-project: true
 
       - name: Load existing venv
         run: poetry env use system
 
-      - name: Install dependencies
-        run: poetry install
+      - name: Install dependencies (no optional group)
+        run: poetry install --only main,test
+
+      - name: Verify base import works
+        run: poetry run python -c "import stormvogel"
 
       - name: Run tests
         run: poetry run pytest -vv
-
-      - name: List kernels
-        run: poetry run jupyter kernelspec list
-
-      - name: Glob notebooks in docs folder
-        uses: tj-actions/glob@v22
-        id: glob
-        with:
-          files: |
-            docs/**/*.ipynb

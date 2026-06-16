@@ -8,7 +8,9 @@ from stormvogel.examples.lion import create_lion_mdp
 import stormvogel.model
 import stormvogel.result
 from stormvogel.model.variable import Variable
-import gymnasium as gym
+
+gym = pytest.importorskip("gymnasium")
+import gymnasium.spaces
 import stormvogel.simulator as simulator
 from stormvogel.gym_env import ActionUnavailableError, ModelEnv
 from model_testing import assert_models_equal, assert_paths_equal
@@ -659,13 +661,14 @@ def test_mdp_env_reward():
 def test_mdp_env_valuations_obs_space():
     mdp = _gym_mdp_with_valuations()
     env = ModelEnv(mdp, obs_type="valuations")
-    assert isinstance(env.observation_space, gym.spaces.Dict)
+    obs_space = env.observation_space
+    assert isinstance(obs_space, gymnasium.spaces.Dict)
     # dir: CategoricalDomain(("left","right")) → Discrete(2)
-    assert env.observation_space["dir"].n == 2
+    assert obs_space["dir"].n == 2
     # done: BoolDomain → Discrete(2)
-    assert env.observation_space["done"].n == 2
+    assert obs_space["done"].n == 2
     # x: IntDomain(0,1) → Discrete(2)
-    assert env.observation_space["x"].n == 2
+    assert obs_space["x"].n == 2
 
 
 def test_mdp_env_valuations_reset_returns_dict():
@@ -869,9 +872,10 @@ def test_pomdp_env_valuations_obs_space():
     """valuations mode: observation_space is a Dict built from observation variables."""
     pomdp = _gym_pomdp_with_obs_valuations()
     env = ModelEnv(pomdp, obs_type="valuations")
-    assert isinstance(env.observation_space, gym.spaces.Dict)
+    obs_space = env.observation_space
+    assert isinstance(obs_space, gymnasium.spaces.Dict)
     # y: IntDomain(0, 1) → Discrete(2)
-    assert env.observation_space["y"].n == 2
+    assert obs_space["y"].n == 2
 
 
 def test_pomdp_env_valuations_reset():

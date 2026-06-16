@@ -5,6 +5,8 @@ import os
 
 import pytest
 
+pytest.importorskip("umbi")
+
 import stormvogel.examples as ex
 import stormvogel.model as sv
 import stormvogel.umbi as svu

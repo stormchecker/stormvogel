@@ -45,8 +45,8 @@ def rectangular_region_to_stormpy(
     for name, (lo, hi) in region.bounds.items():
         var = name_to_var[name]
         bounds[var] = (
-            stormpy.pycarl.cln.Rational(float(lo)),
-            stormpy.pycarl.cln.Rational(float(hi)),
+            stormpy.pycarl.cln.Rational(Fraction(lo)),
+            stormpy.pycarl.cln.Rational(Fraction(hi)),
         )
     return stormpy.pars.ParameterRegion(bounds)
 
@@ -145,7 +145,7 @@ class AnalyseParametric:
         """
         assert stormpy is not None
         instantiation: dict = {
-            self._name_to_var[name]: stormpy.pycarl.cln.Rational(float(val))
+            self._name_to_var[name]: stormpy.pycarl.cln.Rational(Fraction(val))
             for name, val in valuation.items()
         }
         result = self._instantiation_checker.check(self.env, instantiation)

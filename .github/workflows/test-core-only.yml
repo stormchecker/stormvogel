@@ -1,6 +1,11 @@
-name: Test
+name: Test core (no dev/test/optional dependencies)
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
@@ -14,18 +19,13 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       image: python:3.13
-    strategy:
-      fail-fast: false
-      matrix:
-        deps: [pinned, latest]
-    name: Test (${{ matrix.deps }} dependencies)
     steps:
       - uses: actions/checkout@v4
 
       - name: Install system dependencies
         run: |
           apt-get update
-          apt-get -y install curl git libcairo2-dev nodejs graphviz
+          apt-get -y install curl git
 
       - name: Configure Python
         uses: actions/setup-python@v5
@@ -41,15 +41,8 @@ jobs:
       - name: Load existing venv
         run: poetry env use system
 
-      - name: Install pinned dependencies
-        if: matrix.deps == 'pinned'
-        run: poetry install --all-extras
+      - name: Install main dependencies only
+        run: poetry install --only main
 
-      - name: Install latest dependencies
-        if: matrix.deps == 'latest'
-        run: |
-          poetry install --all-extras
-          pip install --upgrade $(pip list --format=freeze | cut -d= -f1 | tr '\n' ' ')
-
-      - name: Run tests
-        run: poetry run pytest -vv --cov=stormvogel --cov-report=xml tests/
+      - name: Run smoke test
+        run: poetry run python scripts/smoke.py

@@ -24,13 +24,14 @@
 # %%
 import gymnasium as gym
 from stormvogel.extensions.gym_grid import *
+from stormvogel.extensions.gifs import embed_gif
 from stormvogel import *
 
 env = gym.make(
     "FrozenLake-v1", render_mode="rgb_array", is_slippery=False
 )  # Set `is_slippery=True` for stochastic behavior
 filename = gymnasium_render_model_gif(env, filename="ice1")
-extensions.embed_gif(filename)
+embed_gif(filename)
 
 # %% [markdown]
 # We can convert it into an explicit MDP as follows. Each state has a label that relates to the coordinates of the tile.
@@ -62,7 +63,7 @@ from stormvogel.extensions.gym_grid import *
 
 gs = to_gymnasium_scheduler(sv_model, res.scheduler, GRID_ACTION_LABEL_MAP)
 filename = gymnasium_render_model_gif(env, gs, filename="ice2")
-extensions.embed_gif(filename)
+embed_gif(filename)
 
 # %% [markdown]
 # We can also define a function to act as the scheduler on the model and convert it to a gymnasium scheduler. This one just keeps going in a loop...
@@ -89,7 +90,7 @@ def my_scheduler(s: stormvogel.model.State):
 
 gs = to_gymnasium_scheduler(sv_model, my_scheduler, GRID_ACTION_LABEL_MAP)
 filename = gymnasium_render_model_gif(env, gs, filename="ice3")
-extensions.embed_gif(filename)
+embed_gif(filename)
 
 # %% [markdown]
 # ## CliffWalking
@@ -111,7 +112,7 @@ from stormvogel.stormpy_utils.model_checking import model_checking
 res = model_checking(sv_model, 'Pmax=? [F "target"]')
 gs = to_gymnasium_scheduler(sv_model, res.scheduler, GRID_ACTION_LABEL_MAP)
 filename = gymnasium_render_model_gif(env, gs, filename="cliff")
-extensions.embed_gif(filename)
+embed_gif(filename)
 
 # %% [markdown]
 # ## Taxi
@@ -133,4 +134,4 @@ target = get_target_state(env)
 res = model_checking(sv_model, "Rmax=? [S]")
 gs = to_gymnasium_scheduler(sv_model, res.scheduler, GRID_ACTION_LABEL_MAP)
 filename = gymnasium_render_model_gif(env, gs, filename="taxi")
-extensions.embed_gif(filename)
+embed_gif(filename)

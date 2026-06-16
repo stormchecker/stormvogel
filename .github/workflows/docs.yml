@@ -18,7 +18,6 @@ permissions:
 
 env:
   PYTHON_VERSION: '3.13'
-  POETRY_VERSION: '1.8.3'
 
 jobs:
   get-tag:
@@ -75,18 +74,20 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Load existing venv
-        run: poetry env use system
+          virtualenvs-create: false
+          version: 2.4.1 # Pin to avoid issues
 
       - name: Install project dependencies
-        run: poetry install
+        run: poetry install --all-extras --sync --no-interaction
 
-      - name: Install extra dependencies
-        run: poetry run pip install stormpy pyscipopt paynt
+      - name: Install stormpy
+        # This is a safety net for the old main branch, which does not properly install extras above as the ci has changed.
+        run: poetry run pip install "stormpy>=1.13.2,<2" pyscipopt
+
+      - name: Install paynt
+        # no-deps because current conflict with stormpy version.
+        run: poetry run pip install paynt --no-deps; poetry run pip install graphviz scikit-learn
+
 
       - name: Glob python files in docs folder
         uses: tj-actions/glob@v22

@@ -223,7 +223,7 @@ def stormpy_to_stormvogel(
                 values = [i in true_states for i in range(sparsemodel.nr_states)]
                 domain: BoolDomain | IntDomain = BoolDomain()
             elif storm_var.has_integer_type():
-                values = list(sv.get_integer_values_states(storm_var))
+                values = list(sv.get_values_states(storm_var))
                 domain = IntDomain(min(values), max(values))
             else:
                 continue

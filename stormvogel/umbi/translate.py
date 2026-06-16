@@ -437,12 +437,7 @@ def translate_to_stormvogel(
         reward_model = model.new_reward_model(name)
         for s_id in range(ats.num_states):
             val = ann.state_values[s_id]
-            if (
-                val is not None
-                and val != 0
-                and not isinstance(val, umbi.datatypes.Interval)
-                and isinstance(val, (int, float, Fraction))
-            ):
+            if isinstance(val, (int, float, Fraction)) and val != 0:
                 reward_model.set_state_reward(model.states[s_id], val)
 
     # State and observation valuations

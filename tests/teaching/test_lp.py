@@ -9,6 +9,8 @@ Sections:
 import fractions
 
 import pytest
+
+pytest.importorskip("z3")
 import sympy as sp
 import stormvogel
 import stormvogel.model

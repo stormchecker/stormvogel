@@ -20,6 +20,7 @@
 
 # %%
 from stormvogel import *
+from stormvogel.extensions.gifs import render_model_gif, embed_gif
 from time import sleep
 import IPython.display as ipd
 
@@ -49,5 +50,5 @@ show(mdp)
 
 import IPython.display as ipd
 
-filename = extensions.render_model_gif(mdp, state_to_image, filename="die")
-extensions.embed_gif(filename)
+filename = render_model_gif(mdp, state_to_image, filename="die")
+embed_gif(filename)

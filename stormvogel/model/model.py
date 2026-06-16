@@ -24,6 +24,7 @@ from stormvogel.model.choices import Choices, ChoicesShorthand, choices_from_sho
 from stormvogel.model.action import Action, EmptyAction
 from stormvogel.model.distribution import Distribution
 from stormvogel.model.observation import Observation
+from stormvogel.model.validation import ValidationResult, validate
 from stormvogel.model.value import Value, Interval, Number
 from stormvogel.model.state import State
 from stormvogel import parametric
@@ -1033,6 +1034,9 @@ class Model[ValueType: Value]:
             for variable in variables:
                 if variable not in state.valuations:
                     yield (state, variable)
+
+    def validate(self) -> ValidationResult:
+        return validate(self)
 
     # Output
 
