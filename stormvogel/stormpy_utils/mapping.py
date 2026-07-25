@@ -189,35 +189,12 @@ def stormpy_to_stormvogel(
         if not sparsemodel.has_state_valuations():
             return
         sv = sparsemodel.state_valuations
-        storm_vars = list(sv.manager.get_variables())
+        storm_vars = sv.get_all_variables()
         if not storm_vars:
             return
 
-        # TODO: stormpy's state_valuations API is under active development.
-        # sv.manager.get_variables() returns *all* expression-manager variables
-        # (constants, auxiliary variables, etc.), not only those stored in the
-        # state valuation table.  Calling get_*_values_states on a variable
-        # that is absent triggers a fatal SIGABRT inside the C++ layer, so we
-        # cannot catch it.  As a workaround we parse the string representation
-        # of state 0 to discover which variables are actually stored.
-        # Format example: '[!start\t& ax=0\t& ay=0]'
-        # Update this once the stormpy API exposes a reliable variable list.
-        stored_names: set[str] = set()
-        if sparsemodel.nr_states > 0:
-            raw = sv.get_string(0).strip("[]")
-            for token in raw.split("\t& "):
-                token = token.strip()
-                if "=" in token:
-                    stored_names.add(token.split("=")[0])
-                elif token.startswith("!"):
-                    stored_names.add(token[1:])
-                elif token:
-                    stored_names.add(token)
-
         var_info: list[tuple[Variable, list]] = []
         for storm_var in storm_vars:
-            if storm_var.name not in stored_names:
-                continue
             if storm_var.has_boolean_type():
                 true_states = set(sv.get_boolean_values_states(storm_var))
                 values = [i in true_states for i in range(sparsemodel.nr_states)]
@@ -240,7 +217,7 @@ def stormpy_to_stormvogel(
 
         Only observable variables (from the ``observables ... endobservables`` block)
         are imported; named predicate observables (``observable "name" = expr;``)
-        require a stormpy API that is not yet available and are therefore skipped.
+        are not exposed as stored variables and are skipped.
 
         For each variable present in the observation valuations, the domain is
         inferred from all observed values: ``BoolDomain`` for boolean variables,
@@ -252,45 +229,22 @@ def stormpy_to_stormvogel(
         if not sparsepomdp.has_observation_valuations():
             return
         ov = sparsepomdp.observation_valuations
-        storm_vars = list(ov.manager.get_variables())
+        storm_vars = ov.get_all_variables()
         if not storm_vars:
             return
 
         nr_obs = sparsepomdp.nr_observations
 
-        # Parse observation 0's string to find which variables are actually stored.
-        # ov.manager.get_variables() returns all expression-manager variables, but
-        # calling _get_*_values_states on an absent variable triggers a fatal SIGABRT
-        # in the C++ layer that cannot be caught by Python. Format: '[o=5\t& ...]'
-        stored_names: set[str] = set()
-        if nr_obs > 0:
-            raw = ov.get_string(0).strip("[]")
-            for token in raw.split("\t& "):
-                token = token.strip()
-                if "=" in token:
-                    stored_names.add(token.split("=")[0])
-                elif token.startswith("!"):
-                    stored_names.add(token[1:])
-                elif token:
-                    stored_names.add(token)
-
         var_info: list[tuple[Variable, list]] = []
         for storm_var in storm_vars:
-            if storm_var.name not in stored_names:
-                continue
             is_bool = storm_var.has_boolean_type()
             is_int = storm_var.has_integer_type()
             if not (is_bool or is_int):
                 continue
-            try:
-                if is_bool:
-                    values = [bool(v) for v in ov._get_boolean_values_states(storm_var)]
-                else:
-                    values = list(ov._get_integer_values_states(storm_var))
-            except (IndexError, KeyError):
-                # TODO: named predicate observables (observable "name" = expr;) will
-                # become accessible here once the stormpy API is extended.
-                continue
+            if is_bool:
+                values = [bool(v) for v in ov.get_values_states(storm_var)]
+            else:
+                values = list(ov.get_values_states(storm_var))
             if len(values) != nr_obs:
                 continue
             domain: BoolDomain | IntDomain = (

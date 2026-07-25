@@ -6,7 +6,7 @@ from stormvogel.model.action import EmptyAction
 from stormvogel.model.distribution import Distribution
 from stormvogel.model.model import Model, ModelType
 from stormvogel.model.value import Number, Value, Interval
-from stormvogel.model.variable import Variable, BoolDomain, CategoricalDomain
+from stormvogel.model.variable import Variable, BoolDomain, CategoricalDomain, IntDomain
 
 if TYPE_CHECKING:
     import stormpy
@@ -231,7 +231,7 @@ def build_reward_models(
     return reward_models
 
 
-def build_state_valuations(model: Model) -> "stormpy.storage.StateValuation | None":
+def build_state_valuations(model: Model) -> "stormpy.storage.Valuations | None":
     """Build a stormpy state valuations object from a stormvogel model.
 
     Only variables with a declared domain are exported. Variables without a
@@ -272,16 +272,36 @@ def build_state_valuations(model: Model) -> "stormpy.storage.StateValuation | No
         return None
 
     manager = stormpy.ExpressionManager()
-    builder = stormpy.storage.StateValuationsBuilder()
+    desc_builder = stormpy.storage.ValuationDescriptionBuilder(manager)
 
+    bool_expr_vars: dict[Variable, "stormpy.storage.Variable"] = {}
+    int_expr_vars: dict[Variable, "stormpy.storage.Variable"] = {}
     for var in bool_vars:
-        builder.add_variable(manager.create_boolean_variable(var.label))
+        expr_var = manager.create_boolean_variable(var.label)
+        desc_builder.add_boolean_variable(expr_var)
+        bool_expr_vars[var] = expr_var
     for var in int_vars:
-        builder.add_variable(manager.create_integer_variable(var.label))
+        expr_var = manager.create_integer_variable(var.label)
+        if isinstance(var.domain, CategoricalDomain):
+            lower_bound, upper_bound = 0, len(var.domain.values) - 1
+        elif isinstance(var.domain, IntDomain):
+            lower_bound, upper_bound = var.domain.lo, var.domain.hi
+        else:
+            raise AssertionError(f"Unexpected domain type for {var!r}")
+        desc_builder.add_integer_variable(expr_var, lower_bound, upper_bound)
+        int_expr_vars[var] = expr_var
+
+    class_description = desc_builder.build_class_description()
+    num_entities = (
+        max(model.stormpy_id[state] for state in model.states) + 1
+        if model.states
+        else 0
+    )
+    valuations = stormpy.storage.Valuations(class_description, manager, num_entities)
 
     for state in model.states:
         vals = state.valuations
-        bool_values = []
+        entity = model.stormpy_id[state]
         for var in bool_vars:
             v = vals.get(var)
             if v is None:
@@ -289,8 +309,7 @@ def build_state_valuations(model: Model) -> "stormpy.storage.StateValuation | No
                     f"State {state!r} has no value for variable {var!r}. "
                     "Stormpy requires total valuations."
                 )
-            bool_values.append(bool(v))
-        int_values = []
+            valuations.write_value(entity, bool_expr_vars[var], bool(v))
         for var in int_vars:
             v = vals.get(var)
             if v is None:
@@ -299,16 +318,10 @@ def build_state_valuations(model: Model) -> "stormpy.storage.StateValuation | No
                     "Stormpy requires total valuations."
                 )
             if isinstance(var.domain, CategoricalDomain):
-                int_values.append(var.domain.values.index(v))
-            else:
-                int_values.append(int(v))
-        builder.add_state(
-            model.stormpy_id[state],
-            boolean_values=bool_values,
-            integer_values=int_values,
-        )
+                v = var.domain.values.index(v)
+            valuations.write_value(entity, int_expr_vars[var], int(v))
 
-    return builder.build()
+    return valuations
 
 
 def _apply_state_valuations(components, state_valuations) -> None:
