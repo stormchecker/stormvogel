@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from stormvogel.model.model import Model
     from stormvogel.model.state import State
 
-from stormvogel.teaching.belief import Belief
+from stormvogel.teaching.belief import Belief, BeliefValue
 
 
 # ---------------------------------------------------------------------------
@@ -59,12 +59,12 @@ class AlphaVector:
 # ---------------------------------------------------------------------------
 
 
-def dot(alpha: AlphaVector, belief: Belief) -> Fraction:
+def dot(alpha: AlphaVector, belief: Belief) -> "BeliefValue":
     """Inner product α · b = Σ_s α(s) · b(s).
 
     :param alpha: An alpha vector.
     :param belief: A belief distribution over states.
-    :returns: The inner product as an exact :class:`~fractions.Fraction`.
+    :returns: The inner product, exact unless the belief uses ``float``.
     """
     return sum(
         (alpha.values.get(s, Fraction(0)) * p for s, p in belief.items()),
@@ -98,7 +98,7 @@ def value_function(alphas: list[AlphaVector], belief: Belief) -> Fraction:
     :param belief: A belief point.
     :returns: max_{α ∈ alphas} α · b.
     """
-    return max(dot(a, belief) for a in alphas)
+    return max(dot(a, belief) for a in alphas)  # type: ignore[return-value]
 
 
 # ---------------------------------------------------------------------------

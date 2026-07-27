@@ -17,33 +17,69 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterator, Mapping
 from fractions import Fraction
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 from uuid import UUID
 
 if TYPE_CHECKING:
     from stormvogel.model.model import Model
+    from stormvogel.model.observation import Observation
     from stormvogel.model.state import State
 
 
-class Belief(Mapping["State", Fraction]):
-    """Exact probability distribution over POMDP states.
+#: Decimal places that floating-point belief values are rounded to when forming
+#: a belief's identity key.  Belief search depends on recognising a belief it
+#: has already seen, and two runs of floating-point arithmetic that are
+#: mathematically equal routinely differ in the last bits.  Without rounding
+#: those would be distinct nodes and the search would revisit the same belief
+#: forever.  :class:`~fractions.Fraction` values are exact and used as-is.
+FLOAT_KEY_PRECISION = 12
+
+#: Relative gain a floating-point path probability must show before a search
+#: accepts it as a genuinely better path.  Two float computations of the same
+#: path routinely differ in the last bits, and a search that treats every such
+#: difference as an improvement reopens the same belief forever.  Exact
+#: arithmetic needs no tolerance and uses zero.
+FLOAT_IMPROVEMENT_TOLERANCE = 1e-12
+
+#: A belief probability: an exact :class:`~fractions.Fraction` by default, or a
+#: ``float`` when a belief is tracked in approximate arithmetic.
+BeliefValue = Union[Fraction, float]
+
+
+def _key_value(probability):
+    """Return the identity-key form of a belief probability."""
+    if isinstance(probability, Fraction):
+        return probability
+    return round(float(probability), FLOAT_KEY_PRECISION)
+
+
+class Belief(Mapping["State", "BeliefValue"]):
+    """Probability distribution over POMDP states.
 
     Implements the :class:`~collections.abc.Mapping` interface over
     ``State → Fraction``, so ``b[s]``, ``b.get(s, 0)``, ``b.items()``,
     etc. all work directly.  Zero-probability states are silently dropped.
 
+    Values are normally :class:`~fractions.Fraction`, which makes belief
+    identity exact.  ``float`` values are also accepted, in which case two
+    beliefs count as the same node when their probabilities agree to
+    :data:`FLOAT_KEY_PRECISION` decimal places.
+
     :param dist: Mapping from POMDP states to their belief probabilities.
     """
 
-    def __init__(self, dist: "dict[State, Fraction]") -> None:
-        self.dist: dict["State", Fraction] = {s: p for s, p in dist.items() if p > 0}
-        self._key: tuple[tuple[UUID, Fraction], ...] = tuple(
-            sorted(((s.state_id, p) for s, p in self.dist.items()), key=lambda x: x[0])
+    def __init__(self, dist: "Mapping[State, BeliefValue]") -> None:
+        self.dist: dict["State", BeliefValue] = {s: p for s, p in dist.items() if p > 0}
+        self._key: tuple[tuple[UUID, BeliefValue], ...] = tuple(
+            sorted(
+                ((s.state_id, _key_value(p)) for s, p in self.dist.items()),
+                key=lambda x: x[0],
+            )
         )
 
     # --- Mapping interface ---------------------------------------------------
 
-    def __getitem__(self, key: "State") -> Fraction:
+    def __getitem__(self, key: "State") -> "BeliefValue":
         return self.dist[key]
 
     def __iter__(self) -> Iterator["State"]:
@@ -78,7 +114,9 @@ class Belief(Mapping["State", Fraction]):
         return str(state.state_id)
 
     @staticmethod
-    def _fraction_latex(f: Fraction) -> str:
+    def _fraction_latex(f: "BeliefValue") -> str:
+        if not isinstance(f, Fraction):
+            return f"{float(f):.4g}"
         if f.denominator == 1:
             return str(f.numerator)
         return rf"\tfrac{{{f.numerator}}}{{{f.denominator}}}"
@@ -93,7 +131,7 @@ class Belief(Mapping["State", Fraction]):
         return rf"$\textstyle\left\{{\, {entries} \,\right\}}$"
 
     @classmethod
-    def normalize(cls, unnorm: "dict[State, Fraction]") -> "Belief":
+    def normalize(cls, unnorm: "Mapping[State, BeliefValue]") -> "Belief":
         """Normalize *unnorm* to a probability distribution and return a Belief.
 
         :param unnorm: Unnormalized weights (non-negative, at least one > 0).
@@ -103,6 +141,133 @@ class Belief(Mapping["State", Fraction]):
         if total == 0:
             raise ValueError("Cannot normalize a zero-weight distribution.")
         return cls({s: v / total for s, v in unnorm.items()})
+
+
+class BeliefTransitions:
+    """Precomputed transition/observation index of a POMDP.
+
+    Walking :attr:`~stormvogel.model.model.Model.transitions` once and reusing
+    the result makes repeated belief updates cheap, which matters for anything
+    that explores the belief space (see
+    :mod:`stormvogel.teaching.belief_mdp` and
+    :mod:`stormvogel.teaching.belief_search`).
+
+    Works for HMMs as well as POMDPs.  An HMM simply has one unlabelled
+    choice per state, so :meth:`actions` returns ``[""]`` everywhere and
+    :meth:`successors` degenerates to the forward pass of a hidden Markov
+    model: the belief splits over the observations reachable in one step.
+
+    Set *exact* to ``False`` to track beliefs in ``float`` instead of
+    :class:`~fractions.Fraction`.  Exact arithmetic keeps belief identity
+    exact, but the denominators grow with every step of a trace, so the cost
+    per belief rises the deeper the search goes; floats keep it flat at the
+    price of rounding (see :data:`FLOAT_KEY_PRECISION`).
+
+    :param pomdp: A POMDP or HMM with deterministic (non-stochastic) state
+        observations.
+    :param exact: Whether to use exact rational arithmetic.
+    :raises ValueError: If *pomdp* does not support observations, or if any
+        state has a stochastic observation.
+    """
+
+    def __init__(self, pomdp: "Model", exact: bool = True) -> None:
+        from stormvogel.model.distribution import Distribution
+
+        if not pomdp.supports_observations():
+            raise ValueError(f"Expected a POMDP or HMM; got {pomdp.model_type}.")
+
+        for state in pomdp.states:
+            if isinstance(pomdp.state_observations.get(state), Distribution):
+                raise ValueError(
+                    f"State {state!r} has a stochastic observation; "
+                    "belief tracking requires deterministic state observations."
+                )
+
+        self.pomdp = pomdp
+        #: Whether beliefs are tracked in exact rational arithmetic.
+        self.exact = exact
+        #: Zero of the arithmetic in use, for seeding sums.
+        self.zero = Fraction(0) if exact else 0.0
+        convert = Fraction if exact else float
+        #: Observation of each POMDP state (``None`` if it has none).
+        self.obs_of: dict["State", "Observation | None"] = {
+            s: pomdp.state_observations.get(s) for s in pomdp.states
+        }
+        #: ``trans[state][action_label]`` → ``[(probability, target), ...]``.
+        #: The label of the empty action is the empty string.
+        self.trans: dict["State", dict[str, list[tuple[BeliefValue, "State"]]]] = {}
+        #: Action labels available in each state.
+        self.actions_of: dict["State", set[str]] = {}
+        for state, choices in pomdp.transitions.items():
+            per_action: dict[str, list[tuple[BeliefValue, "State"]]] = {}
+            for action, branch in choices:
+                label = action.label if action.label is not None else ""
+                per_action[label] = [(convert(val), tgt) for val, tgt in branch]
+            self.trans[state] = per_action
+            self.actions_of[state] = set(per_action)
+
+    def actions(self, belief: Belief) -> list[str]:
+        """Return the action labels available in *every* support state of *belief*.
+
+        A belief only has a well-defined choice of action if all states it
+        might be in offer that action, so the intersection is taken.
+
+        :param belief: A belief over POMDP states.
+        :returns: Sorted list of commonly available action labels.
+        """
+        action_sets = [self.actions_of.get(s, set()) for s in belief]
+        if not action_sets:
+            return []
+        return sorted(action_sets[0].intersection(*action_sets[1:]))
+
+    def successors(
+        self, belief: Belief, action_label: str
+    ) -> "list[tuple[BeliefValue, Observation | None, Belief]]":
+        """Expand *belief* under *action_label*, one entry per reachable observation.
+
+        Applies the Bayesian belief update
+        :math:`b'(s') \\propto \\sum_s P(s' \\mid s, a)\\, b(s)` to the
+        successor states grouped by their observation.  The returned
+        probabilities are the observation probabilities
+        :math:`P(o \\mid b, a)` and sum to 1 whenever *action_label* is
+        available in the whole support of *belief*.
+
+        :param belief: The current belief.
+        :param action_label: Label of the action taken (empty string for the
+            empty action).
+        :returns: List of ``(P(o | b, a), observation, updated belief)``
+            triples, one per observation reachable with positive probability.
+        """
+        # Unnormalised weight of every reachable successor state.
+        unnorm: dict["State", BeliefValue] = {}
+        for s, b_s in belief.items():
+            for prob, tgt in self.trans.get(s, {}).get(action_label, []):
+                unnorm[tgt] = unnorm.get(tgt, self.zero) + b_s * prob
+
+        # Group successor states by the observation they emit.
+        groups: dict["Observation | None", dict["State", BeliefValue]] = {}
+        for tgt, weight in unnorm.items():
+            group = groups.setdefault(self.obs_of[tgt], {})
+            group[tgt] = group.get(tgt, self.zero) + weight
+
+        result: "list[tuple[BeliefValue, Observation | None, Belief]]" = []
+        for obs, group in groups.items():
+            obs_prob = sum(group.values(), self.zero)
+            if obs_prob > 0:
+                result.append((obs_prob, obs, Belief.normalize(group)))
+        return result
+
+    def observation(self, belief: Belief) -> "Observation | None":
+        """Return the observation shared by the whole support of *belief*.
+
+        :param belief: A belief over POMDP states.
+        :returns: The common :class:`~stormvogel.model.observation.Observation`,
+            or ``None`` if the support is empty or its states disagree.
+        """
+        observations = {self.obs_of.get(s) for s in belief}
+        if len(observations) == 1:
+            return observations.pop()
+        return None
 
 
 def initial_belief(pomdp: "Model", obs_alias: str) -> Belief:
@@ -127,7 +292,7 @@ def initial_belief(pomdp: "Model", obs_alias: str) -> Belief:
         pomdp.get_observation(obs_alias)
     ]
 
-    unnorm: defaultdict["State", Fraction] = defaultdict(Fraction)
+    unnorm: defaultdict["State", BeliefValue] = defaultdict(Fraction)
     for action, branch in pomdp.transitions[init]:
         if action is not EmptyAction:
             continue
@@ -171,7 +336,7 @@ def belief_update(
         pomdp.get_observation(obs_alias)
     ]
 
-    unnorm: defaultdict["State", Fraction] = defaultdict(Fraction)
+    unnorm: defaultdict["State", BeliefValue] = defaultdict(Fraction)
     for state, choices in pomdp.transitions.items():
         b_s = belief.get(state, Fraction(0))
         if b_s == 0:

@@ -2,9 +2,12 @@ __all__ = [
     "stormvogel_to_stormpy",
     "value_to_stormvogel",
     "stormpy_to_stormvogel",
+    "stormpy_pomdp_to_hmm",
     "from_prism",
 ]
 
+import json
+from fractions import Fraction
 from typing import TYPE_CHECKING, Union, cast
 
 from stormvogel import parametric
@@ -605,6 +608,88 @@ def stormpy_to_stormvogel(
         raise NotImplementedError(
             "Converting this type of model to stormvogel is not yet supported"
         )
+
+
+def stormpy_pomdp_to_hmm(sparsepomdp) -> Model:
+    """Convert a stormpy POMDP to a stormvogel HMM by uniformising its actions.
+
+    Each state's choices are merged into one unlabelled distribution, every
+    action contributing with weight ``1 / n``::
+
+        P(s' | s) = (1/n) · Σ_a P(s' | s, a)
+
+    Unlike :func:`stormpy_to_stormvogel`, this does **not** require the POMDP to
+    be canonic.  Canonicalisation exists to give every choice a unique action
+    label, and uniformising removes the actions altogether, so models whose
+    states have several equally-labelled choices — common in PRISM benchmarks
+    with an unnamed nondeterministic adversary — convert fine here even though
+    :func:`stormpy.pomdp.make_canonic` rejects them.
+
+    Observations become one stormvogel
+    :class:`~stormvogel.model.observation.Observation` per POMDP observation
+    class, aliased by its observation valuation when the model has one and by
+    its index otherwise.  State labels, the initial state and state reward
+    models are carried over; state *valuations* and action rewards are not.
+
+    See :func:`~stormvogel.transformations.pomdp_to_hmm.pomdp_to_hmm` for the
+    same transformation on a model that is already a stormvogel POMDP.
+
+    :param sparsepomdp: The stormpy sparse POMDP to convert.
+    :returns: The equivalent stormvogel HMM.
+    """
+    from stormvogel.model.model import new_hmm
+
+    model = new_hmm(create_initial_state=False)
+
+    has_observation_valuations = sparsepomdp.has_observation_valuations()
+    observations = {}
+    for observation_class in range(sparsepomdp.nr_observations):
+        alias = str(observation_class)
+        if has_observation_valuations:
+            valuations = json.loads(
+                str(sparsepomdp.observation_valuations.get_json(observation_class))
+            )
+            if valuations:
+                alias = ", ".join(f"{k}={v}" for k, v in sorted(valuations.items()))
+        observations[observation_class] = model.new_observation(alias)
+
+    for label in sparsepomdp.labeling.get_labels():
+        model.add_label(label)
+
+    states = [
+        model.new_state(
+            labels=list(state.labels),
+            observation=observations[sparsepomdp.get_observation(state.id)],
+        )
+        for state in sparsepomdp.states
+    ]
+    for state_id in sparsepomdp.initial_states:
+        states[state_id].add_label("init")
+
+    matrix = sparsepomdp.transition_matrix
+    for index, _state in enumerate(sparsepomdp.states):
+        rows = range(matrix.get_row_group_start(index), matrix.get_row_group_end(index))
+        if not rows:
+            continue
+        weight = Fraction(1, len(rows))
+        merged: dict[State, float] = {}
+        for row_index in rows:
+            for entry in matrix.get_row(row_index):
+                target = states[entry.column]
+                contribution = float(entry.value()) * weight
+                merged[target] = merged.get(target, 0.0) + contribution
+        model.set_choices(
+            states[index], [(value, target) for target, value in merged.items()]
+        )
+
+    for reward_model_name in sparsepomdp.reward_models:
+        rewards = sparsepomdp.get_reward_model(reward_model_name)
+        if rewards.has_state_rewards:
+            model.new_reward_model(reward_model_name).set_from_rewards_vector(
+                rewards.state_rewards
+            )
+
+    return model
 
 
 def from_prism(prism_code="stormpy.storage.storage.PrismProgram"):

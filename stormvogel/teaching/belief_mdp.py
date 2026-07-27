@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 import stormvogel.bird as _bird
-from stormvogel.teaching.belief import Belief
+from stormvogel.teaching.belief import Belief, BeliefTransitions, BeliefValue
 
 if TYPE_CHECKING:
     from stormvogel.model.model import Model
@@ -109,7 +109,6 @@ def belief_mdp(
         observation, *initial_belief* does not sum to 1, or a scalar *cutoff*
         is outside [0, 1].
     """
-    from stormvogel.model.distribution import Distribution
     from stormvogel.model.model import ModelType
 
     if pomdp.model_type != ModelType.POMDP:
@@ -138,26 +137,8 @@ def belief_mdp(
 
     # --- Precompute POMDP structure ------------------------------------------
 
-    # Validate: all state observations must be deterministic.
-    for state in pomdp.states:
-        if isinstance(pomdp.state_observations.get(state), Distribution):
-            raise ValueError(
-                f"State {state!r} has a stochastic observation; "
-                "belief_mdp requires deterministic state observations."
-            )
-
-    # obs_of[state]: the Observation object for each POMDP state (may be None).
-    obs_of: dict["State", object] = {
-        s: pomdp.state_observations.get(s) for s in pomdp.states
-    }
-
-    # trans[state][action_label] = [(Fraction prob, target_state), ...]
-    trans: dict["State", dict[str, list[tuple[Fraction, "State"]]]] = {}
-    for state, choices in pomdp.transitions.items():
-        trans[state] = {}
-        for action, branch in choices:
-            al = action.label if action.label is not None else ""
-            trans[state][al] = [(Fraction(val), tgt) for val, tgt in branch]
+    # Also validates that all state observations are deterministic.
+    index = BeliefTransitions(pomdp)
 
     reward_names: list[str] = [rm.name for rm in pomdp.rewards]
     rewards_of: dict["State", dict[str, Fraction | int | float]] = {
@@ -171,30 +152,6 @@ def belief_mdp(
     # Beliefs already committed to full expansion.
     seen: set[Belief] = {Belief(initial_b)}
 
-    # --- Belief update -------------------------------------------------------
-
-    def _update(belief: Belief, action_label: str) -> list[tuple[Fraction, Belief]]:
-        """Return [(Pr(obs|b,a), updated Belief)] for each reachable observation."""
-        # Unnormalised weight of each reachable successor state.
-        unnorm: dict["State", Fraction] = {}
-        for s, b_s in belief.dist.items():
-            for prob, tgt in trans.get(s, {}).get(action_label, []):
-                unnorm[tgt] = unnorm.get(tgt, Fraction(0)) + b_s * prob
-
-        # Group successor states by their observation.
-        obs_groups: dict[object, dict["State", Fraction]] = {}
-        for tgt, weight in unnorm.items():
-            grp = obs_groups.setdefault(obs_of[tgt], {})
-            grp[tgt] = grp.get(tgt, Fraction(0)) + weight
-
-        # Normalise each group into a Belief.
-        result: list[tuple[Fraction, Belief]] = []
-        for grp in obs_groups.values():
-            obs_prob = sum(grp.values(), Fraction(0))
-            if obs_prob > 0:
-                result.append((obs_prob, Belief.normalize(grp)))
-        return result
-
     # --- Bird callbacks ------------------------------------------------------
 
     def available_actions(b: object) -> list[str]:
@@ -204,7 +161,7 @@ def belief_mdp(
             return ["cut"]
         assert isinstance(b, Belief)
         support = list(b.dist)
-        action_sets = [set(trans.get(s, {}).keys()) for s in support]
+        action_sets = [index.actions_of.get(s, set()) for s in support]
         common = action_sets[0].intersection(*action_sets[1:]) if action_sets else set()
         for s, aset in zip(support, action_sets):
             extra = aset - common
@@ -217,7 +174,7 @@ def belief_mdp(
                 )
         return sorted(common)
 
-    def _cut_prob(b: FrontierBelief) -> Fraction:
+    def _cut_prob(b: FrontierBelief) -> "BeliefValue":
         """Probability of reaching target from frontier belief b under cutoff c."""
         if _scalar_cutoff is not None:
             return _scalar_cutoff
@@ -240,7 +197,7 @@ def belief_mdp(
             return [(cp, _TARGET), (1 - cp, _SINK)]
         assert isinstance(b, Belief)
         result = []
-        for obs_prob, successor in _update(b, action):
+        for obs_prob, _obs, successor in index.successors(b, action):
             if successor in seen:
                 result.append((obs_prob, successor))
             elif len(seen) < max_states:

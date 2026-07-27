@@ -23,7 +23,7 @@ from __future__ import annotations
 import warnings
 from fractions import Fraction
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import stormvogel.bird as _bird
 from stormvogel.teaching.belief import Belief
@@ -215,8 +215,10 @@ def lovejoy_grid_mdp(
         return sorted(common)
 
     def delta(b: Belief, action: str) -> list:
+        # lovejoy_grid_mdp builds its beliefs from Fractions throughout, so
+        # the approximate-arithmetic branch of Belief never applies here.
         unnorm: dict["State", Fraction] = {}
-        for s, b_s in b.dist.items():
+        for s, b_s in cast("dict[State, Fraction]", b.dist).items():
             for prob, tgt in trans.get(s, {}).get(action, []):
                 unnorm[tgt] = unnorm.get(tgt, Fraction(0)) + b_s * prob
 

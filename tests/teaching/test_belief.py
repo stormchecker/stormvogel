@@ -4,7 +4,13 @@ import pytest
 from fractions import Fraction
 
 from stormvogel.examples.four_state_reachability import create_4state_reachability_pomdp
-from stormvogel.teaching.belief import belief_trace, belief_update, initial_belief
+from stormvogel.teaching.belief import (
+    Belief,
+    BeliefTransitions,
+    belief_trace,
+    belief_update,
+    initial_belief,
+)
 
 
 @pytest.fixture(scope="module")
@@ -14,6 +20,11 @@ def model():
 
 def _name(model, s):
     return model.friendly_names.get(s)
+
+
+def _alias(observation):
+    assert observation is not None
+    return observation.alias
 
 
 # ---------------------------------------------------------------------------
@@ -118,3 +129,61 @@ def test_belief_trace_two_steps(model):
     # Step 2: s1 = 0.8*(11/20) + 0.3*(9/20) = 88/200 + 27/200 = 115/200 = 23/40
     s1 = next(s for s in b2 if _name(model, s) == "s1")
     assert b2[s1] == Fraction(23, 40)
+
+
+# ---------------------------------------------------------------------------
+# BeliefTransitions
+# ---------------------------------------------------------------------------
+
+
+def test_transitions_actions_are_the_common_ones(model):
+    index = BeliefTransitions(model)
+    b0 = initial_belief(model, "z")
+    assert index.actions(b0) == ["a", "b"]
+    target = next(s for s in model.states if _name(model, s) == "target")
+    # The absorbing target has a single unnamed choice.
+    assert index.actions(Belief({target: Fraction(1)})) == [""]
+
+
+def test_transitions_successors_split_by_observation(model):
+    index = BeliefTransitions(model)
+    b0 = initial_belief(model, "z")
+    successors = index.successors(b0, "a")
+    by_alias = {_alias(obs): (p, b) for p, obs, b in successors}
+    # a from the uniform belief: target with 0.7/2 + 0.2/2 = 9/20, sink with 11/20.
+    assert by_alias.keys() == {"z_target", "z_sink"}
+    assert by_alias["z_target"][0] == Fraction(9, 20)
+    assert by_alias["z_sink"][0] == Fraction(11, 20)
+
+
+def test_transitions_successor_probabilities_sum_to_one(model):
+    index = BeliefTransitions(model)
+    b0 = initial_belief(model, "z")
+    for action in index.actions(b0):
+        assert sum(p for p, _, _ in index.successors(b0, action)) == Fraction(1)
+
+
+def test_transitions_successors_match_belief_update(model):
+    index = BeliefTransitions(model)
+    b0 = initial_belief(model, "z")
+    for probability, obs, successor in index.successors(b0, "b"):
+        assert probability > 0
+        assert successor == belief_update(model, b0, "b", _alias(obs))
+
+
+def test_transitions_observation_of_a_belief(model):
+    index = BeliefTransitions(model)
+    b0 = initial_belief(model, "z")
+    assert _alias(index.observation(b0)) == "z"
+    start = next(s for s in model.states if _name(model, s) == "start")
+    s1 = next(s for s in model.states if _name(model, s) == "s1")
+    # A belief whose support spans several observations has none of its own.
+    mixed = Belief({start: Fraction(1, 2), s1: Fraction(1, 2)})
+    assert index.observation(mixed) is None
+
+
+def test_transitions_rejects_non_pomdp():
+    import stormvogel.model as sv_model
+
+    with pytest.raises(ValueError, match="POMDP"):
+        BeliefTransitions(sv_model.new_dtmc())
