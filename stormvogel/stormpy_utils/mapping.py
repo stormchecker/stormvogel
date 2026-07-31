@@ -5,6 +5,7 @@ __all__ = [
     "from_prism",
 ]
 
+from fractions import Fraction
 from typing import TYPE_CHECKING, Union, cast
 
 from stormvogel import parametric
@@ -21,7 +22,13 @@ from stormvogel.model.state import State
 from stormvogel.model.choices import Choices, choices_from_shorthand
 from stormvogel.model.action import EmptyAction
 from stormvogel.model.value import Value, Interval
-from stormvogel.model.variable import Variable, BoolDomain, IntDomain
+from stormvogel.model.variable import (
+    Variable,
+    BoolDomain,
+    CategoricalDomain,
+    IntDomain,
+    RationalDomain,
+)
 
 if TYPE_CHECKING:
     import stormpy
@@ -181,7 +188,9 @@ def stormpy_to_stormvogel(
 
         For each variable, the domain is inferred from all state values:
         ``BoolDomain`` for boolean variables, ``IntDomain(min, max)`` for
-        integer variables. Rational variables are skipped.
+        integer variables, ``CategoricalDomain`` for string variables,
+        ``RationalDomain`` for rational variables (converted to exact
+        Python ``Fraction`` values).
 
         :param model: The stormvogel model to add valuations to.
         :param sparsemodel: The stormpy sparse model containing the valuations.
@@ -195,13 +204,21 @@ def stormpy_to_stormvogel(
 
         var_info: list[tuple[Variable, list]] = []
         for storm_var in storm_vars:
+            domain: BoolDomain | IntDomain | CategoricalDomain | RationalDomain
+            values: list
             if storm_var.has_boolean_type():
-                true_states = set(sv.get_boolean_values_states(storm_var))
+                true_states = set(sv.get_boolean_values_states_as_bitvector(storm_var))
                 values = [i in true_states for i in range(sparsemodel.nr_states)]
-                domain: BoolDomain | IntDomain = BoolDomain()
+                domain = BoolDomain()
             elif storm_var.has_integer_type():
                 values = list(sv.get_values_states(storm_var))
                 domain = IntDomain(min(values), max(values))
+            elif storm_var.has_string_type():
+                values = list(sv.get_values_states(storm_var))
+                domain = CategoricalDomain(tuple(sorted(set(values))))
+            elif storm_var.has_rational_type():
+                values = [Fraction(str(v)) for v in sv.get_values_states(storm_var)]
+                domain = RationalDomain()
             else:
                 continue
             var_info.append((Variable(storm_var.name, domain), values))
@@ -215,13 +232,15 @@ def stormpy_to_stormvogel(
     ):
         """Add observation valuations from a stormpy POMDP to the stormvogel model.
 
-        Only observable variables (from the ``observables ... endobservables`` block)
-        are imported; named predicate observables (``observable "name" = expr;``)
-        are not exposed as stored variables and are skipped.
+        Both observable variables (from the ``observables ... endobservables`` block)
+        and named predicate observables (``observable "name" = expr;``) are imported;
+        both are exposed as stored variables by stormpy's observation valuations API.
 
         For each variable present in the observation valuations, the domain is
         inferred from all observed values: ``BoolDomain`` for boolean variables,
-        ``IntDomain(min, max)`` for integer variables.
+        ``IntDomain(min, max)`` for integer variables, ``CategoricalDomain``
+        for string variables, ``RationalDomain`` for rational variables
+        (converted to exact Python ``Fraction`` values).
 
         :param model: The stormvogel POMDP model to populate.
         :param sparsepomdp: The stormpy sparse POMDP containing the observation valuations.
@@ -239,17 +258,31 @@ def stormpy_to_stormvogel(
         for storm_var in storm_vars:
             is_bool = storm_var.has_boolean_type()
             is_int = storm_var.has_integer_type()
-            if not (is_bool or is_int):
+            is_str = storm_var.has_string_type()
+            is_rational = storm_var.has_rational_type()
+            if not (is_bool or is_int or is_str or is_rational):
                 continue
+            values: list
             if is_bool:
-                values = [bool(v) for v in ov.get_values_states(storm_var)]
+                true_obs = set(ov.get_boolean_values_states_as_bitvector(storm_var))
+                values = [i in true_obs for i in range(nr_obs)]
+            elif is_rational:
+                values = [Fraction(str(v)) for v in ov.get_values_states(storm_var)]
+                if len(values) != nr_obs:
+                    continue
             else:
                 values = list(ov.get_values_states(storm_var))
-            if len(values) != nr_obs:
-                continue
-            domain: BoolDomain | IntDomain = (
-                BoolDomain() if is_bool else IntDomain(min(values), max(values))
-            )
+                if len(values) != nr_obs:
+                    continue
+            domain: BoolDomain | IntDomain | CategoricalDomain | RationalDomain
+            if is_bool:
+                domain = BoolDomain()
+            elif is_str:
+                domain = CategoricalDomain(tuple(sorted(set(values))))
+            elif is_rational:
+                domain = RationalDomain()
+            else:
+                domain = IntDomain(min(values), max(values))
             var_info.append((Variable(storm_var.name, domain), values))
 
         if not var_info:
