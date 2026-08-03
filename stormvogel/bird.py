@@ -37,7 +37,7 @@ type BirdAction = str
 def _valid_input[ValueType: stormvogel.model.Value](
     delta: Callable[[Any, BirdAction], Any] | Callable[[Any], Any],
     init: Any,
-    rewards: Callable[[Any], dict[str, ValueType]] | None = None,
+    rewards: Callable[[Any], dict[str, ValueType] | None] | None = None,
     labels: Callable[[Any], Sequence[str] | str | None] | None = None,
     available_actions: Callable[[Any], list[BirdAction]] | None = None,
     observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
@@ -58,7 +58,8 @@ def _valid_input[ValueType: stormvogel.model.Value](
         that support actions, or ``(state,)`` otherwise.
     :param init: Initial state passed to the callbacks.
     :param rewards: Optional callback mapping a state to a dict of reward
-        model name to reward value.
+        model name to reward value. Missing returns and omitted reward models
+        default to zero.
     :param labels: Optional callback mapping a state to a list of label
         strings, a single label string, or ``None``.
     :param available_actions: Optional callback returning the list of
@@ -175,7 +176,7 @@ def build_bird[ValueType: stormvogel.model.Value](
         | Callable[[Any], Sequence[tuple[ValueType, Any]] | Sequence[Any] | None]
     ),
     init: Any,
-    rewards: Callable[[Any], dict[str, ValueType]] | None = None,
+    rewards: Callable[[Any], dict[str, ValueType] | None] | None = None,
     labels: Callable[[Any], Sequence[str] | str | None] | None = None,
     friendly_names: Callable[[Any], str] | None = None,
     available_actions: Callable[[Any], list[BirdAction]] | None = None,
@@ -200,7 +201,8 @@ def build_bird[ValueType: stormvogel.model.Value](
         For models without actions it takes ``(state,)``.
     :param init: Initial state of the model.
     :param rewards: Optional callback mapping a state to a dict of reward
-        model name to reward value.
+        model name to reward value. A missing return or an omitted reward
+        model is interpreted as a reward of zero.
     :param labels: Optional callback mapping a state to a list of label
         strings, a single label string, or ``None``.
     :param friendly_names: Optional callback returning a friendly name for a state.
@@ -387,35 +389,33 @@ def build_bird[ValueType: stormvogel.model.Value](
 
         if num_params == 2:
 
-            def rewards_1(s: Any) -> dict[str, ValueType]:
+            def rewards_1(s: Any, /) -> dict[str, ValueType] | None:
                 return rewards(s, None)  # type: ignore
         else:
-            rewards_1 = cast(Callable[[Any], dict[str, ValueType]], rewards)  # type: ignore
+            rewards_1 = cast(Callable[[Any], dict[str, ValueType] | None], rewards)
 
-        for name in rewards_1(init).keys():
-            model.new_reward_model(name)
-
-        initial_state_rewards = rewards_1(init)
-        for state, s in state_lookup.items():
+        state_rewards: dict[Any, dict[str, ValueType]] = {}
+        reward_names: list[str] = []
+        for state in state_lookup:
             rewarddict = rewards_1(state)
-
             if rewarddict is None:
-                raise ValueError(
-                    f"On input {state}, the rewards function does not have a return value"
-                )
-            if not isinstance(rewarddict, dict):
+                rewarddict = {}
+            elif not isinstance(rewarddict, dict):
                 raise ValueError(
                     f"On input {state}, the rewards function does not return a dictionary. Make sure to change it to the format {{<rewardmodel name>:<reward>,...}}"
                 )
-            if rewarddict.keys() != initial_state_rewards.keys():
-                raise ValueError(
-                    "Make sure that the rewards function returns a dictionary with the same keys on each return"
-                )
 
+            state_rewards[state] = rewarddict
+            for name in rewarddict:
+                if name not in reward_names:
+                    reward_names.append(name)
+
+        reward_models = {name: model.new_reward_model(name) for name in reward_names}
+        for state, rewarddict in state_rewards.items():
             s = state_lookup[state]
             assert s is not None
-            for index, reward in enumerate(rewarddict.items()):
-                model.rewards[index].set_state_reward(s, reward[1])
+            for name, reward_model in reward_models.items():
+                reward_model.set_state_reward(s, rewarddict.get(name, 0))
     # we add the observations
     if observations is not None:
         for state, s in state_lookup.items():
