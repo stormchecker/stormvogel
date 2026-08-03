@@ -420,6 +420,44 @@ def test_bird_dtmc_arbitrary():
     assert_models_equal(bird_model, regular_model)
 
 
+def test_bird_partial_rewards_default_to_zero():
+    def delta(s):
+        if s == "init":
+            return [(0.5, "rewarded"), (0.5, "other")]
+        return None
+
+    def rewards(s) -> dict[str, model.Value] | None:
+        if s == "rewarded":
+            return {"R": 100}
+        if s == "other":
+            return {"cost": 5}
+        # A missing return is a partial reward definition.
+
+    bird_model = bird.build_bird(
+        delta,
+        init="init",
+        rewards=rewards,
+        labels=lambda s: s,
+        modeltype=model.ModelType.DTMC,
+    )
+
+    by_label = {
+        label: state
+        for state in bird_model.states
+        for label in state.labels
+        if label in {"init", "rewarded", "other"}
+    }
+    reward_model = bird_model.get_rewards("R")
+    cost_model = bird_model.get_rewards("cost")
+
+    assert reward_model.get_state_reward(by_label["init"]) == 0
+    assert reward_model.get_state_reward(by_label["rewarded"]) == 100
+    assert reward_model.get_state_reward(by_label["other"]) == 0
+    assert cost_model.get_state_reward(by_label["init"]) == 0
+    assert cost_model.get_state_reward(by_label["rewarded"]) == 0
+    assert cost_model.get_state_reward(by_label["other"]) == 5
+
+
 def test_bird_mdp_empty_action():
     # we test if we can also provide empty actions
     def available_actions(s):
