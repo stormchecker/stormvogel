@@ -622,7 +622,7 @@ def test_bird_pomdp():
         return [str(s.x)]
 
     def observations(s: bird.BirdState):
-        return 5
+        return "5"
 
     def delta(s: bird.BirdState, action: bird.BirdAction):
         if action == left:
@@ -761,9 +761,9 @@ def test_bird_stochastic_observations():
 
     def observations(s: bird.BirdState):
         if s.x == 0:
-            return [(0.6, 0), (0.4, 1)]
+            return [(0.6, "0"), (0.4, "1")]
         else:
-            return 2
+            return "2"
 
     bird_model = bird.build_bird(
         delta=delta,
@@ -810,9 +810,9 @@ def test_bird_stochastic_observations_make_deterministic():
 
     def observations(s: bird.BirdState):
         if s.x == 0:
-            return [(0.3, 0), (0.7, 1)]
+            return [(0.3, "0"), (0.7, "1")]
         else:
-            return 2
+            return "2"
 
     bird_model = bird.build_bird(
         delta=delta,

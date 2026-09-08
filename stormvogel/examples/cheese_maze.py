@@ -2,20 +2,17 @@ from fractions import Fraction
 from stormvogel import bird
 from stormvogel.model import ModelType
 
-# Observation IDs: encoded as the set of open directions (N/E/S/W), except for
-# special states. Observations for corridor and bottom-row cells are exceptions
-# to the adjacency rule (they get "NS", "cheese", or "dragon" regardless of
-# their actual adjacency structure).
-_OBS_ID = {
-    "start": 0,
-    "NS": 1,  # all blue corridor cells: only N and S are open
-    "cheese": 2,
-    "dragon": 3,
-    "ES": 4,  # top-row left corner
-    "EW": 5,  # top-row non-junction cells (above a wall)
-    "ESW": 6,  # top-row junction cells (above a corridor)
-    "SW": 7,  # top-row right corner
-}
+# Observation names: encoded as the set of open directions (N/E/S/W), except
+# for special states. Observations for corridor and bottom-row cells are
+# exceptions to the adjacency rule (they get "NS", "cheese", or "dragon"
+# regardless of their actual adjacency structure). The names used are:
+#   "start"                 the start state
+#   "NS"                    all blue corridor cells: only N and S are open
+#   "cheese" / "dragon"     bottom-row cells
+#   "ES"                    top-row left corner
+#   "EW"                    top-row non-junction cells (above a wall)
+#   "ESW"                   top-row junction cells (above a corridor)
+#   "SW"                    top-row right corner
 
 
 def create_cheese_maze(
@@ -86,25 +83,25 @@ def create_cheese_maze(
             (1 - slippery, bird.BirdState(row=nr, col=nc)),
         ]
 
-    def observations(s) -> int:
+    def observations(s) -> str:
         if getattr(s, "type", None) == "start":
-            return _OBS_ID["start"]
+            return "start"
         row, col = s.row, s.col
         if row == bottom_row:
-            return _OBS_ID["cheese"] if col == middle_col else _OBS_ID["dragon"]
+            return "cheese" if col == middle_col else "dragon"
         if row > 0:
-            return _OBS_ID["NS"]
+            return "NS"
         # top row: observation = open directions
         has_s = col % 2 == 0
         has_e = col + 1 < top_row_width
         has_w = col > 0
         if has_s and has_e and has_w:
-            return _OBS_ID["ESW"]
+            return "ESW"
         if has_s and has_e:
-            return _OBS_ID["ES"]
+            return "ES"
         if has_s and has_w:
-            return _OBS_ID["SW"]
-        return _OBS_ID["EW"]
+            return "SW"
+        return "EW"
 
     def labels(s) -> list[str] | None:
         if getattr(s, "type", None) == "start":
@@ -128,12 +125,6 @@ def create_cheese_maze(
         observations=observations,
         modeltype=ModelType.POMDP,
     )
-
-    _obs_name = {str(v): k for k, v in _OBS_ID.items()}
-    for obs in list(model.observation_aliases):
-        raw = model.observation_aliases[obs]
-        if raw in _obs_name:
-            model.observation_aliases[obs] = _obs_name[raw]
 
     return model
 
