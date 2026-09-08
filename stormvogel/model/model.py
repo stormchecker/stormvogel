@@ -1042,26 +1042,31 @@ class Model[ValueType: Value]:
 
     def to_dot(self) -> str:
         """Generate a dot representation of this model."""
+
+        def name(state: State) -> str:
+            """The friendly name of a state if it has one, and its index otherwise."""
+            return state.friendly_name or str(self.get_state_index(state))
+
         dot = "digraph model {\n"
         for state in self:
-            dot += f'{state.state_id} [ label = "{state.state_id}: {", ".join(state.labels)}" ];\n'
-        for state_id, transition in self.transitions.items():
+            dot += f'"{name(state)}" [ label = "{name(state)}: {", ".join(state.labels)}" ];\n'
+        for state, transition in self.transitions.items():
             for action, branch in transition:
                 if action != EmptyAction:
-                    dot += f'{state_id}{action.label} [ label = "", shape=point ];\n'
-        for state_id, transition in self.transitions.items():
+                    dot += (
+                        f'"{name(state)}_{action.label}" [ label = "", shape=point ];\n'
+                    )
+        for state, transition in self.transitions.items():
             for action, branch in transition:
                 if action == EmptyAction:
                     # Only draw probabilities
                     for prob, target in branch:
-                        dot += (
-                            f'{state_id} -> {target.state_id} [ label = "{prob}" ];\n'
-                        )
+                        dot += f'"{name(state)}" -> "{name(target)}" [ label = "{prob}" ];\n'
                 else:
                     # Draw actions, then probabilities
-                    dot += f'{state_id} -> {state_id}{action.label} [ label = "{action.label}" ];\n'
+                    dot += f'"{name(state)}" -> "{name(state)}_{action.label}" [ label = "{action.label}" ];\n'
                     for prob, target in branch:
-                        dot += f'{state_id}{action.label} -> {target.state_id} [ label = "{prob}" ];\n'
+                        dot += f'"{name(state)}_{action.label}" -> "{name(target)}" [ label = "{prob}" ];\n'
         dot += "}"
         return dot
 
