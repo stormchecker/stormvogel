@@ -1507,6 +1507,122 @@ def test_add_observation_valuations_maze():
         assert isinstance(value, int)
 
 
+def test_add_observation_valuations_named_predicate(tmp_path):
+    """Named predicate observables (``observable "name" = expr;``) are imported
+    into observation_valuations, alongside block-style ``observables ... endobservables``
+    variables."""
+    stormpy = pytest.importorskip("stormpy")
+    stormpy_pomdp = pytest.importorskip("stormpy.pomdp")
+    import stormvogel.stormpy_utils.mapping as mapping
+    from stormvogel.model.variable import BoolDomain
+
+    prism_source = """
+pomdp
+
+module test
+    x : [0..2] init 0;
+
+    [a] x=0 -> 0.5: (x'=1) + 0.5: (x'=2);
+    [a] x=1 -> (x'=1);
+    [a] x=2 -> (x'=2);
+endmodule
+
+observable "goal" = x=2;
+"""
+    path = tmp_path / "named_obs.prism"
+    path.write_text(prism_source)
+
+    prism_program = stormpy.parse_prism_program(str(path))
+    options = stormpy.BuilderOptions()
+    options.set_build_observation_valuations()
+    options.set_build_choice_labels()
+    pomdp_sparse = stormpy.build_sparse_model_with_options(prism_program, options)
+    pomdp_sparse = stormpy_pomdp.make_canonic(pomdp_sparse)
+
+    sv_model = mapping.stormpy_to_stormvogel(pomdp_sparse)
+
+    found_goal = False
+    for obs in sv_model.observations:
+        vals = sv_model.observation_valuations[obs]
+        for key, value in vals.items():
+            if key.label == "goal":
+                found_goal = True
+                assert isinstance(key.domain, BoolDomain)
+                assert isinstance(value, bool)
+    assert found_goal
+
+
+def test_state_valuations_rational_roundtrip():
+    """RationalDomain state valuations survive a stormvogel -> stormpy -> stormvogel
+    round trip as exact Fraction values."""
+    from fractions import Fraction
+
+    pytest.importorskip("stormpy")
+    from stormvogel.model.variable import RationalDomain
+    from stormvogel.stormpy_utils.stormvogel_to_stormpy import stormvogel_to_stormpy
+    from stormvogel.stormpy_utils.mapping import stormpy_to_stormvogel
+
+    model = stormvogel.model.new_dtmc()
+    prob_var = Variable("p", RationalDomain())
+
+    init = model.initial_state
+    init.valuations = {prob_var: Fraction(1, 3)}
+    s1 = model.new_state(labels=["s1"])
+    s1.valuations = {prob_var: Fraction(7, 2)}
+    s2 = model.new_state(labels=["s2"])
+    s2.valuations = {prob_var: 5}
+
+    init.set_choices([(0.5, s1), (0.5, s2)])
+    s1.set_choices([(1, s1)])
+    s2.set_choices([(1, s2)])
+
+    sparse = stormvogel_to_stormpy(model)
+    back = stormpy_to_stormvogel(sparse)
+
+    expected = {Fraction(1, 3), Fraction(7, 2), Fraction(5, 1)}
+    seen = set()
+    for state in back.states:
+        (value,) = state.valuations.values()
+        assert isinstance(value, Fraction)
+        seen.add(value)
+    assert seen == expected
+
+
+def test_state_valuations_rational_wide_values_roundtrip():
+    """RationalDomain values whose numerator/denominator exceed 64 bits still
+    round-trip exactly: the stormpy encoding width is sized per variable from
+    the actual observed values, rather than being capped at a fixed width."""
+    from fractions import Fraction
+
+    pytest.importorskip("stormpy")
+    from stormvogel.model.variable import RationalDomain
+    from stormvogel.stormpy_utils.stormvogel_to_stormpy import stormvogel_to_stormpy
+    from stormvogel.stormpy_utils.mapping import stormpy_to_stormvogel
+
+    model = stormvogel.model.new_dtmc()
+    prob_var = Variable("p", RationalDomain())
+
+    wide_numerator = Fraction(2**70, 3)
+    wide_denominator = Fraction(-1, 2**80)
+
+    init = model.initial_state
+    init.valuations = {prob_var: wide_numerator}
+    s1 = model.new_state(labels=["s1"])
+    s1.valuations = {prob_var: wide_denominator}
+    s2 = model.new_state(labels=["s2"])
+    s2.valuations = {prob_var: 0}
+
+    init.set_choices([(0.5, s1), (0.5, s2)])
+    s1.set_choices([(1, s1)])
+    s2.set_choices([(1, s2)])
+
+    sparse = stormvogel_to_stormpy(model)
+    back = stormpy_to_stormvogel(sparse)
+
+    seen = {next(iter(state.valuations.values())) for state in back.states}
+    assert seen == {wide_numerator, wide_denominator, Fraction(0)}
+
+
 def test_add_observation_valuations_no_obs_valuations():
     """Models without observation_valuations are imported without error."""
     stormpy = pytest.importorskip("stormpy")

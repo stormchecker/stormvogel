@@ -4,6 +4,7 @@ __all__ = [
     "IntDomain",
     "BoolDomain",
     "CategoricalDomain",
+    "RationalDomain",
     "VariableDomain",
     "Variable",
     "Predicate",
@@ -12,6 +13,7 @@ __all__ = [
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from fractions import Fraction
 from typing import Any
 
 
@@ -82,7 +84,26 @@ class CategoricalDomain:
         return f"CategoricalDomain({self.values!r}{suffix})"
 
 
-VariableDomain = IntDomain | BoolDomain | CategoricalDomain
+@dataclass
+class RationalDomain:
+    """An unbounded rational (exact fraction) domain.
+
+    :param allow_none: Whether ``None`` is a valid value.
+    """
+
+    allow_none: bool = False
+
+    def contains(self, value: Any) -> bool:
+        if value is None:
+            return self.allow_none
+        return isinstance(value, (int, float, Fraction)) and not isinstance(value, bool)
+
+    def __repr__(self):
+        suffix = ", allow_none=True" if self.allow_none else ""
+        return f"RationalDomain({suffix.lstrip(', ')})"
+
+
+VariableDomain = IntDomain | BoolDomain | CategoricalDomain | RationalDomain
 
 
 @dataclass(frozen=True)
