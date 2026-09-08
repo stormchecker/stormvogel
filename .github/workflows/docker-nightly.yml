@@ -58,15 +58,6 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
-      - name: Download stormpy nightly wheel
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: create_wheel_scheduled.yml
-          repo: stormchecker/stormpy
-          name: stormpy-wheels-linux-intel
-          path: stormpy_wheel/
-
       - name: Download paynt nightly wheel
         uses: dawidd6/action-download-artifact@v6
         with:

@@ -9,11 +9,14 @@ COPY . /app
 WORKDIR /app
 
 # Install all dependencies directly into system Python.
-# When EXPERIMENTAL=1, replace stormpy and paynt with local experimental wheels.
+# When EXPERIMENTAL=1, install the nightly stormpy wheel from the stormpy wheel index
+# and replace paynt with a local experimental wheel.
 ARG EXPERIMENTAL=0
 RUN if [ "$EXPERIMENTAL" = "1" ]; then \
         pip install --no-cache-dir '.[storm,paynt,gym,io,viz,solvers]' && \
-        pip install --no-cache-dir --no-deps --force-reinstall stormpy_wheel/*cp313*.whl && \
+        python -m pip install --no-cache-dir --upgrade --pre stormpy \
+            --index-url https://stormchecker.github.io/stormpy-wheels/simple \
+            --extra-index-url https://pypi.org/simple && \
         pip install --no-cache-dir --no-deps --force-reinstall paynt_wheel/*cp313*.whl; \
     else \
         pip install --no-cache-dir '.[storm,paynt,gym,io,viz,solvers]'; \
