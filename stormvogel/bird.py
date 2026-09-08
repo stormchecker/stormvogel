@@ -40,11 +40,11 @@ def _valid_input[ValueType: stormvogel.model.Value](
     rewards: Callable[[Any], dict[str, ValueType] | None] | None = None,
     labels: Callable[[Any], Sequence[str] | str | None] | None = None,
     available_actions: Callable[[Any], list[BirdAction]] | None = None,
-    observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
+    observations: Callable[[Any], str | list[tuple[ValueType, str]]] | None = None,
     rates: Callable[[Any], float] | None = None,
     valuations: Callable[[Any], dict[Variable, float | int | bool]] | None = None,
     observation_valuations: (
-        Callable[[int], dict[Variable, float | int | bool]] | None
+        Callable[[str], dict[Variable, float | int | bool]] | None
     ) = None,
     modeltype: stormvogel.model.ModelType = stormvogel.model.ModelType.MDP,
 ):
@@ -180,11 +180,11 @@ def build_bird[ValueType: stormvogel.model.Value](
     labels: Callable[[Any], Sequence[str] | str | None] | None = None,
     friendly_names: Callable[[Any], str] | None = None,
     available_actions: Callable[[Any], list[BirdAction]] | None = None,
-    observations: Callable[[Any], int | list[tuple[ValueType, int]]] | None = None,
+    observations: Callable[[Any], str | list[tuple[ValueType, str]]] | None = None,
     rates: Callable[[Any], float] | None = None,
     valuations: Callable[[Any], dict[Variable, float | int | bool]] | None = None,
     observation_valuations: (
-        Callable[[int], dict[Variable, float | int | bool]] | None
+        Callable[[str], dict[Variable, float | int | bool]] | None
     ) = None,
     modeltype: stormvogel.model.ModelType = stormvogel.model.ModelType.MDP,
     max_size: int = 10000,
@@ -258,8 +258,8 @@ def build_bird[ValueType: stormvogel.model.Value](
                     obs_kwarg = {}
                     if model.supports_observations() and observations is not None:
                         given_obs = observations(s)
-                        if isinstance(given_obs, int):
-                            obs_kwarg["observation"] = model.observation(str(given_obs))
+                        if isinstance(given_obs, str):
+                            obs_kwarg["observation"] = model.observation(given_obs)
                         elif isinstance(given_obs, list):
                             obs_kwarg["observation"] = stormvogel.model.Distribution(
                                 [
@@ -296,8 +296,8 @@ def build_bird[ValueType: stormvogel.model.Value](
     obs_kwarg = {}
     if model.supports_observations() and observations is not None:
         given_obs = observations(init)
-        if isinstance(given_obs, int):
-            obs_kwarg["observation"] = model.observation(str(given_obs))
+        if isinstance(given_obs, str):
+            obs_kwarg["observation"] = model.observation(given_obs)
         elif isinstance(given_obs, list):
             obs_kwarg["observation"] = stormvogel.model.Distribution(
                 [(prob, model.observation(str(o))) for prob, o in given_obs]
@@ -426,8 +426,8 @@ def build_bird[ValueType: stormvogel.model.Value](
                     f"On input {state}, the observations function does not have a return value"
                 )
 
-            if isinstance(given_obs, int):
-                obs = model.observation(str(given_obs))
+            if isinstance(given_obs, str):
+                obs = model.observation(given_obs)
                 s.observation = obs
             elif isinstance(given_obs, list):
                 obs_distribution = stormvogel.model.Distribution(
@@ -442,10 +442,10 @@ def build_bird[ValueType: stormvogel.model.Value](
         if observation_valuations is not None and model.observations is not None:
             # TODO this seems fragile
             observation_valuation_keys = observation_valuations(
-                int(next(iter(model.observations)).alias)
+                next(iter(model.observations)).alias
             ).keys()
             for obs in model.observations:
-                valuation_dict = observation_valuations(int(obs.alias))
+                valuation_dict = observation_valuations(obs.alias)
                 if valuation_dict is None:
                     raise ValueError(
                         f"On input observation id {obs.alias}, the observation_valuations function does not have a return value"
