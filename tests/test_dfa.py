@@ -5,6 +5,7 @@ import pytest
 import stormvogel
 import stormvogel.dfa as dfa
 from stormvogel.examples.minitown import create_minitown_mdp
+import os
 
 pytestmark = pytest.mark.skipif(
     shutil.which("dot") is None, reason="Graphviz 'dot' not found in PATH"
@@ -23,6 +24,7 @@ def test_aut1():
     aut.add_transition("s1", lambda s: True, "s1", label="true")
 
     dfa.plot_symbolic_dfa_pydot(aut, "test.svg")
+    os.remove("test.svg")
 
 
 def test_libsup():
@@ -51,3 +53,5 @@ def test_libsup():
     mdp = create_minitown_mdp()
     dfa.product(mdp, aut)
     stormvogel.show(dfa.product(mdp, aut))
+
+    os.remove("dfa2.svg")

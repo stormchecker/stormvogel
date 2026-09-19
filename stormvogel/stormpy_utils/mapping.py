@@ -607,12 +607,24 @@ def stormpy_to_stormvogel(
         )
 
 
-def from_prism(prism_code="stormpy.storage.storage.PrismProgram"):
+def from_prism(
+    program: "stormpy.storage.storage.PrismProgram | str", valuations: bool = True
+):
     """Create a stormvogel model from a PRISM program.
 
-    :param prism_code: The PRISM program to build from.
+    :param program: The PRISM program stored as a PrismProgram or file name.
     :returns: The converted stormvogel model.
     """
 
-    assert stormpy is not None
-    return stormpy_to_stormvogel(stormpy.build_model(prism_code))
+    if isinstance(program, str):  # Open and parse the file using stormpy.
+        program = stormpy.parse_prism_program(program)
+
+    if valuations:
+        options = stormpy.BuilderOptions()
+        options.set_build_state_valuations(True)
+
+        sp_model = stormpy.build_sparse_model_with_options(program, options)
+    else:
+        sp_model = stormpy.build_model(program)
+
+    return stormpy_to_stormvogel(sp_model)
