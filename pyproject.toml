@@ -21,6 +21,7 @@ dependencies = [
     "deprecated>=1.2.18,<2",
     "sympy>=1.14.0,<2",
     "pydot>=4.0.1,<5",
+    "umbi (>=0.2.12,<0.3.0)",
 ]
 
 [project.optional-dependencies]
