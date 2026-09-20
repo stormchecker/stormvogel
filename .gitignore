@@ -187,3 +187,7 @@ nbconvert.sh
 tests/saved_test_layout.json
 
 .DS_Store
+
+# Folder for experimental notebooks that should not be tracked
+experimental_notebooks
+manual_test.py

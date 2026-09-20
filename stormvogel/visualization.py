@@ -153,24 +153,20 @@ class VisualizationBase:
 
     def _format_result(self, s: stormvogel.model.State) -> str:
         """Create a string that shows the result for this state.
-
-        Start with a newline. If results are not enabled, return the empty string."""
+        If results are not enabled, return the empty string."""
         if self.result is None or not self.layout.layout["results"]["show_results"]:
             return ""
         result_of_state = self.result.at(s)
         if result_of_state is None:
             return ""
         return (
-            "\n"
-            + self.layout.layout["results"]["result_symbol"]
+            self.layout.layout["results"]["result_symbol"]
             + " "
             + self._format_number(result_of_state)
         )
 
     def _format_observations(self, s: stormvogel.model.State) -> str:
-        """Create a string that shows the observation for this state (for POMDPs).
-
-        Start with a newline."""
+        """Create a string that shows the observation for this state (for POMDPs)."""
         if (
             not self.model.supports_observations()
             or not self.layout.layout["state_properties"]["show_observations"]
@@ -179,12 +175,12 @@ class VisualizationBase:
         obs = s.observation
         symbol = self.layout.layout["state_properties"]["observation_symbol"]
         if isinstance(obs, stormvogel.model.Distribution):
-            return "".join(
-                "\n" + symbol + " " + o.display() + ": " + self._format_number(p)
+            return "\n".join(
+                symbol + " " + o.display() + ": " + self._format_number(p)
                 for p, o in obs
             )
         elif isinstance(obs, stormvogel.model.Observation):
-            return "\n" + symbol + " " + obs.display()
+            return symbol + " " + obs.display()
         else:
             return ""
 
@@ -222,7 +218,7 @@ class VisualizationBase:
         if a != stormvogel.model.EmptyAction:
             return ""
 
-        EMPTY_RES = "\n" + self.layout.layout["state_properties"]["reward_symbol"]
+        EMPTY_RES = self.layout.layout["state_properties"]["reward_symbol"]
         res = EMPTY_RES
         for reward_model in self.model.rewards:
             reward = reward_model.get_state_reward(s)
@@ -234,6 +230,12 @@ class VisualizationBase:
         if res == EMPTY_RES:
             return ""
         return res
+
+    def __format_valuations(self, state: stormvogel.model.State) -> str:
+        """Create a string that contains the state valuations."""
+        if not self.layout.layout["state_properties"]["show_valuations"]:
+            return ""
+        return "(" + ",".join(map(str, state.valuations.values())) + ")" + "\n"
 
     def _create_state_properties(self, state: stormvogel.model.State) -> dict:
         """Generate visualization properties for a given state in the model.
@@ -256,6 +258,7 @@ class VisualizationBase:
         res = self._format_result(state)
         observations = self._format_observations(state)
         rewards = self._format_rewards(state, stormvogel.model.EmptyAction)
+        valuations = self.__format_valuations(state)
         group = self._group_state(state, "states")
         id_label_part = (
             f"{state.state_id}\n"
@@ -282,7 +285,12 @@ class VisualizationBase:
             else ",".join(state.labels)
         )
         properties = {
-            "label": id_label_part + name_part + rewards + res + observations,
+            "label": "\n".join(
+                filter(
+                    lambda x: x != "",
+                    [id_label_part, name_part, rewards, res, observations, valuations],
+                )
+            ),
             "group": group,
             "color": color,
         }

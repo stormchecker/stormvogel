@@ -54,7 +54,7 @@
     }
   },
   "edit_groups": {
-    "__html": "<p>Select the labels which should have a separate layout. If multiple labels are present, then the first item in this list will be chosen. Click below to add a new label. Drag to change the priorities. Press the reload button to apply changes. For more info, consult the documentation.</p>",
+    "__html": "<p>Select the labels which should have a separate layout.<br>If multiple labels are present, then the first item in this list will be chosen.<br>Click below to add a new label. Drag to change the priorities.<br>Press the reload button to apply changes. For more info, consult the documentation.</p>",
     "__collapse": true,
     "groups": {
       "__description": "Active state groups",
@@ -143,6 +143,10 @@
     "__collapse": true,
     "show_ids": {
       "__description": "Show ids",
+      "__widget": "Checkbox"
+    },
+    "show_valuations": {
+      "__description": "Show valuations",
       "__widget": "Checkbox"
     },
     "show_rewards": {

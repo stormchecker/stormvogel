@@ -69,7 +69,7 @@ show(partial_model)
 #   per variable.
 
 # %%
-from stormvogel.gym_env import ModelEnv, ActionUnavailableError
+from stormvogel.gym_env import ModelEnv
 
 env = ModelEnv(lion)
 print("Observation space:", env.observation_space)
