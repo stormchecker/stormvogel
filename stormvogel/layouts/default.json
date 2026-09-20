@@ -68,7 +68,7 @@
   },
   "state_properties": {
     "show_ids": false,
-    "show_valuations": true,
+    "show_valuations": false,
     "show_rewards": true,
     "reward_symbol": "\u20ac",
     "show_zero_rewards": true,
