@@ -10,7 +10,16 @@ pytest.importorskip("umbi")
 import stormvogel.examples as ex
 import stormvogel.model as sv
 import stormvogel.umbi as svu
-from stormvogel.model.variable import Variable, Predicate, IntDomain, BoolDomain
+from fractions import Fraction
+
+from stormvogel.model.variable import (
+    Variable,
+    Predicate,
+    IntDomain,
+    BoolDomain,
+    CategoricalDomain,
+    RationalDomain,
+)
 
 
 def _roundtrip(model):
@@ -189,6 +198,56 @@ def test_state_valuations_multiple_vars():
     assert isinstance(vars_by_name["x"].domain, IntDomain)
     assert vars_by_name["x"].domain.lo == 3 and vars_by_name["x"].domain.hi == 7
     assert isinstance(vars_by_name["flag"].domain, BoolDomain)
+
+
+def test_state_valuations_rational_roundtrip():
+    m = sv.new_dtmc()
+    init = m.initial_state
+    s1 = m.new_state()
+    s2 = m.new_state()
+    init.set_choices([(0.5, s1), (0.5, s2)])
+    s1.set_choices([(1.0, s1)])
+    s2.set_choices([(1.0, s2)])
+
+    p = Variable("p", RationalDomain())
+    m.state_valuations[init][p] = Fraction(1, 3)
+    # exceeds 64 bits, to check UMBI's rational storage isn't width-limited either
+    m.state_valuations[s1][p] = Fraction(2**70, 3)
+    m.state_valuations[s2][p] = Fraction(-1, 2**80)
+
+    m2 = _roundtrip(m)
+    vars_by_name = {
+        var.label: var for vals in m2.state_valuations.values() for var in vals
+    }
+    assert isinstance(vars_by_name["p"].domain, RationalDomain)
+    values = {
+        Fraction(next(v for k, v in m2.state_valuations[s].items() if k.label == "p"))
+        for s in m2.states
+    }
+    assert values == {Fraction(1, 3), Fraction(2**70, 3), Fraction(-1, 2**80)}
+
+
+def test_state_valuations_categorical_string_roundtrip():
+    m = sv.new_dtmc()
+    init = m.initial_state
+    s1 = m.new_state()
+    init.set_choices([(1.0, s1)])
+    s1.set_choices([(1.0, s1)])
+
+    mode = Variable("mode", CategoricalDomain(("idle", "running", "error")))
+    m.state_valuations[init][mode] = "idle"
+    m.state_valuations[s1][mode] = "running"
+
+    m2 = _roundtrip(m)
+    vars_by_name = {
+        var.label: var for vals in m2.state_valuations.values() for var in vals
+    }
+    assert isinstance(vars_by_name["mode"].domain, CategoricalDomain)
+    values_by_index = [
+        next(v for k, v in m2.state_valuations[s].items() if k.label == "mode")
+        for s in m2.states
+    ]
+    assert values_by_index == ["idle", "running"]
 
 
 # ---------------------------------------------------------------------------

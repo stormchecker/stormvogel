@@ -31,6 +31,7 @@ __all__ = [
     "IntDomain",
     "BoolDomain",
     "CategoricalDomain",
+    "RationalDomain",
     "VariableDomain",
     "Variable",
     "Predicate",
