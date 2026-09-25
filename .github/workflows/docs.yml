@@ -162,6 +162,7 @@ jobs:
           cat > site/index.html << 'EOF'
           <!DOCTYPE html>
           <html>
+          <link rel="icon" href="docs/bird.png">
             <head>
               <meta charset="utf-8">
               <meta http-equiv="refresh" content="0; url=latest/" />
