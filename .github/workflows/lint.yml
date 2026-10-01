@@ -34,17 +34,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Load existing venv
-        run: poetry env use system
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
-        run: poetry install
+        run: uv sync --locked --no-default-groups --group lint
 
       - name: Git thinks the directories are sus
         run: git config --global --add safe.directory '*'
@@ -56,4 +50,4 @@ jobs:
           key: precommit-${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Run pre-commit
-        run: poetry run pre-commit run --all-files
+        run: uv run --no-sync pre-commit run --all-files
