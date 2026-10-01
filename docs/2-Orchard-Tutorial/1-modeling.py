@@ -59,6 +59,7 @@ import stormvogel
 
 from enum import Enum
 from copy import deepcopy
+from dataclasses import dataclass
 
 # %% [markdown]
 # We start the modelling by defining some general data structures for the Orchard game, for the different types of fruit `Fruit`, for the possible outcomes of the dice `DiceOutcome` and for the game state `GameState`.
@@ -92,7 +93,7 @@ class GameState(Enum):
 
 
 # %% [markdown]
-# We introduce a class `Orchard` which represents the current state of the game.
+# We introduce a dataclass `Orchard` which represents the current state of the game.
 # The Orchard object is initialized with a list of configuration parameters such as the considered types of fruit `fruit_types`, the number of fruit per tree `num_fruits`, and the distance of the raven `raven_distance`.
 # The game initializes the variable `trees` which keeps track of the remaining number of fruit per tree. It also keeps
 # track of the outcome of the `dice` which can be either 🧺, 🐦‍⬛ or a fruit.
@@ -102,7 +103,12 @@ class GameState(Enum):
 
 # %%
 # Main class for the orchard game
+@dataclass
 class Orchard:
+    trees: dict[Fruit, int]
+    raven: int
+    dice: tuple[DiceOutcome, Fruit | None] | None
+
     def __init__(self, fruit_types, num_fruits, raven_distance):
         self.trees = {fruit: num_fruits for fruit in fruit_types}
         self.raven = raven_distance
@@ -131,8 +137,7 @@ class Orchard:
         self.raven -= 1
 
     def __hash__(self):
-        trees = [hash((f, n)) for f, n in self.trees.items()]
-        return hash((tuple(trees), self.raven, self.dice))
+        return hash((frozenset(self.trees.items()), self.raven, self.dice))
 
     def label(self):
         if self.dice is None:
@@ -159,7 +164,9 @@ class Orchard:
 # Modeling these functions separately also yields a modular design which allows to easily modify specific behavior, such as the movement of the raven.
 
 # %% [markdown]
-# An important aspect of the Orchard class is the hash function `__hash__`.
+# An important aspect of the Orchard class is value equality (`__eq__`) together with the hash function `__hash__`.
+# Dataclass-generated equality ensures that copies with the same trees, raven position and dice outcome are recognized as the same state.
+# We define the hash explicitly because the `trees` dictionary is not itself hashable.
 # The hash combines the number of left-over fruit per tree (via `self.trees.items()`), the position of the raven (`self.raven`) and the dice outcome (`self.dice`).
 # All other information, for example whose turn it is, is deemed irrelevant to distinguish states.
 # The hash function is crucial in reducing the size of the state space by only focusing on the relevant parts.

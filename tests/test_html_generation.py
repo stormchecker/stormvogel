@@ -1,6 +1,15 @@
 """Tests for stormvogel.html_generation."""
 
-from stormvogel.html_generation import generate_init_js, generate_network_wrapper_js
+import shutil
+import subprocess
+
+import pytest
+
+from stormvogel.html_generation import (
+    generate_dark_mode_js,
+    generate_init_js,
+    generate_network_wrapper_js,
+)
 
 
 def test_generate_init_js_embeds_arguments():
@@ -41,3 +50,63 @@ def test_generate_network_wrapper_js_methods_present():
     assert "makeNeighborsVisible(homeId)" in js
     assert "setNodeColor(id, color)" in js
     assert "getSvg()" in js
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not installed")
+def test_theme_toggle_restores_colors_and_preserves_node_fonts():
+    harness = """
+const assert = require('node:assert/strict');
+let theme = 'light';
+let osDark = true;
+let observer;
+let mediaListener;
+let options;
+const host = {body: {getAttribute: () => theme}};
+const document = {body: {getAttribute: () => null}};
+const window = {
+    parent: {document: host},
+    matchMedia: () => ({
+        get matches() { return osDark; },
+        addEventListener: (_, callback) => { mediaListener = callback; }
+    })
+};
+class MutationObserver {
+    constructor(callback) { observer = callback; }
+    observe(target, config) {
+        assert.equal(target, host.body);
+        assert.deepEqual(config.attributeFilter, ['data-theme']);
+    }
+}
+const nw_test = {
+    container: {style: {}},
+    options: {edges: {color: {color: 'black'}, font: {color: 'black', strokeColor: 'white'}}},
+    network: {setOptions: value => { options = value; }}
+};
+"""
+    checks = """
+assert.equal(options.edges.font.color, 'black'); // Explicit light overrides OS dark.
+theme = 'dark';
+observer();
+assert.equal(options.edges.font.color, '#eeeeee');
+assert.equal(options.edges.color.inherit, false);
+assert.equal(options.nodes, undefined); // Pale nodes retain dark labels.
+assert.equal(nw_test.container.style.backgroundColor, '#1e1e2e');
+theme = 'light';
+observer();
+assert.equal(options.edges.font.color, 'black');
+assert.equal(options.edges.font.strokeColor, 'white');
+assert.equal(options.edges.color.color, 'black');
+assert.equal(options.edges.color.inherit, 'from');
+theme = 'auto';
+mediaListener();
+assert.equal(options.edges.font.color, '#eeeeee');
+osDark = false;
+mediaListener();
+assert.equal(options.edges.font.color, 'black');
+"""
+    subprocess.run(
+        ["node", "-e", harness + generate_dark_mode_js("test") + checks],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
