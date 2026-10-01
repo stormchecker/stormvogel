@@ -90,6 +90,26 @@ def test_ctmc_file_roundtrip():
 # ---------------------------------------------------------------------------
 
 
+def test_init_label_not_exported():
+    m = sv.new_dtmc(create_initial_state=False)
+    other = m.new_state("other")
+    init = m.new_state(["init", "start"])
+    other.set_choices([(1.0, other)])
+    init.set_choices([(1.0, other)])
+
+    ats = svu.translate_to_umbi(m)
+    ats.validate()
+    assert ats.initial_states == [1]
+    assert set(ats.ap_annotations) == {"other", "start"}
+    assert list(ats.ap_annotations["start"].state_values) == [False, True]
+    assert init.has_label("init")  # Export must not mutate the source model.
+
+    for restored in (svu.translate_to_stormvogel(ats), _file_roundtrip(m)):
+        assert restored.initial_state == restored.states[1]
+        assert restored.initial_state.has_label("init")
+        assert restored.initial_state.has_label("start")
+
+
 def test_labels_preserved():
     m = ex.create_die_dtmc()
     m2 = _roundtrip(m)

@@ -180,8 +180,10 @@ def translate_to_umbi(
                     prob = value
                 ats.new_choice_branch(choice, t_id, prob)
 
-    # AP labels
     for label, labeled_states in model.state_labels.items():
+        # Skip the initial state label, as it's handled separately.
+        if label == "init":
+            continue
         ann = ats.new_ap_annotation(name=label)
         ids = {state_to_id[s] for s in labeled_states}
         ann.state_values = [i in ids for i in range(ats.num_states)]
