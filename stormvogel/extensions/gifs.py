@@ -66,6 +66,12 @@ def embed_gif(filename: str):
 
     :param filename: Path to the gif file.
     """
+    import base64
     import IPython.display as ipd
 
-    ipd.display(ipd.Image(filename=filename, format="gif", embed=True))
+    # nbsphinx does not support image/gif notebook outputs. HTML with an
+    # inline data URI works in both notebooks and docs, preserving animation
+    # without relying on a runtime file being copied into the built site.
+    with open(filename, "rb") as f:
+        data = base64.b64encode(f.read()).decode("ascii")
+    ipd.display(ipd.HTML(f'<img src="data:image/gif;base64,{data}" alt="Animation">'))
