@@ -93,7 +93,6 @@ class GameState(Enum):
 
 # %% [markdown]
 # We introduce a class `Orchard` which represents the current state of the game.
-# This class inherits from the Stormvogel `BirdState` class.
 # The Orchard object is initialized with a list of configuration parameters such as the considered types of fruit `fruit_types`, the number of fruit per tree `num_fruits`, and the distance of the raven `raven_distance`.
 # The game initializes the variable `trees` which keeps track of the remaining number of fruit per tree. It also keeps
 # track of the outcome of the `dice` which can be either 🧺, 🐦‍⬛ or a fruit.
@@ -103,7 +102,7 @@ class GameState(Enum):
 
 # %%
 # Main class for the orchard game
-class Orchard(stormvogel.bird.State):
+class Orchard:
     def __init__(self, fruit_types, num_fruits, raven_distance):
         self.trees = {fruit: num_fruits for fruit in fruit_types}
         self.raven = raven_distance

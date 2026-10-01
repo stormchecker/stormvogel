@@ -3395,6 +3395,7 @@ doc = [
     { name = "jupyter" },
     { name = "jupytext" },
     { name = "nbsphinx" },
+    { name = "pygame" },
     { name = "sphinx" },
     { name = "sphinx-autoapi" },
 ]
@@ -3450,6 +3451,7 @@ doc = [
     { name = "jupyter", specifier = ">=1.1.1,<2" },
     { name = "jupytext", specifier = ">=1.17.2,<2" },
     { name = "nbsphinx", specifier = ">=0.9.4,<0.10" },
+    { name = "pygame", specifier = ">=2.6.1,<3" },
     { name = "sphinx", specifier = ">=7.3.7,<8" },
     { name = "sphinx-autoapi", specifier = ">=3.3.1,<4" },
 ]
