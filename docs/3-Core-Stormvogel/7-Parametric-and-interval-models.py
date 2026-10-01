@@ -55,43 +55,38 @@ from stormvogel.show import show
 x = sp.Symbol("x")
 
 
-# we build the Knuth–Yao dice using the bird model builder
+# States are tuples (position, die outcome); 0 means no outcome yet.
+# We build the Knuth–Yao dice using the bird model builder.
 def delta(
-    s: bird.State,
-) -> list[tuple[float | sp.Expr, bird.State]] | None:
-    match s.s:
+    s: tuple[int, int],
+) -> list[tuple[float | sp.Expr, tuple[int, int]]] | None:
+    match s[0]:
         case 0:
-            return [(x, bird.State(s=1)), (1 - x, bird.State(s=2))]
+            return [(x, (1, 0)), (1 - x, (2, 0))]
         case 1:
-            return [(x, bird.State(s=3)), (1 - x, bird.State(s=4))]
+            return [(x, (3, 0)), (1 - x, (4, 0))]
         case 2:
-            return [(x, bird.State(s=5)), (1 - x, bird.State(s=6))]
+            return [(x, (5, 0)), (1 - x, (6, 0))]
         case 3:
-            return [(x, bird.State(s=1)), (1 - x, bird.State(s=7, d=1))]
+            return [(x, (1, 0)), (1 - x, (7, 1))]
         case 4:
-            return [
-                (x, bird.State(s=7, d=2)),
-                (1 - x, bird.State(s=7, d=3)),
-            ]
+            return [(x, (7, 2)), (1 - x, (7, 3))]
         case 5:
-            return [
-                (x, bird.State(s=7, d=4)),
-                (1 - x, bird.State(s=7, d=5)),
-            ]
+            return [(x, (7, 4)), (1 - x, (7, 5))]
         case 6:
-            return [(x, bird.State(s=2)), (1 - x, bird.State(s=7, d=6))]
+            return [(x, (2, 0)), (1 - x, (7, 6))]
         case 7:
             return [(1, s)]
 
 
-def labels(s: bird.State):
-    if s.s == 7:
-        return f"rolled{str(s.d)}"
+def labels(s: tuple[int, int]):
+    if s[0] == 7:
+        return f"rolled{s[1]}"
 
 
 knuth_yao_pmc = bird.build_bird(
     delta=delta,
-    init=bird.State(s=0),
+    init=(0, 0),
     labels=labels,
     modeltype=model.ModelType.DTMC,
 )
@@ -140,41 +135,37 @@ interval = model.Interval(2 / 7, 6 / 7)
 inv_interval = model.Interval(1 / 7, 5 / 7)
 
 
-# we build the knuth yao dice using the bird model builder
-def delta(s: bird.State) -> list[tuple[float | model.Interval, bird.State]] | None:
-    match s.s:
+# We use the same (position, die outcome) tuples as above.
+def delta(
+    s: tuple[int, int],
+) -> list[tuple[float | model.Interval, tuple[int, int]]] | None:
+    match s[0]:
         case 0:
-            return [(interval, bird.State(s=1)), (inv_interval, bird.State(s=2))]
+            return [(interval, (1, 0)), (inv_interval, (2, 0))]
         case 1:
-            return [(interval, bird.State(s=3)), (inv_interval, bird.State(s=4))]
+            return [(interval, (3, 0)), (inv_interval, (4, 0))]
         case 2:
-            return [(interval, bird.State(s=5)), (inv_interval, bird.State(s=6))]
+            return [(interval, (5, 0)), (inv_interval, (6, 0))]
         case 3:
-            return [(interval, bird.State(s=1)), (inv_interval, bird.State(s=7, d=1))]
+            return [(interval, (1, 0)), (inv_interval, (7, 1))]
         case 4:
-            return [
-                (interval, bird.State(s=7, d=2)),
-                (inv_interval, bird.State(s=7, d=3)),
-            ]
+            return [(interval, (7, 2)), (inv_interval, (7, 3))]
         case 5:
-            return [
-                (interval, bird.State(s=7, d=4)),
-                (inv_interval, bird.State(s=7, d=5)),
-            ]
+            return [(interval, (7, 4)), (inv_interval, (7, 5))]
         case 6:
-            return [(interval, bird.State(s=2)), (inv_interval, bird.State(s=7, d=6))]
+            return [(interval, (2, 0)), (inv_interval, (7, 6))]
         case 7:
             return [(1, s)]
 
 
-def labels(s: bird.State):
-    if s.s == 7:
-        return f"rolled{str(s.d)}"
+def labels(s: tuple[int, int]):
+    if s[0] == 7:
+        return f"rolled{s[1]}"
 
 
 knuth_yao_imc = bird.build_bird(
     delta=delta,
-    init=bird.State(s=0),
+    init=(0, 0),
     labels=labels,
     modeltype=model.ModelType.DTMC,
 )

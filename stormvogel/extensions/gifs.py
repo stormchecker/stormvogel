@@ -68,6 +68,4 @@ def embed_gif(filename: str):
     """
     import IPython.display as ipd
 
-    with open("GIF" + ".html", "w") as f:
-        f.write(f'<img src="{filename}">')
-    ipd.display(ipd.HTML(filename="GIF" + ".html"))
+    ipd.display(ipd.Image(filename=filename, format="gif", embed=True))

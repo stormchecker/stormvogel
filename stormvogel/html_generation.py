@@ -40,15 +40,6 @@ def generate_html(
     <script>{visjs_library}</script>
     <script>{svg_canvas_library}</script>
     <style type="text/css">
-      @media (prefers-color-scheme: dark) {{
-        :root {{
-          --vis-edge-color: #aaaaaa;
-          --vis-label-color: #eeeeee;
-          --vis-stroke-color: #1e1e2e;
-        }}
-        body {{ background-color: #1e1e2e; }}
-        #{name} {{ border-color: #444; }}
-      }}
       {fill_css}
       #{name} {{
         border: 1px solid lightgray;
@@ -73,33 +64,44 @@ def generate_html(
 
 
 def generate_dark_mode_js(name: str) -> str:
-    """Generate JS code that reads CSS custom properties and applies them to the vis.js network.
+    """Sync canvas colors with the host theme, including Furo's theme toggle.
 
-    vis.js renders on a canvas so colors cannot be set via CSS alone; this reads
-    the CSS custom properties (which handle light/dark via media queries) and
-    forwards them to vis.js via ``network.setOptions()``.
-
-    :param name: The name of the NetworkWrapper variable (``nw_{name}``).
-    :returns: A JS code string that syncs vis.js colors with the CSS custom properties.
+    Keep node colors and fonts intact: pale nodes still need dark labels.
+    Scope each listener to its network, including when embedded without an iframe.
     """
     return f"""//js
-    function _applyColorScheme() {{
+    (function () {{
         var nw = nw_{name};
         if (!nw || !nw.network) return;
-        var s = getComputedStyle(document.documentElement);
-        var edgeColor = s.getPropertyValue('--vis-edge-color').trim();
-        var labelColor = s.getPropertyValue('--vis-label-color').trim();
-        var strokeColor = s.getPropertyValue('--vis-stroke-color').trim();
-        // Only override if CSS vars are set (dark mode); otherwise let vis.js use its defaults.
-        if (edgeColor) {{
-            nw.network.setOptions({{
-                edges: {{ color: {{ color: edgeColor, inherit: false }}, font: {{ color: labelColor, strokeColor: strokeColor }} }},
-                nodes: {{ font: {{ color: labelColor, strokeColor: strokeColor }} }}
-            }});
+        var host = document;
+        // Same-origin srcdoc iframes can follow the surrounding docs theme.
+        try {{
+            if (window.parent.document.body) host = window.parent.document;
+        }} catch (error) {{ /* Cross-origin embeds use the local/OS theme. */ }}
+        var media = window.matchMedia('(prefers-color-scheme: dark)');
+        var originalEdges = JSON.parse(JSON.stringify(nw.options.edges || {{}}));
+        function applyColorScheme() {{
+            var theme = host.body.getAttribute('data-theme');
+            var dark = theme === 'dark' || (theme !== 'light' && media.matches);
+            var background = dark ? '#1e1e2e' : '#ffffff';
+            nw.container.style.backgroundColor = background;
+            nw.container.style.borderColor = dark ? '#444' : 'lightgray';
+            var edges = JSON.parse(JSON.stringify(originalEdges));
+            edges.color = Object.assign({{color: '#848484', inherit: 'from'}},
+                typeof edges.color === 'string' ? {{color: edges.color}} : edges.color);
+            edges.font = Object.assign({{color: '#343434', strokeColor: '#ffffff'}}, edges.font);
+            if (dark) {{
+                edges.color = Object.assign(edges.color, {{color: '#aaaaaa', inherit: false}});
+                edges.font = Object.assign(edges.font, {{color: '#eeeeee', strokeColor: background}});
+            }}
+            nw.network.setOptions({{edges: edges}});
         }}
-    }}
-    _applyColorScheme();
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', _applyColorScheme);
+        applyColorScheme();
+        media.addEventListener('change', applyColorScheme);
+        new MutationObserver(applyColorScheme).observe(host.body, {{
+            attributes: true, attributeFilter: ['data-theme']
+        }});
+    }})();
     """
 
 
