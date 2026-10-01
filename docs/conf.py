@@ -14,7 +14,7 @@ import tomllib
 if importlib.util.find_spec("pygame") is None:
     raise ImportError(
         "pygame is required to build the docs (used by Gymnasium notebook examples). "
-        "Install it with: poetry install --with optional"
+        "Install it with: uv sync --locked --group doc --all-extras"
     )
 
 project = "stormvogel"

@@ -1,24 +1,26 @@
 import nox
 
-nox.options.default_venv_backend = "none"  # reuse the Poetry-managed venv
+nox.options.default_venv_backend = "none"  # reuse the uv-managed venv
 
 
 @nox.session
 def tests(session):
-    session.run("poetry", "run", "pytest", "tests/", external=True)
+    session.run("uv", "run", "--locked", "pytest", "tests/", external=True)
 
 
 @nox.session
 def lint(session):
-    session.run("poetry", "run", "ruff", "check", "stormvogel/", external=True)
-    session.run("poetry", "run", "pyright", external=True)
+    session.run("uv", "run", "--locked", "ruff", "check", "stormvogel/", external=True)
+    session.run("uv", "run", "--locked", "pyright", external=True)
 
 
 @nox.session
 def docs(session):
     session.run(
-        "poetry",
+        "uv",
         "run",
+        "--locked",
+        "--all-extras",
         "sphinx-build",
         "-b",
         "html",

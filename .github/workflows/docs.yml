@@ -71,22 +71,13 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          virtualenvs-create: false
-          version: 2.4.1 # Pin to avoid issues
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Install project dependencies
-        run: poetry install --all-extras --sync --no-interaction
-
-      - name: Install stormpy
-        # This is a safety net for the old main branch, which does not properly install extras above as the ci has changed.
-        run: poetry run pip install "stormpy>=1.13.2,<2" pyscipopt
-
-      - name: Install paynt
-        # no-deps because current conflict with stormpy version.
-        run: poetry run pip install paynt --no-deps; poetry run pip install graphviz scikit-learn
+        run: |
+          uv sync --locked --no-default-groups --group doc --group test --all-extras
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
 
       - name: Glob python files in docs folder
@@ -102,7 +93,7 @@ jobs:
 
       - name: Generate documentation notebooks from jupytext
         run: |
-          poetry run jupytext --to notebook ${{ steps.globpy.outputs.paths }}
+          jupytext --to notebook ${{ steps.globpy.outputs.paths }}
 
       - name: Glob notebooks in docs folder
         uses: tj-actions/glob@v22
@@ -115,24 +106,23 @@ jobs:
         env:
           DOCUMENTATION: 1
         run: |
-          poetry run jupyter nbconvert --execute --to notebook --inplace ${{ steps.glob.outputs.paths }} --ExecutePreprocessor.kernel_name=python3
+          jupyter nbconvert --execute --to notebook --inplace ${{ steps.glob.outputs.paths }} --ExecutePreprocessor.kernel_name=python3
 
       - name: Generate docs
         working-directory: docs/
         env:
           RELEASE_DOCS_URL: ${{ matrix.release_url }}
           RELEASE_TAG: ${{ matrix.release_tag }}
-        run: poetry run make html
+        run: make html
 
       - name: Copy gifs
         run: cp -r docs/4-Reinforcement-Learning/gifs docs/_build/html/4-Reinforcement-Learning/ || true
 
       - name: Generate coverage badge
         run: |
-          poetry run pip install "genbadge[coverage]" pytest-cov
-          poetry run pytest --cov=stormvogel --cov-report=xml tests/
+          pytest --cov=stormvogel --cov-report=xml tests/
           mkdir -p docs/_build/html/
-          poetry run genbadge coverage -i coverage.xml -o docs/_build/html/coverage.svg
+          genbadge coverage -i coverage.xml -o docs/_build/html/coverage.svg
 
       - name: Upload docs artifact
         uses: actions/upload-artifact@v4

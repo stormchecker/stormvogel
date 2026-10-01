@@ -31,26 +31,33 @@ Check out the [the stormvogel documentation](https://stormchecker.github.io/stor
 3. Now a browser window should open that runs jupyter lab with stormvogel and stormpy installed.
 
 ### For contributors (latest version)
-Note that you might have to tweak these steps a bit to get it to work on your particular system, but here is an outline. Contributors need [Poetry](https://python-poetry.org/docs/#installing-with-pipx) to manage the development environment.
+Contributors need [uv](https://docs.astral.sh/uv/getting-started/installation/) and Python 3.12 or newer to manage the development environment.
 
 1. Clone the stormvogel repo (or your own fork) in a separate folder
 2. In the stormvogel folder:
     ```
-    poetry install
-    poetry shell # Activate poetry virtual environment
-    pip install stormpy
-    pip install . # Install stormvogel
+    uv sync --locked --extra storm
+    uv run jupyter lab
     ```
-    If installing stormpy fails in poetry, you can also try to follow the official [stormpy installation instructions](https://stormchecker.github.io/stormpy/installation.html), and run `poetry shell` on top of the `virtualenv` environment that they describe there.
-3. Install `pre-commit` hook: `pre-commit install`
+    This creates `.venv` and installs the project plus development, test, lint, and documentation tools. Omit `--extra storm` for core-only development, or use `--all-extras` for all optional integrations (needed for documentation builds). Some extras require system libraries such as Cairo and Graphviz; docs also need Pandoc.
+3. Install the `pre-commit` hook: `uv run pre-commit install`
+
+Commit `uv.lock` when changing dependencies with `uv add` or `uv remove`. Use `uv lock --upgrade` to update locked versions and `uv sync --locked` to install them.
 
 ## Testing
 ```
-nox -s tests   # run test suite
-nox -s lint    # ruff + pyright
-nox -s docs    # sphinx-build (executes doc notebooks)
+uv run nox -s tests   # run test suite
+uv run nox -s lint    # ruff + pyright
+uv run nox -s docs    # sphinx-build (executes doc notebooks)
 ```
-Or run `pytest` directly without nox.
+Or run `uv run pytest` directly without nox.
+
+To test without development tools or optional integrations:
+```
+uv sync --locked --no-default-groups --group test
+uv run --no-sync pytest
+```
+Use `--no-sync` here so uv does not reinstall the default development groups.
 
 Notice that part of the tests will be skipped if stormpy is not installed.
 ## Authors
