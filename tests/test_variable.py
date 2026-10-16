@@ -1,3 +1,5 @@
+from fractions import Fraction
+
 import pytest
 import stormvogel.model
 from stormvogel.model.variable import (
@@ -5,6 +7,7 @@ from stormvogel.model.variable import (
     CategoricalDomain,
     IntDomain,
     Predicate,
+    RationalDomain,
     Variable,
 )
 
@@ -92,6 +95,34 @@ def test_categorical_domain_none_allowed():
     d = CategoricalDomain(("open", "closed"), allow_none=True)
     assert d.contains(None)
     assert d.contains("open")
+
+
+# --- RationalDomain ---
+
+
+def test_rational_domain_contains_valid():
+    d = RationalDomain()
+    assert d.contains(1)
+    assert d.contains(1.5)
+    assert d.contains(Fraction(1, 3))
+
+
+def test_rational_domain_rejects_bool():
+    d = RationalDomain()
+    assert not d.contains(True)
+    assert not d.contains(False)
+
+
+def test_rational_domain_rejects_non_numeric():
+    d = RationalDomain()
+    assert not d.contains("1/3")
+    assert not d.contains(None)
+
+
+def test_rational_domain_none_allowed():
+    d = RationalDomain(allow_none=True)
+    assert d.contains(None)
+    assert d.contains(Fraction(1, 3))
 
 
 # --- Variable equality is label-only ---

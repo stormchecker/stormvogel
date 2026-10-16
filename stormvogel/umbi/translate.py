@@ -31,6 +31,7 @@ from stormvogel.model.variable import (
     IntDomain,
     BoolDomain,
     CategoricalDomain,
+    RationalDomain,
 )
 
 logger = logging.getLogger("stormvogel.umbi")
@@ -66,7 +67,7 @@ def from_umbi_interval(interval: umbi.datatypes.Interval) -> Interval:
 
 def _domain_from_umbi_var(
     v: umbi.ats.Variable,
-) -> IntDomain | BoolDomain | CategoricalDomain | None:
+) -> IntDomain | BoolDomain | CategoricalDomain | RationalDomain | None:
     """Infer a stormvogel domain from a UMBI variable's observed value set."""
     if not v.has_domain:
         return None
@@ -78,6 +79,10 @@ def _domain_from_umbi_var(
         return BoolDomain()
     if pt in (NumericPrimitiveType.INT, NumericPrimitiveType.UINT):
         return IntDomain(int(v.lower), int(v.upper))  # type: ignore[arg-type]
+    if pt in (NumericPrimitiveType.RATIONAL, NumericPrimitiveType.DOUBLE):
+        return RationalDomain()
+    # PrimitiveType.STRING, and any other/future scalar type (e.g. interval-promoted
+    # variables), fall back to a categorical domain over the observed values.
     return CategoricalDomain(tuple(v.domain.sorted_domain))
 
 

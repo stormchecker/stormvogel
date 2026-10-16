@@ -6,7 +6,13 @@ from stormvogel.model.action import EmptyAction
 from stormvogel.model.distribution import Distribution
 from stormvogel.model.model import Model, ModelType
 from stormvogel.model.value import Number, Value, Interval
-from stormvogel.model.variable import Variable, BoolDomain, CategoricalDomain
+from stormvogel.model.variable import (
+    Variable,
+    BoolDomain,
+    CategoricalDomain,
+    IntDomain,
+    RationalDomain,
+)
 
 if TYPE_CHECKING:
     import stormpy
@@ -231,20 +237,58 @@ def build_reward_models(
     return reward_models
 
 
-def build_state_valuations(model: Model) -> "stormpy.storage.StateValuation | None":
+# Stormpy encodes a rational valuation as a numerator/denominator pair of
+# equal-width signed integers, and the total bit_size (numerator + denominator)
+# must be a multiple of 2 -- passing an odd bit_size crashes stormpy with an
+# uncatchable SIGABRT rather than a Python exception, so _rational_bit_size's
+# `2 * ...` result must never be tampered with.
+def _signed_bits_needed(value: int) -> int:
+    """Minimum number of two's-complement bits needed to represent ``value``."""
+    if value >= 0:
+        return value.bit_length() + 1
+    return (~value).bit_length() + 1
+
+
+def _rational_bit_size(var: Variable, model: Model) -> int:
+    """The smallest even bit_size whose per-component width fits every
+    numerator and denominator this rational variable takes across all states."""
+    max_component_bits = 1
+    for state in model.states:
+        v = state.valuations.get(var)
+        if v is None:
+            continue  # reported as a proper ValueError in the write loop below
+        fraction = Fraction(v)
+        max_component_bits = max(
+            max_component_bits,
+            _signed_bits_needed(fraction.numerator),
+            _signed_bits_needed(fraction.denominator),
+        )
+    return 2 * max_component_bits
+
+
+def build_state_valuations(model: Model) -> "stormpy.storage.Valuations | None":
     """Build a stormpy state valuations object from a stormvogel model.
 
     Only variables with a declared domain are exported. Variables without a
     domain are skipped. Returns ``None`` when no domain-bearing variables exist,
     in which case the caller should omit ``components.state_valuations``.
 
-    ``CategoricalDomain`` variables are encoded as integers (index into
-    ``domain.values``); the categorical labels are not preserved in stormpy.
+    ``CategoricalDomain`` variables whose values are all strings are stored as
+    native stormpy string variables, preserving the labels exactly. Categorical
+    variables with non-string values fall back to integer encoding (index into
+    ``domain.values``), which does not preserve the original labels in stormpy.
+
+    ``RationalDomain`` variables are stored as exact stormpy rational values.
+    Stormpy encodes the numerator and denominator of each entity's value as a
+    pair of equal-width signed integers, sized per variable to fit the widest
+    numerator/denominator observed across all states for that variable, so
+    there is no fixed precision ceiling.
 
     :param model: The stormvogel model.
     :returns: The constructed state valuations, or ``None``.
     :raises ValueError: If a state is missing a value for a domain-bearing
-        variable, or if a variable has a ``None`` value (not supported by stormpy).
+        variable, or if a variable has a ``None`` value (not supported by
+        stormpy).
     """
     assert stormpy is not None
 
@@ -252,6 +296,8 @@ def build_state_valuations(model: Model) -> "stormpy.storage.StateValuation | No
     seen: set[str] = set()
     bool_vars: list[Variable] = []
     int_vars: list[Variable] = []
+    str_vars: list[Variable] = []
+    rational_vars: list[Variable] = []
     for state in model.states:
         for var in sorted(
             (
@@ -265,23 +311,59 @@ def build_state_valuations(model: Model) -> "stormpy.storage.StateValuation | No
                 seen.add(var.label)
                 if isinstance(var.domain, BoolDomain):
                     bool_vars.append(var)
+                elif isinstance(var.domain, CategoricalDomain) and all(
+                    isinstance(v, str) for v in var.domain.values
+                ):
+                    str_vars.append(var)
+                elif isinstance(var.domain, RationalDomain):
+                    rational_vars.append(var)
                 else:
                     int_vars.append(var)
 
-    if not bool_vars and not int_vars:
+    if not bool_vars and not int_vars and not str_vars and not rational_vars:
         return None
 
     manager = stormpy.ExpressionManager()
-    builder = stormpy.storage.StateValuationsBuilder()
+    desc_builder = stormpy.storage.ValuationDescriptionBuilder(manager)
 
+    bool_expr_vars: dict[Variable, "stormpy.storage.Variable"] = {}
+    int_expr_vars: dict[Variable, "stormpy.storage.Variable"] = {}
+    str_expr_vars: dict[Variable, "stormpy.storage.Variable"] = {}
+    rational_expr_vars: dict[Variable, "stormpy.storage.Variable"] = {}
     for var in bool_vars:
-        builder.add_variable(manager.create_boolean_variable(var.label))
+        expr_var = manager.create_boolean_variable(var.label)
+        desc_builder.add_boolean_variable(expr_var)
+        bool_expr_vars[var] = expr_var
     for var in int_vars:
-        builder.add_variable(manager.create_integer_variable(var.label))
+        expr_var = manager.create_integer_variable(var.label)
+        if isinstance(var.domain, CategoricalDomain):
+            lower_bound, upper_bound = 0, len(var.domain.values) - 1
+        elif isinstance(var.domain, IntDomain):
+            lower_bound, upper_bound = var.domain.lo, var.domain.hi
+        else:
+            raise AssertionError(f"Unexpected domain type for {var!r}")
+        desc_builder.add_integer_variable(expr_var, lower_bound, upper_bound)
+        int_expr_vars[var] = expr_var
+    for var in str_vars:
+        expr_var = manager.create_string_variable(var.label)
+        desc_builder.add_string_variable(expr_var)
+        str_expr_vars[var] = expr_var
+    for var in rational_vars:
+        expr_var = manager.create_rational_variable(var.label)
+        desc_builder.add_rational_variable(expr_var, _rational_bit_size(var, model))
+        rational_expr_vars[var] = expr_var
+
+    class_description = desc_builder.build_class_description()
+    num_entities = (
+        max(model.stormpy_id[state] for state in model.states) + 1
+        if model.states
+        else 0
+    )
+    valuations = stormpy.storage.Valuations(class_description, manager, num_entities)
 
     for state in model.states:
         vals = state.valuations
-        bool_values = []
+        entity = model.stormpy_id[state]
         for var in bool_vars:
             v = vals.get(var)
             if v is None:
@@ -289,8 +371,7 @@ def build_state_valuations(model: Model) -> "stormpy.storage.StateValuation | No
                     f"State {state!r} has no value for variable {var!r}. "
                     "Stormpy requires total valuations."
                 )
-            bool_values.append(bool(v))
-        int_values = []
+            valuations.write_value(entity, bool_expr_vars[var], bool(v))
         for var in int_vars:
             v = vals.get(var)
             if v is None:
@@ -299,16 +380,30 @@ def build_state_valuations(model: Model) -> "stormpy.storage.StateValuation | No
                     "Stormpy requires total valuations."
                 )
             if isinstance(var.domain, CategoricalDomain):
-                int_values.append(var.domain.values.index(v))
-            else:
-                int_values.append(int(v))
-        builder.add_state(
-            model.stormpy_id[state],
-            boolean_values=bool_values,
-            integer_values=int_values,
-        )
+                v = var.domain.values.index(v)
+            valuations.write_value(entity, int_expr_vars[var], int(v))
+        for var in str_vars:
+            v = vals.get(var)
+            if v is None:
+                raise ValueError(
+                    f"State {state!r} has no value for variable {var!r}. "
+                    "Stormpy requires total valuations."
+                )
+            valuations.write_value(entity, str_expr_vars[var], str(v))
+        for var in rational_vars:
+            v = vals.get(var)
+            if v is None:
+                raise ValueError(
+                    f"State {state!r} has no value for variable {var!r}. "
+                    "Stormpy requires total valuations."
+                )
+            valuations.write_value(
+                entity,
+                rational_expr_vars[var],
+                stormpy.pycarl.gmp.Rational(Fraction(v)),
+            )
 
-    return builder.build()
+    return valuations
 
 
 def _apply_state_valuations(components, state_valuations) -> None:
